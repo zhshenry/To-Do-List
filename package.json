@@ -1,0 +1,69 @@
+{
+  "name": "daily-focus-desktop",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "description": "Windows 悬浮待办与 AI 日程助手",
+  "author": "zhshenry",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "dev": "node tooling/assets.mjs && node tooling/dev.mjs",
+    "setup:runtime": "node node_modules/electron/install.js",
+    "build": "node tooling/assets.mjs && tsc --noEmit && vite build && node tooling/build.mjs",
+    "start": "electron .",
+    "test": "tsx --test tests/*.test.ts",
+    "test:desktop": "node tooling/desktop-test.mjs",
+    "dist:win": "npm run dist:portable",
+    "dist:portable": "npm run build && electron-builder --win dir --x64 --config.electronDist=node_modules/electron/dist && powershell -NoProfile -ExecutionPolicy Bypass -File tooling/package-release.ps1 -Mode Portable",
+    "dist:installer": "npm run build && electron-builder --win nsis --x64 --config.electronDist=node_modules/electron/dist && powershell -NoProfile -ExecutionPolicy Bypass -File tooling/package-release.ps1 -Mode All",
+    "dist:all": "npm run dist:installer"
+  },
+  "build": {
+    "appId": "com.zhshenry.todolist",
+    "productName": "To Do List",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "assets/icon.png",
+      "assets/phosphor-license.txt",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "artifactName": "To Do List Setup-${version}-${arch}.${ext}"
+  },
+  "dependencies": {
+    "@phosphor-icons/react": "2.1.10",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@phosphor-icons/core": "2.1.1",
+    "@types/node": "26.5.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3",
+    "esbuild": "0.28.2",
+    "playwright": "1.63.0",
+    "sharp": "0.35.4",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2",
+    "vite": "8.3.0"
+  }
+}
