@@ -35,7 +35,7 @@ let pending: { plan: Proposal; revisions: Map<string, string> } | null = null;
 function proposalActionWithinScope(original: AIAction, candidate: AIAction): AIAction {
   const action = aiActionSchema.parse(candidate);
   if (original.type !== action.type) throw new Error('只能编辑当前建议，不能替换操作类型');
-  if ((original.type === 'update' || original.type === 'update_category' || original.type === 'remove_category')
+  if ((original.type === 'update' || original.type === 'remove' || original.type === 'update_category' || original.type === 'remove_category')
     && action.type === original.type && action.id !== original.id) throw new Error('只能编辑当前建议对象');
   if (original.type === 'create_category' && action.type === 'create_category' && action.category.id !== original.category.id) {
     throw new Error('只能编辑当前建议对象');

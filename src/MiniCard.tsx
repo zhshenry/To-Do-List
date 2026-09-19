@@ -18,6 +18,7 @@ type ReminderChoice = 'none' | 'ontime' | 'ten' | 'custom';
 
 const PANEL_HEIGHT: Record<AddSelector, number> = { datetime: 526, priority: 376, tag: 390, more: 438 };
 const PANEL_ARROW: Record<AddSelector, number> = { datetime: 22, priority: 49, tag: 76, more: 103 };
+const SETTINGS_PANEL_HEIGHT = 226;
 
 function shiftDay(day: string, amount: number) {
   const date = new Date(`${day}T12:00:00`);
@@ -255,8 +256,11 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
   const [suggestionIgnored, setSuggestionIgnored] = useState(false);
   const [aiSeed, setAiSeed] = useState<{ id: number; text: string } | null>(null);
   const [contentMotion, setContentMotion] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const titleInput = useRef<HTMLInputElement>(null);
   const selectorTriggers = useRef<Partial<Record<AddSelector, HTMLButtonElement | null>>>({});
+  const settingsTrigger = useRef<HTMLButtonElement>(null);
+  const settingsWasOpen = useRef(false);
   const previousMode = useRef(mode);
   const remaining = useMemo(() => activeToday(data.tasks, today).filter(task => task.status !== 'done'), [data.tasks, today]);
   const current = remaining[index % Math.max(remaining.length, 1)];
@@ -274,13 +278,19 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
     const timer = setTimeout(() => setContentMotion(''), 340);
     if (mode !== 'add') setSelector(null);
     if (mode !== 'home') setSuggestionOpen(false);
+    setSettingsOpen(false);
     return () => clearTimeout(timer);
   }, [mode]);
   useEffect(() => { if (mode === 'add') titleInput.current?.focus({ preventScroll: true }); }, [mode]);
   useEffect(() => {
-    if (mode === 'add' && selector) void api.compactHeight(PANEL_HEIGHT[selector]);
-    else if (mode !== 'ai') void api.compactHeight(null);
-  }, [api, mode, selector]);
+    if (settingsOpen) { void api.compactHeight(SETTINGS_PANEL_HEIGHT); return; }
+    if (mode === 'add' && selector) { void api.compactHeight(PANEL_HEIGHT[selector]); return; }
+    if (mode !== 'ai') { void api.compactHeight(null); return; }
+    // Leaving the settings panel on the AI surface must undo its height bump;
+    // otherwise the AI surface manages its own height.
+    if (settingsWasOpen.current) void api.compactHeight(null);
+  }, [api, mode, selector, settingsOpen]);
+  useEffect(() => { settingsWasOpen.current = settingsOpen; }, [settingsOpen]);
   useEffect(() => () => { void api.compactHeight(null); }, [api]);
 
   function resetAdd() {
@@ -291,7 +301,15 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
     setSelector(null);
     if (current) requestAnimationFrame(() => selectorTriggers.current[current]?.focus());
   }
-  function toggleSelector(next: AddSelector) { setAddError(''); setSelector(current => current === next ? null : next); }
+  function toggleSelector(next: AddSelector) { setAddError(''); setSettingsOpen(false); setSelector(current => current === next ? null : next); }
+  function toggleSettingsPanel() {
+    setSelector(null);
+    setSettingsOpen(open => !open);
+  }
+  function closeSettings() {
+    setSettingsOpen(false);
+    requestAnimationFrame(() => settingsTrigger.current?.focus());
+  }
   function startSuggestion(prompt = suggestion?.prompt) {
     if (!prompt) return;
     setAiSeed({ id: Date.now(), text: prompt }); setMode('ai');
@@ -321,13 +339,13 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
     <header className="mini-titlebar"><span className="mini-logo-slot" aria-hidden="true" /><span className="mini-app-title">To Do List</span><div className="mini-window-actions">
       <IconButton label={data.settings.alwaysOnTop ? '取消置顶' : '置顶窗口'} aria-pressed={data.settings.alwaysOnTop} onClick={() => void mutate(() => api.window('pin'))}><PushPin size={19} weight={data.settings.alwaysOnTop ? 'fill' : 'regular'} /></IconButton>
       {DOCK_FEATURE_ENABLED ? <IconButton label={data.settings.dockEnabled ? '隐藏悬浮入口' : '显示悬浮入口'} aria-pressed={data.settings.dockEnabled} disabled={mutating} onClick={() => void mutate(() => api.dockEnabled(!data.settings.dockEnabled))}><Circle size={19} weight={data.settings.dockEnabled ? 'fill' : 'regular'} /></IconButton> : null}
-      <IconButton label="设置" onClick={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))}><GearSix size={19} /></IconButton>
+      <IconButton ref={settingsTrigger} label="设置" aria-expanded={settingsOpen} onClick={toggleSettingsPanel}><GearSix size={19} /></IconButton>
       <IconButton label="展开主界面" disabled={mutating} onClick={() => expand()}><ArrowsOutLineVertical size={19} /></IconButton>
       <IconButton label="最小化" onClick={() => void mutate(() => api.window('hide'))}><Minus size={20} /></IconButton>
     </div></header>
   </>;
 
-  return <main className={`mini-root${motion === 'expanding' ? ' is-expanding' : motion === 'entering' ? ' is-entering' : ''}`} aria-label="待办小卡片" onKeyDown={event => { if (event.key === 'Escape' && !event.nativeEvent.isComposing) { if (selector) closeSelector(); else if (mode !== 'home') setMode('home'); } }}>
+  return <main className={`mini-root${motion === 'expanding' ? ' is-expanding' : motion === 'entering' ? ' is-entering' : ''}`} aria-label="待办小卡片" onKeyDown={event => { if (event.key === 'Escape' && !event.nativeEvent.isComposing) { if (settingsOpen) closeSettings(); else if (selector) closeSelector(); else if (mode !== 'home') setMode('home'); } }}>
     <section className="mini-window">
       {titlebar}
       <div className={`mini-content motion-${contentMotion || 'idle'}${mode === 'ai' ? ' is-ai' : ''}`}>
@@ -365,5 +383,11 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
     {mode === 'add' && selector === 'priority' ? <PriorityPanel value={addItem.priority} close={closeSelector} confirm={value => { setAddItem(item => ({ ...item, priority: value })); setConfirmed(state => ({ ...state, priority: true })); closeSelector(); }} /> : null}
     {mode === 'add' && selector === 'tag' ? <TagPanel value={addItem.categoryId} categories={data.categories} close={closeSelector} create={createTag} confirm={value => { setAddItem(item => ({ ...item, categoryId: value })); setConfirmed(state => ({ ...state, tag: true })); closeSelector(); }} /> : null}
     {mode === 'add' && selector === 'more' ? <MorePanel value={addItem} close={closeSelector} confirm={value => { setAddItem(item => ({ ...item, ...value })); closeSelector(); }} /> : null}
+    {settingsOpen ? <section className="mini-selector is-settings" aria-label="快捷设置">
+      <header className="mini-selector-head"><span><GearSix size={14} /></span><b>快捷设置</b><IconButton label="关闭快捷设置" onClick={closeSettings}><X size={13} /></IconButton></header>
+      <div className="mini-settings-row"><span>启用 AI</span><button type="button" className="toggle" role="switch" aria-checked={data.settings.aiEnabled} aria-label="启用 AI" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: !data.settings.aiEnabled, autoStart: data.settings.autoStart }))} /></div>
+      <div className="mini-settings-row"><span>登录 Windows 后自动启动</span><button type="button" className="toggle" role="switch" aria-checked={data.settings.autoStart} aria-label="登录 Windows 后自动启动" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: data.settings.aiEnabled, autoStart: !data.settings.autoStart }))} /></div>
+      <footer className="mini-selector-footer"><button type="button" onClick={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))}>打开全部设置</button></footer>
+    </section> : null}
   </main>;
 }

@@ -44,6 +44,7 @@ function projectedTask(action: AIAction, tasks: Task[]): TaskInput | null {
 function actionTitle(action: AIAction, tasks: Task[], categories: Category[]): string {
   if (action.type === 'create') return action.task.title;
   if (action.type === 'update') return projectedTask(action, tasks)?.title ?? '事项已变化';
+  if (action.type === 'remove') return tasks.find(task => task.id === action.id)?.title ?? '事项已变化';
   if (action.type === 'create_category') return action.category.name;
   const category = categories.find(item => item.id === action.id);
   if (action.type === 'update_category') return action.patch.name ?? category?.name ?? '标签已变化';
@@ -52,6 +53,7 @@ function actionTitle(action: AIAction, tasks: Task[], categories: Category[]): s
 function actionKind(action: AIAction): string {
   if (action.type === 'create') return action.task.kind === 'meeting' ? '新增日程' : '新增待办';
   if (action.type === 'update') return '修改事项';
+  if (action.type === 'remove') return '删除事项';
   if (action.type === 'create_category') return '新增标签';
   if (action.type === 'update_category') return '修改标签';
   return '删除标签';
@@ -61,7 +63,7 @@ function actionIdentity(action: AIAction): string {
   if (action.type === 'create_category') return `${action.type}:${action.category.id}`;
   return `${action.type}:${action.id}`;
 }
-function editable(action: AIAction) { return action.type !== 'remove_category'; }
+function editable(action: AIAction) { return action.type !== 'remove_category' && action.type !== 'remove'; }
 
 function TaskActionEditor({ action, tasks, categories, actions, saving, cancel, save }: {
   action: Extract<AIAction, { type: 'create' | 'update' }>; tasks: Task[]; categories: Category[]; actions: AIAction[]; saving: boolean;
@@ -125,6 +127,10 @@ function ActionDetails({ action, tasks, categories, actions }: { action: AIActio
     const current = tasks.find(task => task.id === action.id);
     return current ? <dl className="proposal-card-details is-diff">{Object.entries(action.patch).map(([key, next]) => <div key={key}><dt>{taskLabels[key] ?? key}</dt><dd><span>{taskValue(key, (current as unknown as Record<string, unknown>)[key], categories, names)}</span><ArrowRight size={13} /><strong>{taskValue(key, next, categories, names)}</strong></dd></div>)}</dl> : <p className="proposal-card-error">事项已变化，请重新生成建议。</p>;
   }
+  if (action.type === 'remove') {
+    const current = tasks.find(task => task.id === action.id);
+    return current ? <p className="proposal-category-summary">确认应用后删除“{current.title}”，放入回收保护（软删除）。</p> : <p className="proposal-card-error">事项已变化，请重新生成建议。</p>;
+  }
   if (action.type === 'create_category') return <p className="proposal-category-summary"><i style={{ backgroundColor: action.category.color }} />创建标签“{action.category.name}”</p>;
   const current = categories.find(category => category.id === action.id);
   if (!current) return <p className="proposal-card-error">标签已变化，请重新生成建议。</p>;
@@ -184,7 +190,7 @@ export function AIProposalCards({ entry, previousActions, tasks, categories, bus
       const category = task?.categoryId ? categories.find(item => item.id === task.categoryId) : null;
       const wasUpdated = previousActions?.some(previous => actionIdentity(previous) === actionIdentity(action) && JSON.stringify(previous) !== JSON.stringify(action));
       const isEditing = editing === index;
-      return <article key={`${entry.id}-${index}`} className={`proposal-card${selected.has(index) ? ' is-selected' : ''}${isEditing ? ' is-editing' : ''}${wasUpdated ? ' is-updated' : ''}`}>
+      return <article key={`${entry.id}-${index}`} className={`proposal-card${action.type === 'remove' ? ' is-danger' : ''}${selected.has(index) ? ' is-selected' : ''}${isEditing ? ' is-editing' : ''}${wasUpdated ? ' is-updated' : ''}`}>
         <span className="proposal-card-corners" aria-hidden="true" />
         <header className="proposal-card-head">
           <button type="button" className="proposal-check" aria-label={`${selected.has(index) ? '取消选择' : '选择建议'} ${title}`} aria-pressed={selected.has(index)} disabled={isEditing || busy || mutating} onClick={() => toggle(index)}>{selected.has(index) ? <Check size={14} weight="bold" /> : null}</button>

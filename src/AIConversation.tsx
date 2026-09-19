@@ -34,9 +34,11 @@ export interface AIConversationProps {
   tasks: Task[];
   categories: Category[];
   aiEnabled: boolean;
+  configured: boolean;
   mutating: boolean;
   retry: (() => void) | null;
   openSettings(): void;
+  enable(): void;
   apply(entry: ConversationEntry, items?: AIProposalSelection[]): void;
   discard(entry: ConversationEntry): void;
   adjust(entry: ConversationEntry, index: number): void;
@@ -48,7 +50,7 @@ export function AIConversation(props: AIConversationProps) {
   return <CompactAIConversation {...props} compact />;
 }
 
-function CompactAIConversation({ entries, pendingText, busy, error, actionError, tasks, categories, aiEnabled, mutating, retry, openSettings, apply, discard, compact = true }: AIConversationProps) {
+function CompactAIConversation({ entries, pendingText, busy, error, actionError, tasks, categories, aiEnabled, configured, mutating, retry, openSettings, enable, apply, discard, compact = true }: AIConversationProps) {
   const scroll = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
   useEffect(() => {
@@ -64,10 +66,10 @@ function CompactAIConversation({ entries, pendingText, busy, error, actionError,
     }}>
       {!entries.length && !pendingText ? <div className="chat-empty">
         {!compact ? <span className="chat-empty-avatar" aria-hidden="true"><Sparkle size={28} weight="fill" /></span> : null}
-        <b>{aiEnabled ? compact ? '今天，想先做哪一件？' : '可以连续聊一件事' : compact ? '先启用 AI 助手' : '请先配置 AI 大模型'}</b>
-        <p>{aiEnabled ? compact ? '可以问我，也可以让我帮你安排待办。' : '例如：明天下午3点产品评审，提前10分钟提醒。涉及事项或标签的建议会等你确认。' : compact ? '在设置中填写模型服务后，才能进行事项对话。' : '在 AI 配置中添加模型服务并启用后，就可以开始对话。'}</p>
+        <b>{aiEnabled ? compact ? '今天，想先做哪一件？' : '可以连续聊一件事' : !configured ? compact ? '先配置模型服务' : '请先配置 AI 大模型' : '先启用 AI 助手'}</b>
+        <p>{aiEnabled ? compact ? '可以问我，也可以让我帮你安排待办。' : '例如：明天下午3点产品评审，提前10分钟提醒。涉及事项或标签的建议会等你确认。' : !configured ? compact ? '在设置中填写模型服务后，才能进行事项对话。' : '在 AI 配置中添加模型服务并启用后，就可以开始对话。' : '模型已就绪，启用后即可开始对话。'}</p>
         {!compact ? <p>对话和工具记录保存在本机，退出后仍可继续。重启后未确认的建议需要重新生成。</p> : null}
-        {!aiEnabled ? <button type="button" onClick={openSettings}>打开 AI 设置</button> : null}
+        {!aiEnabled ? configured ? <button type="button" onClick={enable}>启用 AI</button> : <button type="button" onClick={openSettings}>打开 AI 设置</button> : null}
       </div> : null}
       <ol className="chat-messages">
         {entries.map(entry => {
@@ -124,6 +126,13 @@ function CompactAIConversation({ entries, pendingText, busy, error, actionError,
                   {current ? <><h3><span className="task-category"><i style={{ backgroundColor: current.color }} />{current.name}</span></h3><p>关联事项会变为无标签。</p></> : <p className="error">标签已经变化，请放弃并重新生成建议。</p>}
                 </section>;
               }
+              if (action.type === 'remove') {
+                const current = tasks.find(task => task.id === action.id);
+                return <section className="proposal-action is-danger" key={index}>
+                  <small>删除事项</small>
+                  {current ? <><h3>{current.title}</h3><p>确认应用后才会删除，删除为软删除。</p></> : <p className="error">事项已经变化，请放弃并重新生成建议。</p>}
+                </section>;
+              }
               if (action.type === 'create') return <section className="proposal-action" key={index}>
                 <small>新增事项</small>
                 <h3>{action.task.title}</h3>
@@ -158,16 +167,16 @@ function MiniProposal({ action, tasks, categories, proposedNames }: { action: AI
     if (key === 'progress') return `${item}%`;
     return ['kind', 'status', 'priority'].includes(key) ? words[String(item)] ?? String(item) : String(item);
   }
-  const current = action.type === 'update' ? tasks.find(task => task.id === action.id) : action.type === 'update_category' || action.type === 'remove_category' ? categories.find(category => category.id === action.id) : undefined;
-  const fields = action.type === 'create' ? action.task : action.type === 'create_category' ? action.category : action.type === 'remove_category' ? {} : action.patch;
+  const current = action.type === 'update' || action.type === 'remove' ? tasks.find(task => task.id === action.id) : action.type === 'update_category' || action.type === 'remove_category' ? categories.find(category => category.id === action.id) : undefined;
+  const fields = action.type === 'create' ? action.task : action.type === 'create_category' ? action.category : action.type === 'remove' || action.type === 'remove_category' ? {} : action.patch;
   const title = action.type === 'create' ? action.task.title : action.type === 'create_category' ? action.category.name : current ? 'title' in current ? current.title : current.name : '对象已变化，请重新生成';
   const task = action.type === 'create' ? action.task : action.type === 'update' && current && 'title' in current ? { ...current, ...action.patch } : null;
   if (action.type === 'create' || action.type === 'update') return <section className="proposal-action mini-proposal">
     <h3>{action.type === 'create' ? '新增' : '修改'} · {title}</h3>
     {task ? <><p className="mini-proposal-key">{words[task.kind]} · {task.plannedDate} · {value('dueAt', task.dueAt)}</p><p>提醒：{value('remindAt', task.remindAt)} · 标签：{value('categoryId', task.categoryId)}</p></> : <p>对象已变化，请展开对话并重新生成。</p>}
   </section>;
-  return <section className="proposal-action mini-proposal">
+  return <section className={`proposal-action mini-proposal${action.type === 'remove' ? ' is-danger' : ''}`}>
     <h3>{action.type.startsWith('create') ? '新增' : action.type.startsWith('remove') ? '删除' : '修改'} · {title}</h3>
-    {action.type === 'remove_category' ? <p>关联事项改为无标签，保留事项。</p> : Object.entries(fields).filter(([key]) => key !== 'id').map(([key, next]) => <p key={key}>{labels[key] ?? key}：{current ? <><span className="mini-before">{value(key, (current as unknown as Record<string, unknown>)[key])}</span> → </> : null}{value(key, next)}</p>)}
+    {action.type === 'remove_category' ? <p>关联事项改为无标签，保留事项。</p> : action.type === 'remove' ? <p>确认应用后才会删除。</p> : Object.entries(fields).filter(([key]) => key !== 'id').map(([key, next]) => <p key={key}>{labels[key] ?? key}：{current ? <><span className="mini-before">{value(key, (current as unknown as Record<string, unknown>)[key])}</span> → </> : null}{value(key, next)}</p>)}
   </section>;
 }

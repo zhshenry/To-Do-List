@@ -3,9 +3,8 @@
 .settings-advanced-toggle { color: var(--muted); }
 .settings-advanced-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
 .settings-save-state { flex: 1; min-width: 0; margin: 0; }
-.settings-modal .key-actions { flex-wrap: wrap; }
 .settings-modal .provider-card-head b { min-width: 0; overflow-wrap: anywhere; }
-.settings-modal .model-list button { min-height: 32px; }
+.settings-modal .model-list button:not(.model-test-button) { min-height: 32px; }
 .settings-modal .sticky-actions .field-help { font-size: 12px; }
 .settings-modal .provider-card input, .settings-modal .provider-card .select-trigger { min-height: 36px; font-size: 13px; }
 .settings-modal .provider-card .field-help, .settings-modal .provider-card .warning { font-size: 12px; }
@@ -15,6 +14,7 @@
 .settings-modal .settings-advanced-toggle { margin-top: 8px; }
 .modal.settings-modal .settings-pane[hidden] { display: none; }
 .window-width-setting { display: grid; gap: 7px; margin-top: 10px; }
-.window-width-setting > span { font-weight: 600; }
+.window-width-setting > .label-with-help { font-weight: 600; }
 .window-width-setting .segmented { width: 100%; }
-.window-width-setting .segmented button { min-height: 32px; }
+.window-width-setting .segmented button { min-height: 28px; }
+.sheet-card .actions > button:not(.dock-icon-choice) { min-height: 28px; padding: 4px 12px; }

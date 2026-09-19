@@ -45,6 +45,7 @@ export const taskPatchSchema = taskFields.extend({
 export const aiActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('create'), task: taskFields }).strict(),
   z.object({ type: z.literal('update'), id: z.string().uuid(), patch: taskPatchSchema }).strict(),
+  z.object({ type: z.literal('remove'), id: z.string().uuid() }).strict(),
   z.object({ type: z.literal('create_category'), category: categoryInputSchema.extend({ id: z.string().uuid() }) }).strict(),
   z.object({ type: z.literal('update_category'), id: z.string().uuid(), patch: categoryPatchSchema.refine(patch => Object.keys(patch).length > 0, '请提供要修改的标签字段') }).strict(),
   z.object({ type: z.literal('remove_category'), id: z.string().uuid() }).strict(),

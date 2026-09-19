@@ -103,6 +103,8 @@ test('Pi protocol mapping and reply assembly keep confirm-before-write', () => {
   assert.equal(planFromReply('具体几点？', [], new Set()).actions.length, 0);
   assert.throws(() => planFromReply('', [{ type: 'update', id: '11111111-1111-4111-8111-111111111111', patch: { title: '改' } }], new Set()), /不存在的事项/);
   assert.equal(planFromReply('', [{ type: 'update', id: '11111111-1111-4111-8111-111111111111', patch: { title: '改' } }], known).actions.length, 1);
+  assert.throws(() => planFromReply('', [{ type: 'remove', id: '11111111-1111-4111-8111-111111111111' }], new Set()), /不存在的事项/);
+  assert.equal(planFromReply('', [{ type: 'remove', id: '11111111-1111-4111-8111-111111111111' }], known).actions[0]?.type, 'remove');
   const categoryId = '43f07b99-78e2-4eef-9ddc-759b40a88e54';
   assert.equal(planFromReply('', [{ type: 'create_category', category: { id: categoryId, name: '学习', color: '#335577' } }], new Set(), new Set()).actions[0]?.type, 'create_category');
   assert.throws(() => planFromReply('', [{ type: 'remove_category', id: categoryId }], new Set(), new Set()), /不存在的标签/);

@@ -1,6 +1,6 @@
 import { DockIcon, DOCK_ICONS } from './DockIcon';
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { CaretDown, Eye, EyeSlash, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
+import { CaretDown, Eye, EyeSlash, Lightning, PencilSimple, Plus, Trash, X } from '@phosphor-icons/react';
 import type { AIModel, AIProtocol, AIProvider, AIProviderKind, DesktopAPI, MainWindowWidth, Settings, State, UpdaterStatus } from '../shared/contracts';
 import { AI_PROVIDER_PRESETS, DOCK_FEATURE_ENABLED } from '../shared/contracts';
 import { Modal, IconButton, Segmented, Select, HelpTip, errorText } from './ui';
@@ -65,7 +65,6 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
   const [modelDraft, setModelDraft] = useState('');
   const [testNote, setTestNote] = useState('');
   const [advanced, setAdvanced] = useState(provider?.kind === 'custom');
-  const [keyRemoval, setKeyRemoval] = useState(false);
   const draftRef = useRef(draft); draftRef.current = draft;
   const modelRef = useRef(modelName); modelRef.current = modelName;
   const modelEditRef = useRef({ id: editingModel, name: modelDraft }); modelEditRef.current = { id: editingModel, name: modelDraft };
@@ -189,18 +188,17 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
       <input id={saved ? `ai-provider-name-${saved.id}` : 'ai-provider-name'} aria-label="供应商名称" value={draft.name} maxLength={30} placeholder="请输入供应商名称" autoComplete="off" onChange={e => update({ ...draft, name: e.target.value })} onBlur={saveOnBlur} />
     </> : null}
     {!saved || editing ? <>
-      <label htmlFor={saved ? `ai-key-${saved.id}` : 'ai-key'} className="label-with-help">API Key {saved?.hasKey ? <span className="muted">已保存，留空保留</span> : null} <HelpTip label="API Key 说明" place="up">同一供应商的模型共用密钥。使用 Windows 加密后保存在本机。</HelpTip></label>
-      <div className="secret-field"><input id={saved ? `ai-key-${saved.id}` : 'ai-key'} type={visible ? 'text' : 'password'} value={draft.apiKey} onChange={e => update({ ...draft, apiKey: e.target.value, clearKey: false })} onBlur={saveOnBlur} autoComplete="new-password" placeholder="填写服务提供的密钥" /><IconButton label={visible ? '隐藏密钥' : '显示密钥'} onClick={() => setVisible(!visible)}>{visible ? <EyeSlash size={20} /> : <Eye size={20} />}</IconButton></div>
-      {saved?.hasKey ? <div className="actions key-actions">{keyRemoval ? <><span className="field-help">移除后需重新填写才能连接。</span><button type="button" onClick={() => setKeyRemoval(false)}>保留</button><button type="button" className="text-danger" onClick={() => void run(async () => { update({ ...draftRef.current, clearKey: true, apiKey: '' }); await flushProvider(); setKeyRemoval(false); })}>确认移除密钥</button></> : <button type="button" className="text-danger" onClick={() => setKeyRemoval(true)}>移除已保存的密钥</button>}</div> : null}
-      <button type="button" className="model-toggle settings-advanced-toggle" aria-expanded={advanced} aria-controls={saved ? `advanced-${saved.id}` : 'advanced-new'} onClick={() => setAdvanced(open => !open)}>高级设置<CaretDown size={14} /></button>
-      <div className="settings-advanced" id={saved ? `advanced-${saved.id}` : 'advanced-new'} hidden={!advanced}>
-      <p className="field-help">使用官方服务无需修改。自定义服务或中转可调整地址与协议。</p>
       <label htmlFor={saved ? `ai-endpoint-${saved.id}` : 'ai-endpoint'}>服务地址</label>
       <input id={saved ? `ai-endpoint-${saved.id}` : 'ai-endpoint'} aria-label="服务地址" value={draft.endpoint} placeholder="https://你的服务域名/v1" autoComplete="off" onChange={e => update({ ...draft, endpoint: e.target.value })} onBlur={saveOnBlur} />
-      <label htmlFor={saved ? `ai-protocol-${saved.id}` : 'ai-protocol'} className="label-with-help">服务协议 <HelpTip label="服务协议说明">填写服务根地址（通常以 /v1 结尾）。助手通过 Pi 按协议访问 /chat/completions、/responses 或 /messages。预设供应商会填入常用地址，仍可改成自己的中转。</HelpTip></label>
+      {draft.endpoint.trim().toLowerCase().startsWith('http://') ? <p className="warning">当前使用 HTTP：API Key、事项和对话内容会明文传输。仅建议用于可信内网或本机服务；公网服务请使用 HTTPS。</p> : null}
+      <label htmlFor={saved ? `ai-key-${saved.id}` : 'ai-key'} className="label-with-help">API Key <HelpTip label="API Key 说明" place="up">同一供应商的模型共用密钥。使用 Windows 加密后保存在本机。</HelpTip></label>
+      <div className="secret-field"><input id={saved ? `ai-key-${saved.id}` : 'ai-key'} type={visible ? 'text' : 'password'} value={draft.apiKey} onChange={e => update({ ...draft, apiKey: e.target.value, clearKey: false })} onBlur={saveOnBlur} autoComplete="new-password" placeholder={saved?.hasKey && !draft.clearKey ? '••••••••' : '填写服务提供的密钥'} /><IconButton label={!draft.apiKey ? '输入新密钥后可查看' : visible ? '隐藏密钥' : '显示密钥'} disabled={!draft.apiKey} onClick={() => setVisible(!visible)}>{visible ? <EyeSlash size={20} /> : <Eye size={20} />}</IconButton>{saved?.hasKey && !draft.clearKey ? <IconButton className="text-danger" label="移除已保存的密钥" onClick={() => { update({ ...draftRef.current, clearKey: true, apiKey: '' }); void flushProvider().catch(e => fail(errorText(e))); }}><X size={16} /></IconButton> : null}</div>
+      <button type="button" className="model-toggle settings-advanced-toggle" aria-expanded={advanced} aria-controls={saved ? `advanced-${saved.id}` : 'advanced-new'} onClick={() => setAdvanced(open => !open)}>高级设置<CaretDown size={14} /></button>
+      <div className="settings-advanced" id={saved ? `advanced-${saved.id}` : 'advanced-new'} hidden={!advanced}>
+      <p className="field-help">使用官方服务无需修改，可在此调整服务协议。</p>
+      <label htmlFor={saved ? `ai-protocol-${saved.id}` : 'ai-protocol'} className="label-with-help">服务协议 <HelpTip label="服务协议说明">助手通过所选协议访问 /chat/completions、/responses 或 /messages。预设供应商会填好协议，一般无需更改。</HelpTip></label>
       <Select id={saved ? `ai-protocol-${saved.id}` : 'ai-protocol'} aria-label="服务协议" value={draft.protocol} onChange={value => { update({ ...draftRef.current, protocol: value as AIProtocol }); if (saved) void flushProvider().catch(e => fail(errorText(e))); }} options={PROTOCOL_OPTIONS} />
       </div>
-      {draft.endpoint.trim().toLowerCase().startsWith('http://') ? <p className="warning">当前使用 HTTP：API Key、事项和对话内容会明文传输。仅建议用于可信内网或本机服务；公网服务请使用 HTTPS。</p> : null}
     </> : null}
     <button type="button" className="model-toggle" aria-expanded={modelsOpen} aria-controls={saved ? `models-${saved.id}` : 'models-new'} onClick={() => setModelsOpen(open => !open)}>
       <span>模型列表{models.length ? `（${models.length}）` : ''}</span>
@@ -209,12 +207,11 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
     {modelsOpen ? <div className="model-box" id={saved ? `models-${saved.id}` : 'models-new'}>
       {models.length ? <ul className="model-list" aria-label={`${saved?.name || draft.name || '新供应商'} 的模型`}>{models.map(model => <li key={model.id}>
         {editingModel === model.id ? <input aria-label={`编辑模型 ${model.name}`} value={modelDraft} maxLength={200} autoFocus onChange={e => { modelEditRef.current.name = e.target.value; setModelDraft(e.target.value); onPending(e.target.value !== model.name); }} onBlur={() => void renameModel(model).catch(e => fail(errorText(e)))} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void renameModel(model).catch(cause => fail(errorText(cause))); } }} /> : <span className="category-name">{model.name}</span>}
-        {model.id === activeModelId ? <span className="provider-badge">当前</span> : <button type="button" onClick={() => void run(async () => { changed(await api.activateProfile(model.id)); })}>使用</button>}
-        <button type="button" className="model-test-button" disabled={busy || !(saved || draft.endpoint.trim())} aria-label={`测试连接 ${model.name}`} onClick={() => void probe(model.name)}>测试</button>
+        <button type="button" className="model-test-button" disabled={busy || !(saved || draft.endpoint.trim())} aria-label={`测试连接 ${model.name}`} onClick={() => void probe(model.name)}><Lightning size={13} /></button>
         {editingModel === model.id ? null : <IconButton label={`重命名 ${model.name}`} onClick={() => { modelEditRef.current = { id: model.id, name: model.name }; setEditingModel(model.id); setModelDraft(model.name); }}><PencilSimple size={15} /></IconButton>}
         <IconButton className="text-danger" label={`删除 ${model.name}`} onClick={() => void run(async () => { changed(await api.removeModel(model.id)); })}><Trash size={15} /></IconButton>
       </li>)}</ul> : <p className="field-help">还没有模型。同一供应商可添加多个模型名称或 ID，每个都能单独测试。</p>}
-      {adding ? <div className="model-create"><input id={saved ? `ai-model-${saved.id}` : 'ai-model'} aria-label="模型名称 / ID" value={modelName} maxLength={200} placeholder="填写服务提供的模型名称" autoComplete="off" onChange={e => { modelRef.current = e.target.value; setModelName(e.target.value); onDirty(Boolean(e.target.value)); }} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void addModel(); } }} /><button type="button" disabled={busy || !modelName.trim() || !draft.endpoint.trim()} onClick={() => void addModel()}>{saved ? '添加模型' : '添加并使用'}</button><button type="button" className="model-test-button" disabled={busy || !modelName.trim() || !(saved || draft.endpoint.trim())} aria-label="测试连接" onClick={() => void probe(modelName)}>测试</button></div> : models.length < 8 ? <button type="button" className="model-add-button" onClick={() => setAdding(true)}><Plus size={14} weight="bold" /> 添加模型</button> : null}
+      {adding ? <div className="model-create"><input id={saved ? `ai-model-${saved.id}` : 'ai-model'} aria-label="模型名称 / ID" value={modelName} maxLength={200} placeholder="填写服务提供的模型名称" autoComplete="off" onChange={e => { modelRef.current = e.target.value; setModelName(e.target.value); onDirty(Boolean(e.target.value)); }} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void addModel(); } }} /><button type="button" disabled={busy || !modelName.trim() || !draft.endpoint.trim()} onClick={() => void addModel()}>{saved ? '添加模型' : '添加并使用'}</button><button type="button" className="model-test-button" disabled={busy || !modelName.trim() || !(saved || draft.endpoint.trim())} aria-label="测试连接" onClick={() => void probe(modelName)}><Lightning size={13} /></button></div> : models.length < 8 ? <button type="button" className="model-add-button" onClick={() => setAdding(true)}><Plus size={14} weight="bold" /> 添加模型</button> : null}
       {adding ? <p className="field-help">新模型填写后请点击“{saved ? '添加模型' : '添加并使用'}”。测试连接不会保存草稿。</p> : null}
       {testNote ? <p className="field-help" role="status">{testNote}</p> : null}
     </div> : null}
@@ -339,9 +336,8 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
         <section className="sheet-card">
           <h3>桌面</h3>
           <div className="window-width-setting">
-            <span>窗口宽度</span>
+            <div className="label-with-help"><span>窗口宽度</span><HelpTip label="窗口宽度说明">标准 440 px；窄版 340 px。展开与收起保持同一宽度。</HelpTip></div>
             <Segmented aria-label="窗口宽度" value={settings.mainWindowWidth} onChange={value => void api.windowWidth(value as MainWindowWidth, !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)).then(changed).catch(cause => setError(errorText(cause)))} options={[{ value: 'standard', label: '标准' }, { value: 'narrow', label: '窄版' }]} />
-            <p className="field-help">标准 440 px；窄版 340 px。展开与收起保持同一宽度。</p>
           </div>
           <label className="check-label"><input type="checkbox" checked={draft.autoStart} onChange={e => updateSettings({ ...settingsRef.current, autoStart: e.target.checked })} />登录 Windows 后自动启动</label>
           <p className="field-help">隐藏主界面后，AI 对话和提醒继续保留。Ctrl + Shift + Space 显示 / 隐藏主界面。可从托盘菜单移回主屏幕。</p>
@@ -376,7 +372,6 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
             <span>启用 AI</span>
             <HelpTip label="启用 AI 说明">发送时会把本次输入、当前对话最近6轮、已有标签和最近最多120条事项的名称、时间及备注发送到选用的模型服务。对话历史保存在本机，退出后仍保留。可在 AI 助手中管理历史；本地事项和提醒不依赖 AI。</HelpTip>
           </div>
-          <p className="field-help">选择服务 → 填写密钥和模型 → 测试连接。常用服务已填好地址与协议，自定义服务可展开高级设置。</p>
         </section>
         {!settings.providers.length && !creating ? <p className="field-help">还没有供应商。</p> : null}
         {settings.providers.map(provider => <ProviderCard key={provider.id} provider={provider} models={settings.models.filter(model => model.providerId === provider.id)} activeModelId={settings.activeModelId} api={api} changed={changed} fail={setError} registerFlush={registerFlush} onDirty={dirty => setDrafts(current => ({ ...current, [provider.id]: dirty }))} onPending={dirty => setUncommitted(current => ({ ...current, [provider.id]: dirty }))} />)}

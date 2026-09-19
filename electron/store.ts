@@ -201,7 +201,7 @@ export class Store {
     this.transaction(() => {
       const removing = new Set(plan.actions.filter(action => action.type === 'remove_category').map(action => action.id));
       for (const action of plan.actions) {
-        if (action.type === 'update' && this.get(action.id).updatedAt !== revisions.get(action.id)) throw new Error('AI 建议中的事项已变化，请重新生成建议');
+        if ((action.type === 'update' || action.type === 'remove') && this.get(action.id).updatedAt !== revisions.get(action.id)) throw new Error('AI 建议中的事项已变化，请重新生成建议');
         if ((action.type === 'update_category' || action.type === 'remove_category') && this.getCategory(action.id).updatedAt !== revisions.get(action.id)) {
           throw new Error('AI 建议中的标签已变化，请重新生成建议');
         }
@@ -232,6 +232,7 @@ export class Store {
       for (const action of plan.actions) {
         if (action.type === 'create') this.create(action.task);
         else if (action.type === 'update') this.update(action.id, action.patch);
+        else if (action.type === 'remove') this.remove(action.id, revisions.get(action.id)!);
       }
       for (const action of plan.actions) {
         if (action.type === 'remove_category') this.dropCategory(action.id);

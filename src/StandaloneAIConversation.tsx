@@ -5,8 +5,8 @@ import { AIProposalCards } from './AIProposalCards';
 
 export interface StandaloneConversationProps {
   entries: ChatEntry[]; pendingText: string; busy: boolean; error: string; actionError: string;
-  tasks: Task[]; categories: Category[]; aiEnabled: boolean; mutating: boolean; retry: (() => void) | null;
-  openSettings(): void; apply(entry: ChatEntry, items?: AIProposalSelection[]): void; discard(entry: ChatEntry): void;
+  tasks: Task[]; categories: Category[]; aiEnabled: boolean; configured: boolean; mutating: boolean; retry: (() => void) | null;
+  openSettings(): void; enable(): void; apply(entry: ChatEntry, items?: AIProposalSelection[]): void; discard(entry: ChatEntry): void;
   adjust(entry: ChatEntry, index: number): void; updateAction(entry: ChatEntry, index: number, action: AIAction): Promise<void>;
 }
 
@@ -36,7 +36,7 @@ function ActivityDisclosure({ tools, active }: { tools: AIToolEvent[]; active: b
   </details>;
 }
 
-export function StandaloneAIConversation({ entries, pendingText, busy, error, actionError, tasks, categories, aiEnabled, mutating, retry, openSettings, apply, discard, adjust, updateAction }: StandaloneConversationProps) {
+export function StandaloneAIConversation({ entries, pendingText, busy, error, actionError, tasks, categories, aiEnabled, configured, mutating, retry, openSettings, enable, apply, discard, adjust, updateAction }: StandaloneConversationProps) {
   const scroll = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
   useEffect(() => {
@@ -49,10 +49,10 @@ export function StandaloneAIConversation({ entries, pendingText, busy, error, ac
     }}>
       {!entries.length && !pendingText ? <div className="chat-empty">
         <span className="chat-empty-avatar" aria-hidden="true"><Sparkle size={27} weight="fill" /></span>
-        <b>{aiEnabled ? '可以连续聊一件事' : '请先配置 AI 大模型'}</b>
-        <p>{aiEnabled ? '直接告诉我你想安排、查询或调整什么。需要修改事项时，我会先给出可编辑的建议卡片。' : '在 AI 配置中添加模型服务并启用后，就可以开始对话。'}</p>
+        <b>{aiEnabled ? '可以连续聊一件事' : !configured ? '请先配置 AI 大模型' : 'AI 未启用'}</b>
+        <p>{aiEnabled ? '直接告诉我你想安排、查询或调整什么。需要修改事项时，我会先给出可编辑的建议卡片。' : !configured ? '在 AI 配置中添加模型服务并启用后，就可以开始对话。' : '模型已就绪，启用后即可开始对话，随时可在设置中关闭。'}</p>
         <p>对话和可见操作记录保存在本机。</p>
-        {!aiEnabled ? <button type="button" onClick={openSettings}>打开 AI 设置</button> : null}
+        {!aiEnabled ? configured ? <button type="button" onClick={enable}>启用 AI</button> : <button type="button" onClick={openSettings}>打开 AI 设置</button> : null}
       </div> : null}
       <ol className="chat-messages">{entries.map((entry, index) => {
         const tools = entry.tools ?? [];

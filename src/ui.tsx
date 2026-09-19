@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type ButtonHTMLAttributes } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type ButtonHTMLAttributes, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarBlank, CaretDown, CaretLeft, CaretRight, Clock, Question, X } from '@phosphor-icons/react';
 import { localDay } from '../shared/contracts';
@@ -389,7 +389,7 @@ export function BrandMark() {
     </svg>
   );
 }
-export function IconButton({ label, children, onClick, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
+export function IconButton({ label, children, onClick, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; ref?: Ref<HTMLButtonElement> }) {
   return <button type="button" className={`icon-button${className ? ` ${className}` : ''}`} aria-label={label} title={label} onClick={onClick} {...props}>{children}</button>;
 }
 export function HelpTip({ label, children, place = 'down' }: { label: string; children: string; place?: 'down' | 'up' }) {

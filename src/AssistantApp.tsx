@@ -38,6 +38,7 @@ export function AssistantApp({ compact = false, back, expand, contextTask = null
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const modelToggleRef = useRef<HTMLButtonElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const gateButtonRef = useRef<HTMLButtonElement>(null);
   const ready = useRef(false);
   const draftWrites = useRef(0);
   const handledPrompt = useRef<number | null>(null);
@@ -112,7 +113,7 @@ export function AssistantApp({ compact = false, back, expand, contextTask = null
 
   async function askAI(text: string) {
     if (!api || !chat || busy || sending.current || !text.trim() || (compact && hasPendingAction)) return;
-    if (!available) { await api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)); return; }
+    if (!available) { gateButtonRef.current?.focus(); return; }
     sending.current = true; setBusy(true); setCompactComposer(false); setModelOpen(false); setLogOpen(false); setError(''); setActionError(''); setFailedText(''); setInput('');
     try { setChat(await api.chatAsk({ sessionId: chat.id, text: text.trim() })); }
     catch (cause) {
@@ -146,6 +147,10 @@ export function AssistantApp({ compact = false, back, expand, contextTask = null
     if (!api || !entry.proposal || entry.actionState !== 'pending') throw new Error('建议已失效，请重新生成');
     const next = await api.updateProposal({ token: entry.proposal.token, index, action });
     setChat(next);
+  }
+  function enableAI() {
+    if (!api || !data) return;
+    void api.settings({ aiEnabled: true, autoStart: data.settings.autoStart }).then(setData).catch(cause => setError(errorText(cause)));
   }
   function adjust(entry: ConversationEntry, index: number) {
     const action = entry.proposal?.actions[index];
@@ -183,13 +188,16 @@ export function AssistantApp({ compact = false, back, expand, contextTask = null
 
   const status = busy ? '正在回复…' : !data?.settings.aiEnabled ? '未启用' : !configured ? '未配置模型' : hasPendingAction ? '等待确认' : '可用';
   if (!api) return <main className="standalone-message"><h1>AI 助手</h1><p>请从 To Do List 打开 AI 助手。</p></main>;
+  const gate = available || !data ? null : configured
+    ? { label: 'AI 未启用，启用后即可对话', action: '启用 AI', onAction: enableAI }
+    : { label: '请先配置模型服务', action: '打开 AI 设置', onAction: () => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)) };
   if (compact) {
     const pendingEntry = conversation.find(entry => entry.actionState === 'pending' && entry.proposal?.actions.length);
     const latestAssistant = [...conversation].reverse().find(entry => entry.role === 'assistant');
     const tools = latestAssistant?.tools ?? [];
     const completedTools = tools.filter(tool => tool.status === 'complete').length;
     const currentTool = tools.find(tool => tool.status === 'running') ?? [...tools].reverse().find(tool => tool.status !== 'complete');
-    const commands = contextTask?.kind === 'meeting' ? ['会前准备', '改期建议', '会后跟进'] : contextTask ? ['拆成步骤', '安排专注', '调整截止'] : ['规划今天', '添加待办', '添加日程'];
+    const commands = contextTask?.kind === 'meeting' ? ['会前准备', '改期建议', '会后跟进'] : contextTask ? ['拆成步骤', '安排专注', '调整截止'] : [];
     const contextTitle = contextTask ? `针对：${contextTask.title}` : '从今天开始规划';
     const contextMeta = contextTask ? `${contextTask.kind === 'meeting' ? '日程' : '待办'} · ${contextTask.dueAt ? timeText(contextTask.dueAt) : '未设时间'}` : '还没有待办或日程';
     const activeModel = data?.settings.models.find(model => model.id === data.settings.activeModelId);
@@ -207,7 +215,7 @@ export function AssistantApp({ compact = false, back, expand, contextTask = null
     if (!data || !chat) return <section className="mini-ai-surface"><div className="mini-ai-loading" role={loadError ? 'alert' : 'status'}>{loadError || '正在读取对话…'}</div></section>;
     if (pendingEntry) return <section className="mini-ai-surface is-result">
       {compactHeader}
-      <AIConversation compact entries={[pendingEntry]} pendingText="" busy={false} error={error || loadError} actionError={actionError} tasks={data.tasks} categories={data.categories} aiEnabled={available} mutating={mutating} retry={failedText ? () => void askAI(failedText) : null} openSettings={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))} apply={(entry, items) => void apply(entry, items)} discard={entry => void discard(entry)} adjust={adjust} updateAction={updateAction} />
+      <AIConversation compact entries={[pendingEntry]} pendingText="" busy={false} error={error || loadError} actionError={actionError} tasks={data.tasks} categories={data.categories} aiEnabled={available} configured={configured} mutating={mutating} retry={failedText ? () => void askAI(failedText) : null} openSettings={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))} enable={enableAI} apply={(entry, items) => void apply(entry, items)} discard={entry => void discard(entry)} adjust={adjust} updateAction={updateAction} />
       <footer className="mini-ai-result-footer"><button type="button" onClick={() => void discard()} disabled={mutating}>放弃建议</button><button type="button" className="primary" onClick={() => void apply(pendingEntry)} disabled={mutating}>{mutating ? '正在应用…' : `应用 ${pendingEntry.proposal!.actions.length} 项`}</button>{modelControl}</footer>{modelMenu}
     </section>;
     if (busy) return <section className="mini-ai-surface is-working" aria-live="polite">
@@ -223,7 +231,7 @@ export function AssistantApp({ compact = false, back, expand, contextTask = null
     return <section className="mini-ai-surface">
       {compactHeader}
       <form className="mini-ai-compose" onSubmit={send}><textarea ref={inputRef} aria-label="AI 对话输入" rows={1} value={input} maxLength={10000} onChange={event => saveDraft(event.target.value)} placeholder="一句话告诉 AI 你想怎么处理" onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !(event.nativeEvent.isComposing || event.keyCode === 229)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} /><button type="submit" aria-label="发送给 AI" disabled={!input.trim() || mutating}><PaperPlaneTilt size={13} /></button></form>
-      <div className="mini-ai-quick" aria-label="针对当前事项的快捷指令"><span>快捷指令</span>{commands.map(command => <button key={command} type="button" onClick={() => void askAI(`${contextTask ? `针对“${contextTask.title}”，` : ''}${command}。如需改动事项，请只生成等待我确认的建议。`)}>{command}</button>)}{modelControl}</div>{modelMenu}
+      <div className="mini-ai-quick" aria-label={gate || !commands.length ? undefined : '针对当前事项的快捷指令'}>{gate ? <><span className="mini-ai-gate-label">{gate.label}</span><button type="button" className="mini-ai-gate-button" ref={gateButtonRef} onClick={gate.onAction}>{gate.action}</button></> : <><span>快捷指令</span>{commands.map(command => <button key={command} type="button" onClick={() => void askAI(`${contextTask ? `针对“${contextTask.title}”，` : ''}${command}。如需改动事项，请只生成等待我确认的建议。`)}>{command}</button>)}</>}{modelControl}</div>{modelMenu}
     </section>;
   }
   if (!data || !chat) return <AssistantShell><main className="assistant-widget"><header className="assistant-titlebar"><span className="assistant-identity"><span className="assistant-header-avatar" aria-hidden="true"><Sparkle size={20} weight="fill" /></span><span className="assistant-identity-text"><b>AI 助手</b><small>{loadError ? '读取失败' : '正在读取本地对话…'}</small></span></span><span className="assistant-header-controls"><IconButton label="关闭 AI 助手" onClick={() => void api.assistant({ action: 'hide', animate: !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false) })}><X size={18} /></IconButton></span></header><div className={`assistant-loading${loadError ? ' is-error' : ''}`} role={loadError ? 'alert' : 'status'}><span>{loadError || '正在准备你的本地工作区…'}</span>{loadError ? <div className="assistant-loading-actions"><button type="button" onClick={() => { setLoadError(''); setLoadAttempt(attempt => attempt + 1); }}><ArrowClockwise size={15} />重试</button><button type="button" onClick={() => void api.assistant({ action: 'hide', animate: false })}>关闭</button></div> : null}</div></main></AssistantShell>;
@@ -236,7 +244,8 @@ export function AssistantApp({ compact = false, back, expand, contextTask = null
       </span>
     </header>
     <div className="assistant-history"><Select aria-label="历史对话" disabled={busy || mutating} value={chat.id} onChange={id => { if (!busy && !mutating) void api.chatOpen(id).then(selectChat).catch(cause => setError(errorText(cause))); }} options={(sessions.some(item => item.id === chat.id) ? sessions : [{ id: chat.id, title: chat.title, updatedAt: chat.updatedAt }, ...sessions]).map(item => ({ value: item.id, label: item.title }))} /><span className="assistant-local-note"><LockSimple size={12} />保存在本机</span></div>
-    <AIConversation entries={conversation} pendingText="" busy={busy} error={error} actionError={actionError} tasks={data.tasks} categories={data.categories} aiEnabled={available} mutating={mutating} retry={failedText && !busy ? () => void askAI(failedText) : null} openSettings={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))} apply={(entry, items) => void apply(entry, items)} discard={entry => void discard(entry)} adjust={adjust} updateAction={updateAction} />
+    <AIConversation entries={conversation} pendingText="" busy={busy} error={error} actionError={actionError} tasks={data.tasks} categories={data.categories} aiEnabled={available} configured={configured} mutating={mutating} retry={failedText && !busy ? () => void askAI(failedText) : null} openSettings={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))} enable={enableAI} apply={(entry, items) => void apply(entry, items)} discard={entry => void discard(entry)} adjust={adjust} updateAction={updateAction} />
+    {gate ? <div className="ai-gate" role="status"><span>{gate.label}</span><button type="button" ref={gateButtonRef} onClick={gate.onAction}>{gate.action}</button></div> : null}
     <footer className="assistant-footer"><form className="assistant-compose" noValidate onSubmit={send}>
       <span className="assistant-compose-copy">
         <textarea ref={inputRef} autoFocus rows={2} className="assistant-compose-input resize-none" aria-label="AI 对话输入" aria-describedby="assistant-compose-hint" value={input} onChange={event => saveDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !(event.nativeEvent.isComposing || event.keyCode === 229)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder={hasPendingAction ? '继续追问，或告诉我如何调整建议…' : '你想让我记录什么？'} maxLength={10000} />

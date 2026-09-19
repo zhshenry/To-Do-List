@@ -1,27 +1,28 @@
-import { _electron as electron } from 'playwright';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { _electron as electron } from 'playwright';
 
 // Read-only task smoke check: no sample tasks, keys, or auto-start registration.
 // Pass --notification to explicitly send one real Windows test notification.
 await mkdir('test-results', { recursive: true });
 const smokeData = await mkdtemp(path.resolve('test-results/packaged-'));
-const env = { ...process.env, TODO_PACKAGED_SMOKE: '1', TODO_PACKAGED_SMOKE_DATA: smokeData }; delete env.ELECTRON_RUN_AS_NODE;
-const packageInfo = JSON.parse(await readFile('package.json', 'utf8'));
-let executablePath = process.env.TODO_PACKAGED_EXECUTABLE;
+let app;
 let extractRoot;
-if (!executablePath) {
-  // Portable ships as a zip only; extract it to a throwaway dir for this run.
-  const portableZip = path.resolve(`release/portable/To-Do-List-${packageInfo.version}-Windows-x64-Portable.zip`);
-  extractRoot = await mkdtemp(path.resolve('test-results/packaged-zip-'));
-  // Windows ships bsdtar, which reads zip archives and takes argv-safe paths.
-  execFileSync('tar.exe', ['-xf', portableZip, '-C', extractRoot], { stdio: 'inherit' });
-  executablePath = path.join(extractRoot, `To Do List ${packageInfo.version} Portable`, 'To Do List.exe');
-}
-const app = await electron.launch({ executablePath, args: [], env, timeout: 30000 });
 try {
+  const env = { ...process.env, TODO_PACKAGED_SMOKE: '1', TODO_PACKAGED_SMOKE_DATA: smokeData }; delete env.ELECTRON_RUN_AS_NODE;
+  const packageInfo = JSON.parse(await readFile('package.json', 'utf8'));
+  let executablePath = process.env.TODO_PACKAGED_EXECUTABLE;
+  if (!executablePath) {
+    // Portable ships as a zip only; extract it to a throwaway dir for this run.
+    const portableZip = path.resolve(`release/portable/To-Do-List-${packageInfo.version}-Windows-x64-Portable.zip`);
+    extractRoot = await mkdtemp(path.resolve('test-results/packaged-zip-'));
+    // Windows ships bsdtar, which reads zip archives and takes argv-safe paths.
+    execFileSync('tar.exe', ['-xf', portableZip, '-C', extractRoot], { stdio: 'inherit' });
+    executablePath = path.join(extractRoot, `To Do List ${packageInfo.version} Portable`, 'To Do List.exe');
+  }
+  app = await electron.launch({ executablePath, args: [], env, timeout: 30000 });
   const page = await app.firstWindow(); const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.getByRole('button', { name: '设置', exact: true }).waitFor();
@@ -57,8 +58,9 @@ try {
   await writeFile('test-results/packaged-smoke.json', JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result, null, 2));
 } finally {
-  await app.close();
-  // The extracted portable copy and the smoke profile are re-created on every run.
-  if (extractRoot) await rm(extractRoot, { recursive: true, force: true });
-  await rm(smokeData, { recursive: true, force: true });
+  // Close before rm: on Windows the exe runs from extractRoot and locks its files.
+  // Each cleanup swallows its own error so the original failure still propagates.
+  if (app) await app.close().catch(() => {});
+  if (extractRoot) await rm(extractRoot, { recursive: true, force: true }).catch(() => {});
+  await rm(smokeData, { recursive: true, force: true }).catch(() => {});
 }

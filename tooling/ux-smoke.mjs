@@ -17,6 +17,7 @@ const checks = [];
 let app, page, assistant;
 let releaseStream;
 let testCategoryId = '';
+let removeTargetId = '';
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 const day = offset => {
   const date = new Date(); date.setDate(date.getDate() + offset);
@@ -90,6 +91,8 @@ const server = createServer(async (req, res) => {
           ? [{ type: 'create', task: task('选择应用的事项') }, { type: 'create', task: task('未选择的事项') }]
       : user === '修改标签预览'
         ? [{ type: 'update_category', id: testCategoryId, patch: { name: '重点工作', color: '#8c5c45' } }]
+        : user === '删除待办'
+          ? [{ type: 'remove', id: removeTargetId }]
         : [];
     event(res, { role: 'assistant', content: JSON.stringify({ message: actions.length ? '请确认下面的事项。' : '已连接本地测试模型。', actions }) });
     event(res, {}, 'stop');
@@ -331,7 +334,8 @@ try {
   assert.equal(await page.getByRole('switch', { name: '启用 AI', exact: true }).getAttribute('aria-checked'), 'false', 'failed immediate save rolls switch back to persisted state');
   await page.getByRole('button', { name: '添加供应商', exact: true }).click();
   assert.equal(await page.getByRole('button', { name: '高级设置', exact: true }).getAttribute('aria-expanded'), 'false');
-  assert.equal(await page.getByLabel('服务地址', { exact: true }).isVisible(), false);
+  assert.equal(await page.getByLabel('服务地址', { exact: true }).isVisible(), true);
+  assert.equal(await page.getByLabel('服务协议', { exact: true }).isVisible(), false);
   await screenshot('settings-ai-simple');
   await choose('供应商类型', '自定义');
   await page.getByLabel('供应商名称', { exact: true }).fill('本地测试');
@@ -393,6 +397,17 @@ try {
   await assistant.getByText('已应用到事项。', { exact: true }).last().waitFor();
   assert.equal((await page.evaluate(() => window.desktop.state())).tasks.some(item => item.title === '选择应用的事项'), true);
   assert.equal((await page.evaluate(() => window.desktop.state())).tasks.some(item => item.title === '未选择的事项'), false);
+  removeTargetId = (await page.evaluate(() => window.desktop.state())).tasks.find(item => item.title === 'AI 手动编辑事项').id;
+  await assistant.getByLabel('AI 对话输入', { exact: true }).fill('删除待办');
+  await assistant.getByRole('button', { name: '发送给 AI', exact: true }).click();
+  await assistant.getByRole('button', { name: '应用所选 1 项', exact: true }).waitFor();
+  const removeCard = assistant.locator('.proposal-card').last();
+  assert.equal(await removeCard.locator('small').first().textContent(), '删除事项', 'remove proposal card is flagged as deletion');
+  await screenshot('assistant-remove-proposal', assistant);
+  await assistant.getByRole('button', { name: '应用所选 1 项', exact: true }).click();
+  await assistant.getByText('已应用到事项。', { exact: true }).last().waitFor();
+  const removedTarget = (await page.evaluate(() => window.desktop.state())).tasks.find(item => item.id === removeTargetId);
+  assert.equal(removedTarget.deletedAt !== null, true, 'confirmed remove action soft-deletes the task');
   await assistant.getByLabel('AI 对话输入', { exact: true }).fill('修改标签预览');
   await assistant.getByRole('button', { name: '发送给 AI', exact: true }).click();
   await assistant.getByRole('button', { name: '应用所选 1 项', exact: true }).waitFor();

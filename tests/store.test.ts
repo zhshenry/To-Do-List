@@ -70,6 +70,20 @@ test('applying chat proposal and durable acknowledgement commit together', () =>
   } finally { store.close(); }
 });
 
+test('AI remove action soft-deletes with revision guard and rejects stale or missing tasks', () => {
+  const store = new Store(':memory:');
+  try {
+    const task = store.create(newTask('要删除的事项'));
+    const keep = store.create(newTask('保留的事项'));
+    store.applyPlan({ message: '删除', actions: [{ type: 'remove', id: task.id }] }, new Map([[task.id, task.updatedAt], [keep.id, keep.updatedAt]]));
+    assert.equal(store.get(task.id).deletedAt !== null, true);
+    assert.equal(activeToday(store.all(), task.plannedDate).some(item => item.id === task.id), false);
+    assert.equal(store.get(keep.id).deletedAt, null);
+    assert.throws(() => store.applyPlan({ message: '过期', actions: [{ type: 'remove', id: keep.id }] }, new Map([[keep.id, keep.updatedAt + 'Z']])), /已变化|已更新/);
+    assert.throws(() => store.applyPlan({ message: '不存在', actions: [{ type: 'remove', id: randomUUID() }] }, new Map()), /不存在|已变化/);
+  } finally { store.close(); }
+});
+
 test('pending chat proposals can be edited or superseded before confirmation', () => {
   const store = new Store(':memory:');
   try {
