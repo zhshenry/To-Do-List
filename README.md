@@ -4,9 +4,9 @@
 
 ## 下载与运行（推荐安装版）
 
-推荐安装版 `release/installer/To Do List Setup-0.5.0-x64.exe`：双击安装，自动创建开始菜单与桌面快捷方式；安装版内置自动更新，之后的新版本会在应用内自动下载并提示安装。0.4.x 及更早的安装版请手动安装本版一次，此后即可自动更新。
+推荐安装版 `release/installer/To Do List Setup-0.5.1-x64.exe`：双击安装，自动创建开始菜单与桌面快捷方式；安装版内置自动更新，之后的新版本会在应用内自动下载并提示安装。0.4.x 及更早的安装版请先卸载旧版再安装本版（应用标识已更新，直接安装会留下旧的卸载入口；事项数据保存在 `%APPDATA%/To-Do-List`，卸载旧版不会清除数据），此后即可自动更新。
 
-免安装版 `release/portable/To Do List-0.5.0-Windows-x64-Portable.zip` 作为备选：
+免安装版 `release/portable/To Do List-0.5.1-Windows-x64-Portable.zip` 作为备选：
 
 1. 将 ZIP 完整解压到任意普通文件夹。
 2. 双击其中的 `To Do List.exe`。
@@ -66,11 +66,11 @@ npm run dist:win       # 默认：只生成免安装版
 npm run dist:installer # 同时生成免安装版和可选安装版
 ```
 
-发布新版本：先升版本号并推送（`npm version patch|minor` 会生成提交与标签，用 `git push --follow-tags` 推送；工作区有未提交改动时需先提交，或手动改版本号后自行 `git tag vX.Y.Z`），然后：
+发布新版本（顺序固定，缺一不可）：
 
-```powershell
-npm run release        # 构建 + 上传安装器/blockmap/latest.yml/免安装包到 GitHub Releases
-```
+1. 升版本号并推送标签：工作区干净时 `npm version patch|minor` 会生成提交与标签（有未提交改动需先提交，或手动改版本号后 `git tag vX.Y.Z`）；随后 `git push origin main --tags`——发布脚本用 `--verify-tag`，要求标签已先推送到远端。
+2. `npm run release`：构建 NSIS 安装包与免安装包，上传安装器、blockmap、latest.yml、免安装包与 SHA256SUMS 到 GitHub Releases；含空格的文件名会自动转为与 latest.yml 一致的连字符资产名，保证自动更新下载可达。
+3. 确认 Release 为正式版（非 Draft、非 Pre-release）：electron-updater 只从正式 Release 发现新版本，草稿与预发布对已安装客户端不可见。
 
 需要本机已安装并登录 GitHub CLI（`winget install GitHub.cli` + `gh auth login`）。上传的 latest.yml 与安装器是应用内自动更新的数据源。
 
@@ -89,7 +89,7 @@ npm run dist:portable
 - `src/`：悬浮面板、编辑、设置与交互状态。
 - `tests/`、`tooling/ux-smoke.mjs`：数据与当前真实桌面流程测试。
 - `docs/approved-design.png`、`docs/approved-ai-floating-design.png`、`DESIGN.md`、`UX-CONTRACT.md`、`design-qa.md`：视觉来源、设计规范与验证记录。
-- `release/portable/`：默认对外提供的完整免安装目录和 ZIP；`release/installer/`：可选安装包；`release/archive/`：旧版发布物。
+- `release/portable/`：对外提供的免安装 ZIP（打包后不再保留解压目录，`tooling/packaged-smoke.mjs` 会按需解压验证）；`release/installer/`：安装包与更新 blockmap；`release/archive/`：构建新版时自动归档的上一版产物，各版本均已存档在 GitHub Releases，可随时删除。
 
 当前没有重复事项、云同步、语音输入或多设备功能。安装版支持检查更新；免安装版手动替换目录。对话历史保存在本机，不提供云端同步。
 
@@ -98,6 +98,14 @@ npm run dist:portable
 当前正式版本不创建悬浮入口窗口，也不在主界面标题栏、设置或托盘中显示相关控制。原窗口实现、图标资产、IPC 与既有用户配置均保留在代码和数据中，后续恢复功能时可继续使用；隐藏主界面仍不会关闭正在进行的 AI 对话。
 
 ## 版本历史
+
+### 0.5.1
+
+- **发布与更新链路加固**：上传 GitHub 时资产名自动转为与 latest.yml 一致的连字符格式，修复自动更新下载 404 的隐患；发布脚本新增 latest.yml 版本一致性校验，陈旧元数据会被拦截而不是静默上传。
+- **免安装版不再启用自动更新**：打包时剥离更新配置，且仅安装版运行更新器（与文档行为一致）；免安装版仍手动下载替换。
+- **打包脚本重构**：免安装版只保留 ZIP（解压目录压缩后即删，验证时按需解压），消除了重复逻辑，减少约 800 MB 冗余。
+- **体积优化**：electron-updater 不再重复打入主进程包（约省 0.6 MB）。
+- README 固化发布顺序：标签先推送、Release 须为正式版（非 Draft/Pre-release）。
 
 ### 0.5.0
 

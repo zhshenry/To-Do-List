@@ -61,17 +61,18 @@ $portableDirectory = Resolve-ReleaseTarget (Join-Path $portableRoot "To Do List 
 $portableZip = Resolve-ReleaseTarget (Join-Path $portableRoot "To Do List-$version-Windows-x64-Portable.zip")
 if (Test-Path -LiteralPath (Join-Path $unpacked 'To Do List.exe')) {
   if (Test-Path -LiteralPath $portableDirectory) { Remove-Item -LiteralPath $portableDirectory -Recurse -Force }
-  if (Test-Path -LiteralPath $portableZip) { Remove-Item -LiteralPath $portableZip -Force }
   Move-Item -LiteralPath $unpacked -Destination $portableDirectory
-  Copy-Item -LiteralPath (Join-Path $projectRoot 'docs\PORTABLE-README.txt') -Destination (Join-Path $portableDirectory 'README.txt')
-  Compress-Archive -LiteralPath $portableDirectory -DestinationPath $portableZip -CompressionLevel Optimal
-} elseif (Test-Path -LiteralPath (Join-Path $portableDirectory 'To Do List.exe')) {
-  Copy-Item -LiteralPath (Join-Path $projectRoot 'docs\PORTABLE-README.txt') -Destination (Join-Path $portableDirectory 'README.txt') -Force
-  if (Test-Path -LiteralPath $portableZip) { Remove-Item -LiteralPath $portableZip -Force }
-  Compress-Archive -LiteralPath $portableDirectory -DestinationPath $portableZip -CompressionLevel Optimal
-} else {
+} elseif (-not (Test-Path -LiteralPath (Join-Path $portableDirectory 'To Do List.exe'))) {
   throw 'Missing both the Electron Builder output and an existing portable package.'
 }
+if (Test-Path -LiteralPath $portableZip) { Remove-Item -LiteralPath $portableZip -Force }
+Copy-Item -LiteralPath (Join-Path $projectRoot 'docs\PORTABLE-README.txt') -Destination (Join-Path $portableDirectory 'README.txt') -Force
+# Portable builds must not self-update (updater is installer-only); strip the feed before zipping.
+$portableUpdateMeta = Join-Path $portableDirectory 'resources\app-update.yml'
+if (Test-Path -LiteralPath $portableUpdateMeta) { Remove-Item -LiteralPath $portableUpdateMeta -Force }
+Compress-Archive -LiteralPath $portableDirectory -DestinationPath $portableZip -CompressionLevel Optimal
+# The zip is the distributable; packaged-smoke.mjs extracts it on demand for smoke runs.
+Remove-Item -LiteralPath $portableDirectory -Recurse -Force
 
 foreach ($artifact in Get-ChildItem -LiteralPath $releaseRoot -File) {
   if ($artifact.Name -like 'To-Do-List-Setup-0.1.0-*') {

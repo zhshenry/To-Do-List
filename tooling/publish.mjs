@@ -22,10 +22,28 @@ const files = [
 const missing = files.filter(file => !existsSync(file));
 if (missing.length) fail(`缺少发布产物（当前版本 ${version}），请先完整运行 npm run dist:installer：\n${missing.join('\n')}`);
 
+// A stale latest.yml (e.g. left from an earlier version) would silently poison auto-update metadata.
+const metadata = readFileSync(path.join(root, 'release/metadata/latest.yml'), 'utf8');
+const metadataVersion = /^version:\s*(\S+)/m.exec(metadata)?.[1];
+if (metadataVersion !== version) {
+  fail(`release/metadata/latest.yml 的版本是 ${metadataVersion ?? '无法解析'}，与 package.json 的 ${version} 不一致；请先完整运行 npm run dist:installer 重新生成产物。`);
+}
+
+// gh derives asset names from local filenames (spaces mangle to dots on GitHub), while
+// latest.yml serves the hyphenated safeArtifactName that electron-updater downloads;
+// label assets explicitly so the auto-update URLs resolve.
+const ghFiles = files.map(file => {
+  const name = path.basename(file);
+  return name.includes(' ') ? `${file}#${name.replace(/ /g, '-')}` : file;
+});
+
 const notes = [
   `Windows x64，版本 ${version}。`,
   '- 安装版（Setup）内置自动更新，之后的新版本会在应用内自动下载安装；',
   '- 免安装版（Portable）需手动下载解压替换，事项数据保存在 %APPDATA%/To-Do-List。',
 ].join('\n');
-const result = spawnSync('gh.exe', ['release', 'create', tag, '--verify-tag', ...files, '--title', `To Do List ${version}`, '--notes', notes], { stdio: 'inherit' });
+const result = spawnSync('gh.exe', ['release', 'create', tag, '--verify-tag', ...ghFiles, '--title', `To Do List ${version}`, '--notes', notes], { stdio: 'inherit' });
+if ((result.status ?? 1) === 0) {
+  console.log(`已发布 ${tag}。所有历史版本均已存档在 GitHub Releases，本地 release/archive 可安全删除以释放磁盘。`);
+}
 process.exit(result.status ?? 1);

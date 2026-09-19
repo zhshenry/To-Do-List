@@ -764,7 +764,9 @@ function checkForUpdates(source: 'tray' | 'settings' | null): void {
   });
 }
 function setupUpdater(): void {
-  if (!app.isPackaged || process.env.TODO_PACKAGED_SMOKE) return;
+  // Portable builds ship without resources/app-update.yml (package-release.ps1 strips it);
+  // only the installer may self-update.
+  if (!app.isPackaged || process.env.TODO_PACKAGED_SMOKE || !existsSync(path.join(process.resourcesPath, 'app-update.yml'))) return;
   updaterActive = true;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;

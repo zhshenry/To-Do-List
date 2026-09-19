@@ -1,5 +1,6 @@
 import { _electron as electron } from 'playwright';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 
@@ -9,7 +10,15 @@ await mkdir('test-results', { recursive: true });
 const smokeData = await mkdtemp(path.resolve('test-results/packaged-'));
 const env = { ...process.env, TODO_PACKAGED_SMOKE: '1', TODO_PACKAGED_SMOKE_DATA: smokeData }; delete env.ELECTRON_RUN_AS_NODE;
 const packageInfo = JSON.parse(await readFile('package.json', 'utf8'));
-const executablePath = process.env.TODO_PACKAGED_EXECUTABLE || path.resolve(`release/portable/To Do List ${packageInfo.version} Portable/To Do List.exe`);
+let executablePath = process.env.TODO_PACKAGED_EXECUTABLE;
+if (!executablePath) {
+  // Portable ships as a zip only; extract it to a throwaway dir for this run.
+  const portableZip = path.resolve(`release/portable/To Do List-${packageInfo.version}-Windows-x64-Portable.zip`);
+  const extractRoot = await mkdtemp(path.resolve('test-results/packaged-zip-'));
+  // Windows ships bsdtar, which reads zip archives and takes argv-safe paths.
+  execFileSync('tar.exe', ['-xf', portableZip, '-C', extractRoot], { stdio: 'inherit' });
+  executablePath = path.join(extractRoot, `To Do List ${packageInfo.version} Portable`, 'To Do List.exe');
+}
 const app = await electron.launch({ executablePath, args: [], env, timeout: 30000 });
 try {
   const page = await app.firstWindow(); const errors = [];
@@ -29,7 +38,7 @@ try {
   const assistantPage = await assistantWindow;
   assistantPage.on('pageerror', e => errors.push(e.message));
   await assistantPage.locator('.assistant-widget').waitFor();
-  await assistantPage.getByText('先启用 AI 助手', { exact: true }).waitFor();
+  await assistantPage.getByText('请先配置 AI 大模型', { exact: true }).waitFor();
   assert.equal(await page.locator('.agenda').isVisible(), true);
   await assistantPage.screenshot({ path: 'test-results/packaged-ai-floating.png' });
   const notification = process.argv.includes('--notification') ? await app.evaluate(async ({ Notification }) => {
