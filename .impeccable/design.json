@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-18T00:00:00.000Z",
+  "title": "To Do List Design System",
+  "extensions": {
+    "breakpoints": [
+      { "name": "mini-narrow-titlebar", "value": "370px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "小卡片快捷操作",
+      "kind": "button",
+      "refersTo": "mini-quick-action",
+      "description": "同宽176px持续标题栏卡片右侧两个纵向操作的局部变体。",
+      "html": "<button class=\"ds-mini-quick-action\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 256 256\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"12\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M40 128H216M128 40V216\"/></svg><span>新增事项</span></button>",
+      "css": ".ds-mini-quick-action { width: 96px; min-height: 49px; padding: 0 10px; border: 1px solid var(--line, #e4ded6); border-radius: 12px; background: white; color: var(--ink, #171923); display: flex; align-items: center; gap: 7px; font-family: 'Segoe UI Variable', 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif; font-size: 11px; cursor: pointer; } .ds-mini-quick-action svg { color: #a66c50; } .ds-mini-quick-action:hover { background: #f5ebe4; color: var(--accent, #b8532f); } .ds-mini-quick-action:focus-visible { outline: 2px solid #8d8176; outline-offset: 1px; }"
+    },
+    {
+      "name": "小卡片快速新增",
+      "kind": "input",
+      "description": "卡片内录入标题，并通过附着图标面板配置时间、提醒、优先级、标签、进度与备注。",
+      "html": "<div class=\"ds-mini-inline-form\"><input aria-label=\"事项标题\" placeholder=\"输入待办标题\" /><button type=\"button\">创建</button></div>",
+      "css": ".ds-mini-inline-form { height: 32px; display: flex; align-items: center; gap: 6px; padding: 3px 4px 3px 9px; border: 1px solid #d8d0c7; border-radius: 9px; background: white; } .ds-mini-inline-form:focus-within { border-color: #9c8e81; } .ds-mini-inline-form input { min-width: 0; flex: 1; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink, #171923); font-family: 'Segoe UI Variable', 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif; font-size: 11px; } .ds-mini-inline-form button { height: 24px; padding: 0 9px; border: 0; border-radius: 7px; background: var(--accent, #b8532f); color: white; font-size: 10px; }"
+    }
+  ],
+  "narrative": {
+    "overview": "用户确认“方案3布局 + 方案1色调字体”，以确认稿为参考；Windows 实用性优先。面向个人在工作桌面上随手记录、查看今天及逾期事项与接收提醒，非营销页面。中文 UI 不代表额外推断任何地域市场。当前只支持 Windows 桌面，浅色模式。\n\n主视觉是安静的米白便笺：保留极淡暖冷 mesh 背景，日期与文字化的事项库/新增入口，今日计划大卡片、单张「后续事项」卡（含明天、近期、更晚分组）与右下角 AI 星形入口；176px 小卡片持续保留标题栏，只在其下切换事项、新增和 AI 内容。圆环红点 Logo 与第3版应用图标沿用用户确认资产。"
+  }
+}

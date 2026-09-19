@@ -1,0 +1,1302 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>持续标题栏叠层卡片 · 设计预览</title>
+<style>
+:root{font-family:'Segoe UI Variable','Segoe UI','Microsoft YaHei UI','Microsoft YaHei',sans-serif;color:#171923;background:#eeece8;font-synthesis:none;--paper:#faf9f6;--white:#fff;--ink:#171923;--muted:#79736c;--line:#e3ddd5;--accent:#b8532f;--accent-soft:#f5e4dc;--ease:cubic-bezier(.16,1,.3,1)}
+*{box-sizing:border-box}body{margin:0;min-width:1040px}button,input{font:inherit;color:inherit}button{border:0;background:none;cursor:pointer}button:focus-visible,input:focus-visible{outline:2px solid #8d8176;outline-offset:2px}svg{display:block;flex-shrink:0}.page{width:1120px;margin:0 auto;padding:38px 34px 32px}.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:30px}.eyebrow{margin:0 0 8px;color:var(--accent);font-size:12px;font-weight:650;letter-spacing:.08em}.page h1{margin:0;font-size:28px;line-height:1.2;letter-spacing:-.7px;font-weight:680}.lead{max-width:650px;margin:9px 0 0;color:var(--muted);font-size:13px;line-height:1.75}.status{align-self:flex-start;padding:7px 10px;border:1px solid #d4cdc4;border-radius:8px;color:var(--muted);font-size:12px;background:#f4f2ee}.toolbar{display:flex;align-items:center;gap:8px;margin:24px 0 22px}.toolbar-label{margin-right:5px;color:var(--muted);font-size:12px}.tool{padding:7px 12px;border:1px solid #d4cdc4;border-radius:8px;background:#f8f6f2;font-size:12px}.tool:hover{background:#fff}.tool[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}.workspace{display:grid;grid-template-columns:620px 1fr;gap:34px;align-items:start}.stage{min-height:590px;padding:26px;border:1px solid #dad4cc;border-radius:22px;background:linear-gradient(145deg,#f7f5f1,#e9e6e1);display:flex;align-items:flex-start;justify-content:center;position:relative;overflow:hidden}.stage::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 84% 12%,#f6e9e0aa,transparent 34%),radial-gradient(circle at 12% 88%,#e7eff2a8,transparent 31%)}
+.app-window{position:relative;z-index:1;width:440px;height:176px;border:1px solid var(--line);border-radius:18px;background:radial-gradient(ellipse at 88% 4%,#f8eee7a6,transparent 48%),var(--paper);box-shadow:0 18px 42px #4b423515;overflow:hidden;overflow:clip;transition:height 260ms var(--ease),width 220ms var(--ease)}.app-window.expanded{height:536px}.app-window.narrow{width:340px}.titlebar{height:52px;min-height:52px;padding:0 12px 0 16px;display:flex;align-items:center;gap:10px;position:relative;z-index:10;background:linear-gradient(180deg,#faf9f6fa,#faf9f6ee);user-select:none}.brand{width:40px;height:40px;color:var(--ink);display:grid;place-items:center}.brand svg{width:40px;height:40px}.app-title{font-size:16px;font-weight:600;white-space:nowrap;flex:1}.window-actions{display:flex;gap:1px}.iconbtn{width:30px;height:30px;padding:5px;display:grid;place-items:center;border-radius:7px;color:var(--ink)}.iconbtn:hover{background:#ebe6df}.iconbtn[aria-pressed=true]{color:var(--ink)}.iconbtn svg{width:20px;height:20px}.app-window.narrow .titlebar{padding-left:11px;gap:5px}.app-window.narrow .app-title{font-size:14px}.app-window.narrow .brand,.app-window.narrow .brand svg{width:36px;height:36px}
+.compact-body{position:absolute;z-index:4;left:0;right:0;top:52px;height:124px;padding:9px 12px 11px;display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:8px;opacity:1;transform:none;transition:height 340ms var(--ease),opacity 90ms linear,transform 120ms var(--ease)}.app-window.expanded .compact-body{opacity:0;transform:translateY(5px);pointer-events:none}.app-window.is-collapsing .compact-body{transition-delay:160ms}.app-window.narrow .compact-body{grid-template-columns:minmax(0,1fr) 82px;padding-left:10px;padding-right:10px;gap:7px}.task-stack{position:relative;min-width:0;height:104px}.stack-sheet{position:absolute;height:84px;border:1px solid var(--line);border-radius:14px;background:#f4f0eb;left:8px;right:8px;top:14px;box-shadow:0 3px 8px #453a2e0b}.stack-sheet[data-next]{cursor:pointer}.stack-sheet[data-next]:hover{border-color:#c9957e;background:#f2e9e3}.stack-sheet.middle{left:4px;right:4px;top:8px;background:#f8f5f1}.task-front{position:absolute;z-index:3;left:0;right:0;top:0;height:86px;padding:11px 11px 10px;border:1px solid #e1dad1;border-radius:14px;background:var(--white);display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;gap:9px;text-align:left;box-shadow:0 5px 14px #4c40310b}.check{width:22px;height:22px;border:1.5px solid #827c74;border-radius:7px;display:grid;place-items:center;padding:0;background:transparent}.check:hover{border-color:var(--accent)}.task-copy,.task-open{min-width:0;display:flex;flex-direction:column;gap:3px}.task-open{padding:0;text-align:left}.task-open:hover .task-title{color:var(--accent)}.task-kicker{color:var(--accent);font-size:10px;font-weight:650}.task-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:650}.task-meta{color:var(--muted);font-size:10px}.deck-pager{align-self:end;margin:0 0 -2px;display:grid;grid-template-columns:auto 18px 18px;align-items:center;gap:1px;color:var(--muted);font-size:10px;white-space:nowrap}.deck-pager>span{padding-right:3px;font-variant-numeric:tabular-nums}.deck-pager button{width:18px;height:18px;padding:3px;border-radius:5px;display:grid;place-items:center}.deck-pager button:hover{background:var(--accent-soft);color:var(--accent)}.deck-pager button svg{width:10px;height:10px}.deck-pager .page-prev svg{transform:rotate(180deg)}.compact-body.deck-exit-down .task-front{animation:deck-exit-down 140ms cubic-bezier(.4,0,1,1) both}.compact-body.deck-enter-down .task-front{animation:deck-enter-down 190ms var(--ease) both}.compact-body.deck-exit-up .task-front{animation:deck-exit-up 140ms cubic-bezier(.4,0,1,1) both}.compact-body.deck-enter-up .task-front{animation:deck-enter-up 190ms var(--ease) both}@keyframes deck-exit-down{to{opacity:0;transform:translateY(16px) scale(.98)}}@keyframes deck-enter-down{from{opacity:0;transform:translateY(-12px) scale(.985)}to{opacity:1;transform:none}}@keyframes deck-exit-up{to{opacity:0;transform:translateY(-16px) scale(.98)}}@keyframes deck-enter-up{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}.quick-actions{height:104px;display:grid;grid-template-rows:1fr 1fr;gap:6px}.quick{display:flex;align-items:center;justify-content:flex-start;gap:7px;padding:0 10px;border:1px solid #e4ded6;border-radius:12px;background:#fff;font-size:11px;white-space:nowrap}.quick:hover{background:#f5ebe4;color:var(--accent)}.quick svg{width:18px;height:18px;color:#a66c50}.app-window.narrow .quick{padding:0 7px;gap:5px}.app-window.narrow .quick span{font-size:10px}
+.compact-panel{grid-column:1/-1;height:104px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:12px;display:flex;flex-direction:column;justify-content:center;gap:10px}.panel-head{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:650}.panel-head .back{margin-left:auto;color:var(--muted);font-weight:400;font-size:11px}.inline-form{height:32px;border:1px solid #d8d0c7;border-radius:9px;display:flex;align-items:center;padding:3px 4px 3px 9px;gap:6px}.inline-form:focus-within{border-color:#9c8e81}.inline-form input{min-width:0;flex:1;border:0;outline:0;background:none;font-size:11px}.inline-form button{height:24px;padding:0 9px;border-radius:7px;background:var(--accent);color:#fff;font-size:10px}.ai-hint{margin:0;color:var(--muted);font-size:11px}.empty-front{height:104px;grid-template-columns:32px minmax(0,1fr)}.empty-symbol{width:32px;height:32px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}.empty-symbol svg{width:18px;height:18px}
+.full-body{position:absolute;left:0;right:0;top:52px;height:484px;padding:18px 24px 22px;opacity:0;transform:translateY(-3px);pointer-events:none;transition:opacity 100ms linear,transform 160ms var(--ease)}.app-window.expanded .full-body{opacity:1;transform:none;pointer-events:auto}.app-window.is-expanding .full-body{transition-delay:120ms}.full-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px}.full-date strong{display:block;font-size:27px;letter-spacing:-1px}.full-date span{display:block;margin-top:3px;color:var(--muted);font-size:12px}.full-add{padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:12px}.full-label{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:14px;font-weight:650}.full-card{height:250px;padding:12px 15px;border:1px solid var(--line);border-radius:15px;background:#ffffffc8}.full-row{height:54px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #ebe6df}.full-row:last-child{border-bottom:0}.full-row .check{width:20px;height:20px}.full-row b{flex:1;font-size:13px}.full-row time{color:var(--muted);font-size:11px}.full-later{height:62px;margin-top:14px;border:1px solid var(--line);border-radius:15px;background:#ffffffa8;display:flex;align-items:center;padding:0 14px;color:var(--muted);font-size:12px}.window-toast{position:absolute;z-index:20;left:50%;bottom:10px;transform:translate(-50%,8px);padding:6px 9px;border-radius:8px;background:#171923;color:#fff;font-size:10px;opacity:0;transition:opacity 130ms,transform 130ms}.window-toast.show{opacity:1;transform:translate(-50%,0)}
+.notes{padding-top:2px}.notes h2{margin:0 0 8px;font-size:18px;letter-spacing:-.2px}.notes-intro{margin:0 0 19px;color:var(--muted);font-size:12px;line-height:1.7}.principle{display:grid;grid-template-columns:30px 1fr;gap:10px;padding:14px 0;border-top:1px solid #d7d1c9}.principle:last-of-type{border-bottom:1px solid #d7d1c9}.number{width:24px;height:24px;border:1px solid #cfc7bd;border-radius:50%;display:grid;place-items:center;color:var(--accent);font-size:11px}.principle b{display:block;margin:1px 0 4px;font-size:13px}.principle p{margin:0;color:var(--muted);font-size:11px;line-height:1.7}.dimension{display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding:12px 13px;border-radius:12px;background:#f8f6f2;border:1px solid #d9d2ca}.dimension span{color:var(--muted);font-size:11px}.dimension strong{font-size:13px}.storyboard{margin-top:22px}.storyboard h3{margin:0 0 10px;font-size:13px}.frames{display:flex;align-items:flex-start;gap:7px}.frame{width:78px;border:1px solid #d4cdc4;border-radius:7px;background:#faf9f6;overflow:hidden;position:relative}.frame i{height:12px;display:block;border-bottom:1px solid #e2dcd4;background:#fff}.frame:nth-child(1){height:92px}.frame:nth-child(2){height:66px}.frame:nth-child(3){height:45px}.frame:nth-child(4){height:31px;border-color:#c9957e}.frame::after{content:'';position:absolute;left:8px;right:8px;top:20px;height:22px;border:1px solid #e5dfd7;border-radius:5px;background:#fff}.frame:nth-child(4)::after{top:16px;height:9px}.arrow{padding-top:6px;color:#9a9188}.story-caption{margin:8px 0 0;color:var(--muted);font-size:10px;line-height:1.5}
+.schedule-action{width:22px;height:22px;border:1px solid #d9c5ba;border-radius:7px;display:grid;place-items:center;padding:0;background:#faf1ec;color:var(--accent)}.schedule-action:hover{border-color:#bd8065;background:var(--accent-soft)}.schedule-action svg{width:14px;height:14px}.task-open{overflow:hidden}.task-meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.add-panel{position:relative;padding:7px 8px;gap:4px;display:grid;grid-template-rows:22px 32px 22px;align-content:center;justify-content:stretch}.add-panel .panel-head .back{margin-left:4px}.add-type-switch{margin-left:auto;padding:1px;display:flex;gap:1px;border:1px solid #e1d9d0;border-radius:6px;background:#f5f2ee}.add-type-option{height:18px;padding:0 7px;border-radius:4px;color:var(--muted);font-size:9px}.add-type-option[aria-pressed=true]{background:#fff;color:var(--ink);box-shadow:0 1px 4px #453a2e12}.add-tools{height:22px;display:flex;align-items:center;gap:3px;min-width:0}.add-tool{position:relative;width:24px;height:22px;padding:0;border-radius:6px;color:#756f68;display:grid;place-items:center}.add-tool:hover{background:#f5eee9;color:var(--accent)}.add-tool svg{width:14px;height:14px}.add-tool.active,.add-tool.is-open{background:#f8eee8;color:var(--accent)}.add-tool.required{color:var(--accent)}.add-tool.required::after{content:'';position:absolute;right:3px;top:3px;width:4px;height:4px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px #fff}.app-window.selector-open{transition:height 220ms var(--ease),width 220ms var(--ease)}.app-window.selector-datetime-task,.app-window.selector-datetime-schedule{height:538px}.app-window.selector-priority{height:376px}.app-window.selector-tag{height:472px}.app-window.selector-more-task{height:452px}.app-window.selector-more-schedule{height:412px}.add-selector{position:absolute;z-index:30;top:109px;left:0;width:min(320px,100%);padding:10px;border:1px solid #d7cfc6;border-radius:13px;background:#fffdfa;box-shadow:0 18px 38px #3f35291f;animation:add-selector-in 180ms var(--ease) both}.add-selector::before{content:'';position:absolute;left:clamp(12px,calc(var(--selector-arrow-x,20px) - 5px),calc(100% - 22px));top:-5px;width:9px;height:9px;border-left:1px solid #d7cfc6;border-top:1px solid #d7cfc6;background:#fffdfa;transform:rotate(45deg)}.add-selector.datetime{width:min(286px,100%)}.add-selector.priority,.add-selector.tag{width:min(220px,100%)}.add-selector.datetime.task,.add-selector.datetime.schedule{height:350px}.add-selector.priority{height:194px}.add-selector.tag{height:284px}.add-selector.more-task{height:264px}.add-selector.more-schedule{height:224px}.add-selector-head{height:26px;display:flex;align-items:center;gap:6px}.add-selector-title{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:650}.add-selector-title svg{width:13px;height:13px;color:var(--accent)}.add-selector-close{margin-left:auto;width:22px;height:22px;border-radius:6px;color:var(--muted);font-size:15px;line-height:1}.add-selector-close:hover{background:#f1ece6;color:var(--ink)}.date-presets{height:24px;margin-top:7px;display:flex;gap:4px}.selector-choice{height:24px;padding:0 8px;border:1px solid #e2dbd3;border-radius:7px;background:#f8f5f1;color:#5f5952;font-size:9px;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}.selector-choice:hover{border-color:#d1b8aa;color:var(--accent)}.selector-choice.is-selected{border-color:#d4ad9b;background:#f8eae3;color:var(--accent)}.calendar-head{height:25px;margin-top:5px;display:flex;align-items:center}.calendar-head strong{font-size:12px}.calendar-nav{margin-left:auto;display:flex;gap:2px}.calendar-nav button{width:22px;height:22px;border-radius:6px;color:var(--muted)}.calendar-nav button:hover{background:#f1ece6;color:var(--ink)}.calendar-weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}.calendar-weekdays{height:16px;align-items:center;color:#9a938c;font-size:8px}.calendar-grid{grid-auto-rows:21px}.calendar-day{width:24px;height:21px;margin:auto;border-radius:7px;font-size:9px;font-variant-numeric:tabular-nums}.calendar-day:hover{background:#f5eee9;color:var(--accent)}.calendar-day.outside{color:#c2bcb5}.calendar-day.today{box-shadow:inset 0 0 0 1px #d4ad9b;color:var(--accent)}.calendar-day.is-selected{background:var(--accent);color:#fff;box-shadow:none}.selector-help{margin:0 0 7px;color:var(--muted);font-size:9px;line-height:1.45}.datetime-settings{margin-top:6px;padding-top:6px;border-top:1px solid #ebe5de;display:grid;gap:5px}.datetime-setting{height:25px;display:grid;grid-template-columns:54px minmax(0,1fr);align-items:center;gap:5px}.datetime-setting-label{display:flex;align-items:center;gap:4px;color:#514b45;font-size:9px;font-weight:650;white-space:nowrap}.datetime-setting-label svg{width:11px;height:11px;color:var(--accent)}.datetime-options{min-width:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}.datetime-time-controls{min-width:0;height:24px;display:grid;align-items:center;gap:3px}.datetime-time-controls.task{grid-template-columns:66px minmax(0,1fr)}.datetime-time-controls.schedule{grid-template-columns:minmax(0,1fr) 11px minmax(0,1fr)}.datetime-time-separator{color:var(--muted);font-size:9px;text-align:center}.datetime-no-time{height:24px;padding:0 6px;border:1px solid #e2dbd3;border-radius:6px;background:#f8f5f1;color:#5f5952;font-size:8px;white-space:nowrap}.datetime-no-time:hover{border-color:#d1b8aa;color:var(--accent)}.datetime-no-time.is-selected{border-color:#d4ad9b;background:#f8eae3;color:var(--accent)}.datetime-option{height:24px;min-width:0;padding:0 3px;border:1px solid #e2dbd3;border-radius:6px;background:#f8f5f1;color:#5f5952;font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.datetime-option:hover{border-color:#d1b8aa;color:var(--accent)}.datetime-option.is-selected{border-color:#d4ad9b;background:#f8eae3;color:var(--accent)}.selector-options{margin-top:8px;display:grid;gap:5px}.selector-options.one{grid-template-columns:1fr}.priority-list .selector-option>span:last-child{min-width:0;flex:1;display:flex;align-items:center;gap:8px}.priority-list .selector-option small{margin-left:auto}.selector-option{min-height:32px;padding:5px 7px;border:1px solid #e2dbd3;border-radius:8px;background:#f8f5f1;color:#5f5952;font-size:9px;display:flex;align-items:center;gap:5px;text-align:left}.selector-option:hover{border-color:#d1b8aa;color:var(--accent)}.selector-option.is-selected{border-color:#d4ad9b;background:#f8eae3;color:var(--accent)}.selector-option small{display:block;color:var(--muted);font-size:8px}.priority-flag{width:16px;height:16px;display:grid;place-items:center;flex:0 0 auto}.priority-flag svg{width:14px;height:14px}.priority-flag.high{color:#c35a45}.priority-flag.medium{color:#b98a55}.priority-flag.low{color:#729079}.tag-icon{width:16px;height:16px;display:grid;place-items:center;flex:0 0 auto}.tag-icon svg{width:14px;height:14px}.tag-icon.neutral{color:#8a8279}.tag-icon.work{color:#b8532f}.tag-icon.personal{color:#6f8f79}.tag-icon.study{color:#8c78a5}.new-tag{grid-column:1/-1;border-style:dashed;justify-content:center;color:var(--accent)}.selector-footer{position:absolute;left:10px;right:10px;bottom:9px;height:28px;display:flex;gap:6px}.selector-footer button{height:28px;flex:1;border:1px solid #d8d0c7;border-radius:8px;background:#fff;color:#67615a;font-size:10px}.selector-footer .primary{border-color:var(--accent);background:var(--accent);color:#fff}.selector-footer .primary:hover{background:#963e20}.selector-footer button:hover:not(.primary){border-color:#c9b3a7;color:var(--accent)}.more-form{margin-top:7px;display:grid;gap:8px}.more-progress{padding:7px 9px 6px;border:1px solid #e2dbd3;border-radius:10px;background:#f8f5f1}.more-row{height:20px;display:flex;align-items:center;gap:7px}.more-row strong{font-size:10px}.more-progress-output{margin-left:auto;min-width:30px;text-align:right;color:var(--accent);font-size:10px;font-variant-numeric:tabular-nums}.more-switch{position:relative;width:28px;height:16px;padding:0;border-radius:999px;background:#d8d2cb}.more-switch::after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #40372f2b;transition:transform 140ms var(--ease)}.more-switch[aria-pressed=true]{background:var(--accent)}.more-switch[aria-pressed=true]::after{transform:translateX(12px)}.more-range{width:100%;height:16px;margin:3px 0 0;accent-color:var(--accent)}.more-range:disabled{opacity:.3}.more-scale{display:flex;justify-content:space-between;margin-top:-2px;color:#9a938c;font-size:8px}.more-field{display:grid;gap:4px}.more-field>span{display:flex;align-items:baseline;justify-content:space-between;color:#514b45;font-size:10px;font-weight:650}.more-field small{color:var(--muted);font-size:8px;font-weight:400}.more-field input,.more-field textarea{width:100%;border:1px solid #ded6ce;border-radius:8px;background:#fff;padding:6px 8px;color:var(--ink);font-size:10px;outline:0}.more-field input{height:30px}.more-field textarea{height:56px;resize:none;line-height:1.45}.more-field input:focus,.more-field textarea:focus{border-color:#b58b77;box-shadow:0 0 0 2px #b8532f14}.schedule-more-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.schedule-more-grid .more-field:last-child{grid-column:1/-1}.add-selector.more-schedule .more-form{gap:7px}@keyframes add-selector-in{from{opacity:0;transform:translateY(-5px) scale(.985)}to{opacity:1;transform:none}}.full-kind{width:20px;height:20px;display:grid;place-items:center;border-radius:6px;flex:0 0 auto}.full-kind.schedule{border:1px solid #d9c5ba;background:#faf1ec;color:var(--accent)}.full-kind svg{width:13px;height:13px}.app-window.narrow .add-type-option{padding-left:6px;padding-right:6px}.app-window.narrow .add-selector{width:100%}.app-window.narrow .add-selector.datetime{width:min(286px,100%)}.app-window.narrow .add-selector.priority,.app-window.narrow .add-selector.tag{width:min(220px,100%)}.app-window.narrow .selector-choice{padding-left:6px;padding-right:6px}
+.ai-surface{grid-column:1/-1;height:104px;border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}.compact-body.home-with-insight{grid-template-rows:22px 77px;row-gap:5px}.home-insight{grid-column:1/-1;height:22px;min-width:0;padding:0 6px;border-radius:7px;background:#f8f4ef;display:flex;align-items:center;gap:5px;text-align:left}.home-insight:hover{background:#f5e9e2}.home-insight-label{color:var(--accent);font-size:9px;font-weight:700;flex:0 0 auto}.home-insight-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:650}.home-insight-context{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:9px}.home-insight-action{margin-left:auto;color:var(--accent);font-size:9px;font-weight:650;flex:0 0 auto}.home-with-insight .task-stack{height:77px}.home-with-insight .stack-sheet{height:62px;top:11px}.home-with-insight .stack-sheet.middle{top:6px}.home-with-insight .task-front{height:66px;padding:7px 9px 6px;gap:7px}.home-with-insight .task-title{font-size:13px}.home-with-insight .task-meta{font-size:9px}.home-with-insight .quick-actions{height:77px;gap:5px}.ai-unified{padding:7px 8px;display:grid;grid-template-rows:22px 34px 20px;gap:5px}.ai-context-row{height:22px;display:flex;align-items:center;min-width:0;gap:5px}.ai-mark{width:16px;height:16px;border-radius:5px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:0 0 auto}.ai-mark svg{width:11px;height:11px}.ai-context-copy{min-width:0;flex:1;display:flex;align-items:baseline;gap:5px;overflow:hidden;white-space:nowrap}.ai-context-copy strong{overflow:hidden;text-overflow:ellipsis;font-size:10px;font-weight:650}.ai-context-copy small{overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-size:9px}.ai-back{height:20px;margin-left:auto;padding:0 2px 0 5px;display:flex;align-items:center;gap:2px;color:var(--muted);font-size:9px;white-space:nowrap;flex:0 0 auto}.ai-back:hover{color:var(--ink)}.ai-back svg{width:10px;height:10px}.ai-compose{height:34px;border:1px solid #cec4ba;border-radius:9px;background:#fbfaf8;display:flex;align-items:center;padding:3px 4px 3px 9px;gap:6px}.ai-compose:focus-within{border-color:#9b7d6e;background:#fff}.ai-compose input{min-width:0;flex:1;border:0;outline:0;background:none;font-size:11px}.ai-compose input::placeholder{color:#716b64}.ai-send{width:26px;height:26px;border-radius:7px;background:var(--accent);color:#fff;display:grid;place-items:center;flex:0 0 auto}.ai-send:hover{background:#963e20}.ai-send svg{width:12px;height:12px}.ai-quick-row{height:20px;display:flex;align-items:center;gap:4px;min-width:0}.ai-shortcut{height:20px;min-width:0;flex:1;padding:0 6px;border:1px solid #e3ddd5;border-radius:6px;background:#f8f5f1;color:#5f5952;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ai-shortcut:hover{border-color:#d1b8aa;background:#f7eae3;color:var(--accent)}.app-window.ai-model-open{height:176px;overflow:visible}.ai-unified.model-open{overflow:visible}.ai-model-toggle{height:20px;max-width:88px;min-width:0;margin-left:auto;padding:0 6px;border:1px solid #ddd5cc;border-radius:6px;background:#f8f5f1;color:#5f5952;display:flex;align-items:center;gap:3px;font-size:9px;flex:0 0 auto}.ai-model-toggle span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ai-model-toggle svg{width:9px;height:9px;transition:transform 140ms var(--ease)}.ai-model-toggle[aria-expanded=true] svg{transform:rotate(180deg)}.ai-model-toggle:hover{border-color:#d1b8aa;color:var(--accent)}.ai-model-toggle:disabled{opacity:.6;cursor:default}.ai-model-menu{position:absolute!important;z-index:6!important;right:7px;top:96px;bottom:auto;width:180px;padding:6px;border:1px solid #d7cfc6;border-radius:10px;background:#fffdfa;box-shadow:0 14px 30px #3f35291f;display:flex;flex-direction:column;gap:3px;transform-origin:top right;animation:ai-model-menu-in 180ms var(--ease)}.ai-model-group{min-width:0;padding:0 3px 4px;display:flex;flex-direction:column;gap:2px}.ai-model-group+.ai-model-group{padding-top:4px;border-top:1px solid #ebe4dc}.ai-model-provider{height:11px;color:#8a8279;font-size:8px;font-weight:650;line-height:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ai-model-option{width:100%;height:24px;padding:0 5px;border-radius:6px;color:#5f5952;display:flex;align-items:center;gap:4px;text-align:left;font-size:8px}.ai-model-option:hover{background:#f5eee9;color:var(--accent)}.ai-model-option.active{background:#f8eae3;color:var(--accent)}.ai-model-option span{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ai-model-option small{font-size:8px}.ai-model-manage{height:22px;margin-top:1px;padding:4px 5px 0;border-top:1px solid #ebe4dc;color:#6b645d;display:flex;align-items:center;gap:4px;font-size:8px;text-align:left}.ai-model-manage span{flex:1}.ai-model-manage:hover{color:var(--accent)}.ai-model-manage svg{width:9px;height:9px}.ai-unified.is-working{grid-template-rows:22px 42px 20px;gap:3px}.ai-working-main{height:42px;padding:5px 7px;border-radius:8px;background:#f8f4ef;display:flex;align-items:center;gap:7px}.ai-spinner{width:17px;height:17px;border:1.5px solid #e2cfc4;border-top-color:var(--accent);border-radius:50%;animation:ai-spin 900ms linear infinite;flex:0 0 auto}.ai-working-copy{min-width:0;display:flex;flex-direction:column;gap:2px}.ai-working-copy strong,.ai-working-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ai-working-copy strong{font-size:10px}.ai-working-copy small{color:var(--muted);font-size:8px}.ai-loop-status{margin-left:auto;color:var(--accent);font-size:9px;flex:0 0 auto}.ai-working-footer{height:20px;display:flex;align-items:center;gap:5px}.ai-loop-track{position:relative;height:3px;min-width:34px;flex:1;border-radius:999px;background:#e4ded7;overflow:hidden}.ai-loop-track i{position:absolute;inset:0 auto 0 0;width:42%;border-radius:999px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:ai-loop-scan 1.1s ease-in-out infinite}.ai-loop-count{color:var(--muted);font-size:8px;font-variant-numeric:tabular-nums;white-space:nowrap}.ai-log-toggle{height:16px;padding:0;color:var(--muted);font-size:8px;white-space:nowrap}.ai-log-toggle:hover{color:var(--accent)}.ai-unified.is-log{grid-template-rows:22px 42px 20px;gap:3px}.ai-run-log{height:42px;margin:0;padding:2px 6px;list-style:none;border-radius:8px;background:#f8f4ef;display:grid;grid-auto-rows:11px;align-content:center}.ai-run-log li{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:8px;white-space:nowrap}.ai-run-log li.active{color:var(--ink)}.ai-run-status{width:11px;text-align:center;color:var(--accent);font-size:9px}.ai-log-back{margin-left:auto}@keyframes ai-spin{to{transform:rotate(360deg)}}@keyframes ai-model-menu-in{from{opacity:0;transform:translateY(-5px) scale(.985)}to{opacity:1;transform:none}}@keyframes ai-loop-scan{from{transform:translateX(-110%)}to{transform:translateX(340%)}}.app-window.suggestion-expanded{height:176px}.app-window.suggestion-expanded .compact-body{height:124px}.compact-body.suggestion-open{grid-template-columns:minmax(0,1fr);grid-template-rows:22px 77px;gap:5px}.suggestion-anchor{grid-column:1/-1}.suggestion-preview{grid-column:1/-1;height:77px;min-height:0;padding:7px 8px;border:1px solid var(--line);border-radius:12px;background:#fff;display:grid;grid-template-rows:30px 22px;align-content:center;gap:5px;overflow:hidden;transform-origin:top;animation:suggestion-reveal-down 300ms cubic-bezier(.16,1,.3,1) both}.suggestion-preview.is-closing{pointer-events:none;animation:suggestion-hide-up 220ms cubic-bezier(.4,0,1,1) both}.suggestion-plan{padding:3px 7px;border-radius:7px;background:#f8f4ef;display:flex;flex-direction:column;justify-content:center;gap:1px;min-width:0}.suggestion-plan strong,.suggestion-plan small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.suggestion-plan strong{font-size:9px}.suggestion-plan small{color:var(--muted);font-size:8px}.suggestion-actions{height:22px;display:flex;align-items:center;gap:4px}.suggestion-action{height:22px;padding:0 7px;border:1px solid #ddd5cc;border-radius:6px;background:#fff;color:#5f5952;font-size:8px}.suggestion-action:hover{border-color:#c99b87;color:var(--accent)}.suggestion-action.primary{margin-left:auto;border-color:var(--accent);background:var(--accent);color:#fff}.suggestion-action.primary:hover{background:#963e20}@keyframes suggestion-reveal-down{from{opacity:.2;clip-path:inset(0 0 100% 0 round 12px);transform:translateY(-5px) scaleY(.96)}to{opacity:1;clip-path:inset(0 round 12px);transform:none}}@keyframes suggestion-hide-up{from{opacity:1;clip-path:inset(0 round 12px);transform:none}to{opacity:0;clip-path:inset(0 0 100% 0 round 12px);transform:translateY(-5px) scaleY(.96)}}.ai-architecture{margin-top:18px}.ai-architecture h3{margin:0 0 4px;font-size:13px}.architecture-intro{margin:0 0 6px;color:var(--muted);font-size:10px;line-height:1.5}.architecture-row{padding:8px 4px;display:grid;grid-template-columns:24px minmax(0,1fr);align-items:start;gap:8px;border-top:1px solid #d7d1c9}.architecture-row:last-child{border-bottom:1px solid #d7d1c9}.architecture-badge{width:22px;height:22px;border-radius:7px;background:var(--accent-soft);display:grid;place-items:center;color:var(--accent);font-size:9px;font-weight:700}.architecture-copy b{display:block;font-size:11px}.architecture-copy p{margin:2px 0 0;color:var(--muted);font-size:9px;line-height:1.45}.app-window.narrow .home-insight-context{display:none}.app-window.narrow .home-with-insight .task-front{grid-template-columns:22px minmax(0,1fr) auto;padding-left:8px;padding-right:8px}.app-window.narrow .ai-unified,.app-window.narrow .suggestion-preview{padding-left:7px;padding-right:7px}.app-window.narrow .ai-shortcut{padding:0 4px}.app-window.narrow .ai-context-copy small{display:none}.app-window.narrow .ai-back span{display:none}.app-window.narrow .ai-model-toggle{max-width:66px;padding-left:5px;padding-right:5px}.app-window.narrow .ai-model-menu{right:7px;width:180px;max-width:calc(100% - 14px)}
+@property --ai-border-angle{syntax:'<angle>';inherits:false;initial-value:0deg}.compact-body::after{content:'';position:absolute;z-index:9;top:9px;bottom:11px;left:-18px;width:18px;border-radius:999px;pointer-events:none;opacity:0;background:linear-gradient(90deg,transparent,#fffaf34d 44%,#bd55322e 55%,transparent);filter:blur(.6px)}.compact-body.mode-exit-to-ai,.compact-body.mode-enter-ai,.compact-body.mode-exit-from-ai,.compact-body.mode-enter-home,.compact-body.mode-exit-to-add,.compact-body.mode-enter-add,.compact-body.mode-exit-from-add,.compact-body.mode-enter-home-from-add{pointer-events:none}.compact-body.mode-exit-to-ai>*{animation:mode-exit-to-ai 160ms cubic-bezier(.4,0,1,1) both}.compact-body.mode-enter-ai>.ai-surface{animation:mode-enter-ai 300ms cubic-bezier(.16,1,.3,1) both}.compact-body.mode-exit-from-ai>.ai-surface{animation:mode-exit-from-ai 160ms cubic-bezier(.4,0,1,1) both}.compact-body.mode-enter-home>*{animation:mode-enter-home 300ms cubic-bezier(.16,1,.3,1) both}.compact-body.mode-exit-to-add>*{animation:mode-exit-to-add 160ms cubic-bezier(.4,0,1,1) both}.compact-body.mode-enter-add>.add-panel{animation:mode-enter-add 300ms cubic-bezier(.16,1,.3,1) both}.compact-body.mode-exit-from-add>.add-panel{animation:mode-exit-from-add 160ms cubic-bezier(.4,0,1,1) both}.compact-body.mode-enter-home-from-add>*{animation:mode-enter-home-from-add 300ms cubic-bezier(.16,1,.3,1) both}.compact-body.mode-enter-ai::after{animation:mode-refresh-to-ai 300ms cubic-bezier(.16,1,.3,1) both}.compact-body.mode-enter-home::after{animation:mode-refresh-to-home 300ms cubic-bezier(.16,1,.3,1) both}@keyframes mode-exit-to-ai{to{opacity:0;transform:translateX(10px);clip-path:inset(0 0 0 100% round 14px)}}@keyframes mode-enter-ai{from{opacity:.2;transform:translateX(-10px);clip-path:inset(0 100% 0 0 round 14px)}to{opacity:1;transform:none;clip-path:inset(0 round 14px)}}@keyframes mode-exit-from-ai{to{opacity:0;transform:translateX(-10px);clip-path:inset(0 100% 0 0 round 14px)}}@keyframes mode-enter-home{from{opacity:.2;transform:translateX(10px);clip-path:inset(0 0 0 100% round 14px)}to{opacity:1;transform:none;clip-path:inset(0 round 14px)}}@keyframes mode-exit-to-add{to{opacity:0;transform:translateX(-10px);clip-path:inset(0 100% 0 0 round 14px)}}@keyframes mode-enter-add{from{opacity:.2;transform:translateX(10px);clip-path:inset(0 0 0 100% round 14px)}to{opacity:1;transform:none;clip-path:inset(0 round 14px)}}@keyframes mode-exit-from-add{to{opacity:0;transform:translateX(10px);clip-path:inset(0 0 0 100% round 14px)}}@keyframes mode-enter-home-from-add{from{opacity:.2;transform:translateX(-10px);clip-path:inset(0 100% 0 0 round 14px)}to{opacity:1;transform:none;clip-path:inset(0 round 14px)}}@keyframes mode-refresh-to-ai{0%{left:-18px;opacity:0}18%,72%{opacity:.42}100%{left:calc(100% + 2px);opacity:0}}@keyframes mode-refresh-to-home{0%{left:calc(100% + 2px);opacity:0}18%,72%{opacity:.42}100%{left:-18px;opacity:0}}.ai-unified{position:relative;isolation:isolate}.ai-unified::before{content:'';position:absolute;z-index:3;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;background:conic-gradient(from var(--ai-border-angle),transparent 0deg 276deg,#bd55320d 292deg,#bd5532a6 315deg,#fff1db 328deg,#bd553247 345deg,transparent 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;filter:drop-shadow(0 0 2px #bd55324d);animation:ai-border-orbit 3.2s linear infinite}.ai-unified>*{position:relative;z-index:1}.ai-quick-label{color:var(--muted);font-size:9px;white-space:nowrap;flex:0 0 auto}.ai-shortcut{height:18px;flex:0 1 auto;padding:0 6px;border-radius:5px}.app-window.narrow .ai-shortcut{padding:0 4px}@keyframes ai-border-orbit{to{--ai-border-angle:360deg}}
+.app-window.expanded .ai-unified::before{animation-play-state:paused;opacity:0}
+@media(prefers-reduced-motion:reduce){.app-window,.compact-body,.full-body,.window-toast{transition:none!important}.task-front,.compact-body.mode-exit-to-ai>*,.compact-body.mode-enter-ai>.ai-surface,.compact-body.mode-exit-from-ai>.ai-surface,.compact-body.mode-enter-home>*,.compact-body.mode-exit-to-add>*,.compact-body.mode-enter-add>.add-panel,.compact-body.mode-exit-from-add>.add-panel,.compact-body.mode-enter-home-from-add>*,.compact-body::after,.add-selector,.suggestion-preview{animation:none!important}.compact-body::after,.ai-unified::before{opacity:0}.ai-unified::before,.ai-spinner,.ai-loop-track i,.ai-model-menu{animation:none!important}}
+.datetime-time-trigger{height:24px;min-width:0;padding:0 6px;border:1px solid #e2dbd3;border-radius:6px;background:#f8f5f1;color:#37332f;display:flex;align-items:center;justify-content:center;gap:4px;font-size:9px;font-variant-numeric:tabular-nums}.datetime-time-trigger:hover,.datetime-time-trigger[aria-expanded=true]{border-color:#c89b87;background:#fff7f2;color:var(--accent)}.datetime-time-trigger svg{width:8px;height:8px;color:#8a8279;transition:transform 140ms var(--ease)}.datetime-time-trigger[aria-expanded=true] svg{transform:rotate(180deg);color:var(--accent)}.project-time-picker{--time-arrow-x:84px;position:absolute;z-index:5;bottom:83px;width:168px;height:162px;padding:7px;border:1px solid #d7cfc6;border-radius:11px;background:#fffdfa;box-shadow:0 16px 34px #3f352929;animation:add-selector-in 160ms var(--ease) both}.project-time-picker::after{content:'';position:absolute;left:clamp(11px,calc(var(--time-arrow-x) - 5px),calc(100% - 20px));bottom:-5px;width:9px;height:9px;border-right:1px solid #d7cfc6;border-bottom:1px solid #d7cfc6;background:#fffdfa;transform:rotate(45deg)}.project-time-head{height:20px;display:flex;align-items:center;gap:5px}.project-time-head strong{font-size:10px;font-weight:650}.project-time-head>span{margin-left:auto;color:#9a938c;font-size:8px;letter-spacing:.08em}.project-time-head button{width:18px;height:18px;border-radius:5px;color:var(--muted);font-size:13px;line-height:1}.project-time-head button:hover{background:#f1ece6;color:var(--ink)}.project-time-scroll{min-height:0;padding:2px;background:#f8f5f1;border:1px solid #ebe4dc;border-radius:7px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#cdb7aa transparent}.project-time-scroll::-webkit-scrollbar{width:4px}.project-time-scroll::-webkit-scrollbar-thumb{border-radius:999px;background:#cdb7aa}.project-time-value{width:100%;height:23px;border-radius:5px;color:#56504a;font-size:9px;font-variant-numeric:tabular-nums}.project-time-value:hover{background:#f2e6df;color:var(--accent)}.project-time-value.is-selected{background:var(--accent);color:#fff;box-shadow:0 2px 6px #8d351b29}.project-time-footer{height:26px;margin-top:4px;display:flex;gap:4px}.project-time-footer button{height:26px;flex:1;border:1px solid #ded6ce;border-radius:7px;background:#fff;color:#67615a;font-size:9px}.project-time-footer button:hover{border-color:#c9b3a7;color:var(--accent)}.project-time-footer .primary{border-color:var(--accent);background:var(--accent);color:#fff}.project-time-footer .primary:hover{background:#963e20;color:#fff}.custom-reminder-popover{--reminder-arrow-x:190px;position:absolute;z-index:6;bottom:45px;width:224px;height:124px;padding:8px;border:1px solid #d7cfc6;border-radius:11px;background:#fffdfa;box-shadow:0 16px 34px #3f352929;animation:add-selector-in 160ms var(--ease) both}.custom-reminder-popover::after{content:'';position:absolute;left:clamp(11px,calc(var(--reminder-arrow-x) - 5px),calc(100% - 20px));bottom:-5px;width:9px;height:9px;border-right:1px solid #d7cfc6;border-bottom:1px solid #d7cfc6;background:#fffdfa;transform:rotate(45deg)}.custom-reminder-head{height:20px;display:flex;align-items:center}.custom-reminder-head strong{font-size:10px}.custom-reminder-head button{margin-left:auto;width:18px;height:18px;border-radius:5px;color:var(--muted);font-size:13px;line-height:1}.custom-reminder-head button:hover{background:#f1ece6;color:var(--ink)}.custom-reminder-builder{height:30px;margin-top:5px;display:grid;grid-template-columns:auto 70px minmax(0,1fr);align-items:center;gap:5px}.custom-reminder-builder>span{color:#615b55;font-size:9px}.reminder-stepper{height:26px;display:grid;grid-template-columns:22px 26px 22px;border:1px solid #ded6ce;border-radius:7px;overflow:hidden;background:#fff}.reminder-stepper button{color:#746d66;font-size:13px}.reminder-stepper button:hover{background:#f5eee9;color:var(--accent)}.reminder-stepper output{display:grid;place-items:center;border-left:1px solid #ebe4dc;border-right:1px solid #ebe4dc;font-size:10px;font-variant-numeric:tabular-nums}.reminder-unit-switch{height:26px;padding:2px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;border:1px solid #ded6ce;border-radius:7px;background:#f5f2ee}.reminder-unit-switch button{min-width:0;border-radius:5px;color:#777069;font-size:8px}.reminder-unit-switch button:hover{color:var(--accent)}.reminder-unit-switch button.is-selected{background:#fff;color:var(--accent);box-shadow:0 1px 4px #453a2e12}.custom-reminder-preview{height:18px;margin:3px 0 0;color:var(--muted);font-size:8px;line-height:18px}.custom-reminder-footer{height:26px;display:flex;gap:5px}.custom-reminder-footer button{height:26px;flex:1;border:1px solid #ded6ce;border-radius:7px;background:#fff;color:#67615a;font-size:9px}.custom-reminder-footer button:hover{border-color:#c9b3a7;color:var(--accent)}.custom-reminder-footer .primary{border-color:var(--accent);background:var(--accent);color:#fff}.custom-reminder-footer .primary:hover{background:#963e20;color:#fff}@media(prefers-reduced-motion:reduce){.project-time-picker,.custom-reminder-popover{animation:none!important}.datetime-time-trigger svg{transition:none!important}}
+.ai-unified.is-working,.ai-unified.is-result{padding:6px 8px;grid-template-rows:20px 48px 18px;gap:3px}.ai-unified.is-working .ai-context-row,.ai-unified.is-result .ai-context-row{height:20px}.ai-operation-main,.ai-stream-main,.ai-result-main{height:48px;border-radius:8px;background:#f8f4ef}.ai-operation-main{padding:5px 7px;display:flex;align-items:center;gap:7px}.ai-operation-kind{display:inline-flex;align-items:center;height:12px;margin-right:4px;color:var(--accent);font-size:8px;font-style:normal;font-weight:700}.ai-operation-copy{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center}.ai-operation-copy strong,.ai-operation-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ai-operation-copy strong{font-size:10px}.ai-operation-copy small{grid-column:1/-1;margin-top:2px;color:var(--muted);font-size:8px}.ai-stream-main{padding:5px 7px;display:grid;grid-template-rows:13px minmax(0,1fr);gap:2px}.ai-stream-head{display:flex;align-items:center;gap:4px}.ai-stream-pulse{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px #b8532f13;animation:ai-stream-pulse 900ms ease-in-out infinite alternate}.ai-stream-head strong{font-size:9px}.ai-stream-head small{margin-left:auto;color:var(--accent);font-size:8px}.ai-stream-answer{min-width:0;margin:0;color:#403b36;font-size:9px;line-height:1.45;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}.ai-stream-caret{display:inline-block;width:1px;height:10px;margin-left:2px;vertical-align:-1px;background:var(--accent);animation:ai-caret 650ms step-end infinite}.ai-working-footer,.ai-result-footer{height:18px;display:flex;align-items:center;gap:5px}.ai-working-footer .ai-model-toggle,.ai-result-footer .ai-model-toggle{height:18px}.ai-progress-note{min-width:0;flex:1;display:flex;align-items:center;gap:3px;overflow:hidden;color:var(--muted);font-size:8px;white-space:nowrap;text-overflow:ellipsis}.ai-progress-note svg{width:9px;height:9px;color:var(--accent)}.ai-unified.is-log{grid-template-rows:20px 48px 18px;gap:3px}.ai-run-log{height:48px;padding:2px 5px;grid-template-rows:repeat(4,1fr)}.ai-run-log li{min-width:0;gap:4px}.ai-run-kind{width:28px;flex:0 0 auto;color:#8b8178;font-size:7px;font-weight:700}.ai-run-label{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis}.ai-run-detail{max-width:118px;overflow:hidden;text-overflow:ellipsis;color:#8b8178;font-size:7px}.ai-result-main{padding:4px 6px;display:grid;grid-template-rows:18px 22px;gap:2px}.ai-result-answer{min-width:0;margin:0;display:flex;align-items:center;gap:5px;font-size:9px}.ai-answer-badge{height:16px;padding:0 5px;border-radius:5px;background:#fff;color:var(--accent);display:flex;align-items:center;font-size:8px;font-weight:700;flex:0 0 auto}.ai-result-answer>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ai-result-change{height:22px;min-width:0;display:flex;align-items:center;gap:5px}.ai-change-icon{width:16px;height:16px;border-radius:5px;background:#fff;color:var(--accent);display:grid;place-items:center;font-size:12px;flex:0 0 auto}.ai-change-copy{min-width:0;flex:1;display:flex;align-items:baseline;gap:4px;overflow:hidden;white-space:nowrap}.ai-change-copy strong,.ai-change-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ai-change-copy strong{font-size:8px}.ai-change-copy small{color:var(--muted);font-size:7px}.ai-result-action{height:20px;padding:0 7px;border:1px solid #d8d0c7;border-radius:6px;background:#fff;color:#67615a;font-size:8px;flex:0 0 auto}.ai-result-action:hover{border-color:#c99b87;color:var(--accent)}.ai-result-action.primary{border-color:var(--accent);background:var(--accent);color:#fff}.ai-result-state{margin-left:auto;color:var(--muted);font-size:8px;white-space:nowrap}.app-window.narrow .ai-run-detail{max-width:72px}.app-window.narrow .ai-change-copy small,.app-window.narrow .ai-result-state{display:none}@keyframes ai-stream-pulse{from{opacity:.4}to{opacity:1}}@keyframes ai-caret{50%{opacity:0}}@media(prefers-reduced-motion:reduce){.ai-stream-pulse,.ai-stream-caret{animation:none!important}}
+.ai-unified.is-log .ai-run-log li{height:11px;min-height:11px;line-height:11px;overflow:hidden}
+.project-time-picker{width:148px}.project-time-list{height:94px;margin-top:3px;padding:3px 4px;display:grid;align-content:start;gap:2px;scroll-snap-type:y proximity}.project-time-list .project-time-value{height:26px;min-height:26px;scroll-snap-align:center}.project-time-head>span{letter-spacing:0}
+.app-window.selector-more-task{height:424px}.app-window.selector-more-task.progress-expanded{height:452px}.add-selector.more-task{height:236px;transition:height 200ms var(--ease)}.add-selector.more-task.progress-expanded{height:264px}.more-progress-details{max-height:0;overflow:hidden;opacity:0;transform:translateY(-3px);transition:max-height 200ms var(--ease),opacity 120ms linear,transform 200ms var(--ease)}.more-progress.is-tracking .more-progress-details{max-height:36px;opacity:1;transform:none}@media(prefers-reduced-motion:reduce){.add-selector.more-task,.more-progress-details{transition:none!important}}
+.add-tool.priority-high{color:#c35a45}.add-tool.priority-medium{color:#b98a55}.add-tool.priority-low{color:#729079}.add-tool.tag-work{color:#b8532f}.add-tool.tag-personal{color:#6f8f79}.add-tool.tag-study{color:#8c78a5}
+</style>
+<main class="page">
+  <header class="page-head"><div><p class="eyebrow">IMPECCABLE · COMPACT WINDOW V2</p><h1>标题栏不动，只把下一件事收近。</h1><p class="lead">收起后不再按类型切页，待办与日程按时间混排成“接下来”流。窗口按钮始终在原位，其余安排只露出叠层线索。</p></div><span class="status">设计预览 · 未接入正式应用</span></header>
+  <nav class="toolbar" aria-label="预览控制"><span class="toolbar-label">体验</span><button class="tool" id="motion">演示展开</button><button class="tool" id="next">下一项</button><button class="tool" id="empty" aria-pressed="false">空状态</button><button class="tool" id="narrow" aria-pressed="false">窄宽 340 px</button><button class="tool" id="reset">重置</button><button class="tool" data-mode="ai">查看 AI 助手</button></nav>
+  <div class="workspace">
+    <section class="stage" aria-label="卡片设计预览">
+      <article class="app-window" id="window">
+        <header class="titlebar">
+          <span class="brand" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="17.15" cy="6.85" r="2.15" fill="#b8532f"/></svg></span>
+          <span class="app-title">To Do List</span>
+          <div class="window-actions" id="windowActions"></div>
+        </header>
+        <div class="full-body" id="fullBody">
+          <div class="full-head"><div class="full-date"><strong>9月18日</strong><span>周五 · 专注当下</span></div><button class="full-add">＋ 新增事项</button></div>
+          <div class="full-label"><span>今日安排</span><span style="color:var(--muted);font-size:11px">时间流 ···</span></div>
+          <div class="full-card"><div class="full-row"><span class="full-kind schedule" aria-label="日程"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2z M7 2v4 M17 2v4 M3 9h18"/></svg></span><b>产品周会</b><time>10:30–11:00</time></div><div class="full-row"><span class="check" aria-label="待办"></span><b>完成项目报告</b><time>14:00 截止</time></div><div class="full-row"><span class="full-kind schedule" aria-label="日程"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2z M7 2v4 M17 2v4 M3 9h18"/></svg></span><b>牙医复诊</b><time>16:00–16:30</time></div><div class="full-row"><span class="check" aria-label="待办"></span><b>整理收件箱</b><time>17:30 截止</time></div></div>
+          <div class="full-later">▱　后续安排　　明天 · 近期 · 更晚</div>
+        </div>
+        <div class="compact-body" id="compactBody"></div>
+        <div class="window-toast" id="toast"></div>
+      </article>
+    </section>
+    <aside class="notes"><h2>推荐：叠层焦点卡</h2><p class="notes-intro">它把待办与日程合成一条“接下来”时间流。无需切页，用户收起后第一眼就能判断下一步。</p>
+      <div class="principle"><span class="number">1</span><div><b>标题栏是固定骨架</b><p>Logo、产品名和五个窗口按钮始终存在。卡片态只把收起图标换成展开图标，不再重复放“展开”快捷块。</p></div></div>
+      <div class="principle"><span class="number">2</span><div><b>下一项安排在最前</b><p>日程显示时间段并可进入或查看，待办保留直接完成；后面最多露两层边缘。独立上下箭头按时间轮换首层。</p></div></div>
+      <div class="principle"><span class="number">3</span><div><b>停下时内容已经就位</b><p>收缩时仅裁切标题栏下方内容。紧凑正文在最后一段收缩中进入，底边停到 176px 的同一帧已经完全可见。</p></div></div>
+      <div class="dimension"><span>推荐尺寸</span><strong>440 / 340 × 176 px</strong></div>
+      <div class="ai-architecture"><h3>AI 能力放在需要它的位置</h3><p class="architecture-intro">首页负责主动提醒，助手负责表达和处理当前事项。</p><div class="architecture-row"><span class="architecture-badge">A</span><span class="architecture-copy"><b>AI 助手内 · 一句话输入</b><p>自由表达目标，AI 先整理成可确认的方案。</p></span></div><div class="architecture-row"><span class="architecture-badge">B</span><span class="architecture-copy"><b>AI 助手内 · 随当前事项变化</b><p>日程与待办显示不同的三项高频操作。</p></span></div><div class="architecture-row"><span class="architecture-badge">C</span><span class="architecture-copy"><b>首页 · 只出现可执行建议</b><p>点击后先查看具体变更，再决定应用、调整或忽略。</p></span></div></div>
+      <div class="storyboard"><h3>连续收缩，不重建窗口</h3><div class="frames"><span class="frame"><i></i></span><span class="arrow">→</span><span class="frame"><i></i></span><span class="arrow">→</span><span class="frame"><i></i></span><span class="arrow">→</span><span class="frame"><i></i></span></div><p class="story-caption">顶部 52px 全程不动；只有底边向上，紧凑内容在到达终点前完成接管。</p></div>
+    </aside>
+  </div>
+</main>
+<script>
+const paths = {
+  pin: 'M15.2 3.8l5 5-3.4 3.4.7 3.4-2 2-3.4-.7-5.7 5.7-1.4-1.4 5.7-5.7-.7-3.4 2-2 3.4.7z',
+  circle: 'M20.5 12a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0',
+  gear: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z',
+  collapse: 'M5 8h14 M8 3l4 5 4-5 M5 16h14 M8 21l4-5 4 5',
+  expand: 'M5 8h14 M8 5l4-4 4 4 M5 16h14 M8 19l4 4 4-4',
+  minus: 'M5 12h14',
+  plus: 'M12 5v14 M5 12h14',
+  spark: 'M12 3l2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2z M19 3v4 M17 5h4',
+  check: 'M5 12l4 4 10-10',
+  down: 'M6 9l6 6 6-6',
+  back: 'M15 6l-6 6 6 6',
+  right: 'M9 6l6 6-6 6',
+  send: 'M4 4l16 8-16 8 3-8-3-8z M7 12h13',
+  calendar: 'M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2z M7 2v4 M17 2v4 M3 9h18',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 7v5l3 2',
+  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9 M10 21h4',
+  flag: 'M5 21V4 M5 4h11l-2 4 2 4H5',
+  tag: 'M20 13l-7 7L4 11V4h7z',
+  more: 'M5 12h.01 M12 12h.01 M19 12h.01',
+  video: 'M15 10l5-3v10l-5-3v3H4V7h11z'
+};
+const icon = (name, size = 20, filled = false) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]}"/>${name === 'tag' ? `<circle cx="8" cy="8" r="1.15" fill="${filled ? 'var(--paper)' : 'none'}" stroke="${filled ? 'none' : 'currentColor'}"/>` : ''}</svg>`;
+
+const items = [
+  { kind: 'schedule', title: '产品周会', start: '10:30', end: '11:00', meta: '线上会议 · 可进入', action: '进入会议', icon: 'video' },
+  { kind: 'task', title: '完成项目报告', time: '14:00', meta: '工作 · 今天截止', done: false },
+  { kind: 'schedule', title: '牙医复诊', start: '16:00', end: '16:30', meta: '中山路诊所', action: '查看日程', icon: 'calendar' },
+  { kind: 'task', title: '整理收件箱', time: '17:30', meta: '日常 · 今天', done: false }
+];
+
+const aiSuggestions = {
+  '产品周会': { context: '距离会议还有 35 分钟', title: '会前留 20 分钟整理提纲', change: '新增待办 · 整理会议提纲', time: '10:00–10:20 · 产品周会前' },
+  '完成项目报告': { context: '今天 14:00 截止', title: '先完成报告结论', change: '新增专注段 · 撰写报告结论', time: '11:20–11:45 · 预计 25 分钟' },
+  '牙医复诊': { context: '16:00 开始', title: '提前 20 分钟出发', change: '新增提醒 · 前往牙医诊所', time: '15:40 · 为路程预留时间' },
+  '整理收件箱': { context: '今天 17:30 截止', title: '分两轮处理收件箱', change: '拆分待办 · 筛选与集中回复', time: '每轮 15 分钟 · 中间间隔休息' }
+};
+
+let index = 0;
+let mode = 'home';
+let addKind = 'task';
+let empty = false;
+let narrow = false;
+let pinned = false;
+let dock = false;
+let toastTimer;
+let flipTimer;
+let deckBusy = false;
+let modeTransitionTimer;
+let modeSettleTimer;
+let modeTransitionBusy = false;
+let aiModelOpen = false;
+let selectedModel = 0;
+let aiRunTimers = [];
+const aiModels = [
+  { provider: 'OpenAI', name: '工作模型' },
+  { provider: 'DeepSeek', name: '快速模型' },
+  { provider: '本地模型', name: '离线模型' }
+];
+const aiRun = { busy: false, phase: 'idle', step: 0, logOpen: false, prompt: '', answer: '' };
+const hiddenSuggestions = new Set();
+const addMoreState = {
+  task: { trackProgress: false, progress: 0, note: '' },
+  schedule: { location: '', attendees: '', agenda: '' }
+};
+const addDateTimeState = {
+  task: { date: '今天', time: '不设时间', reminder: '不提醒', due: '' },
+  schedule: { date: '今天', time: '09:00–09:30', reminder: '不提醒', start: '09:00', end: '09:30' }
+};
+const addPriorityState = { value: '中', confirmed: false };
+const priorityToolClasses = { 高: 'priority-high', 中: 'priority-medium', 低: 'priority-low' };
+const addTagState = { value: '无标签', confirmed: false };
+const tagToolClasses = { 工作: 'tag-work', 个人: 'tag-personal', 学习: 'tag-study' };
+
+const windowEl = document.getElementById('window');
+const body = document.getElementById('compactBody');
+const motion = document.getElementById('motion');
+const toast = document.getElementById('toast');
+
+function visibleItems() {
+  return items.filter(item => item.kind === 'schedule' || !item.done);
+}
+
+function normalizeIndex(list) {
+  if (!list.length) return 0;
+  index = (index % list.length + list.length) % list.length;
+  return index;
+}
+
+function itemType(item) {
+  return item.kind === 'schedule' ? '日程' : '待办';
+}
+
+function itemTime(item) {
+  return item.kind === 'schedule' ? `${item.start}–${item.end}` : `${item.time} 截止`;
+}
+
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1300);
+}
+
+function focusCompactInput() {
+  const input = body.querySelector('input');
+  if (!input) return;
+  windowEl.scrollTop = 0;
+  input.focus({ preventScroll: true });
+}
+
+function transitionMode(nextMode, afterRender) {
+  if (modeTransitionBusy) return;
+  if (nextMode !== 'ai') aiModelOpen = false;
+  if (mode === nextMode) {
+    afterRender?.();
+    return;
+  }
+
+  const usesAiTransition = mode === 'ai' || nextMode === 'ai';
+  const usesAddTransition = mode === 'add' || nextMode === 'add';
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if ((!usesAiTransition && !usesAddTransition) || reduceMotion) {
+    mode = nextMode;
+    render();
+    afterRender?.();
+    return;
+  }
+
+  modeTransitionBusy = true;
+  let exitClass = '';
+  let enterClass = '';
+  if (nextMode === 'ai') {
+    exitClass = 'mode-exit-to-ai';
+    enterClass = 'mode-enter-ai';
+  } else if (mode === 'ai') {
+    exitClass = 'mode-exit-from-ai';
+    enterClass = nextMode === 'add' ? 'mode-enter-add' : 'mode-enter-home';
+  } else if (nextMode === 'add') {
+    exitClass = 'mode-exit-to-add';
+    enterClass = 'mode-enter-add';
+  } else {
+    exitClass = 'mode-exit-from-add';
+    enterClass = 'mode-enter-home-from-add';
+  }
+  body.classList.remove('mode-exit-to-ai', 'mode-enter-ai', 'mode-exit-from-ai', 'mode-enter-home', 'mode-exit-to-add', 'mode-enter-add', 'mode-exit-from-add', 'mode-enter-home-from-add');
+  body.classList.add(exitClass);
+  clearTimeout(modeTransitionTimer);
+  clearTimeout(modeSettleTimer);
+  modeTransitionTimer = setTimeout(() => {
+    body.classList.remove(exitClass);
+    mode = nextMode;
+    render();
+    body.classList.add(enterClass);
+    afterRender?.();
+    modeSettleTimer = setTimeout(() => {
+      body.classList.remove(enterClass);
+      modeTransitionBusy = false;
+    }, 300);
+  }, 160);
+}
+
+function cycle(direction = 1) {
+  const timeline = visibleItems();
+  if (empty || timeline.length < 2 || deckBusy) return;
+  const nextIndex = (index + direction + timeline.length) % timeline.length;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    index = nextIndex;
+    render();
+    return;
+  }
+  deckBusy = true;
+  const suffix = direction > 0 ? 'down' : 'up';
+  const exitClass = `deck-exit-${suffix}`;
+  const enterClass = `deck-enter-${suffix}`;
+  body.classList.remove('deck-exit-down', 'deck-enter-down', 'deck-exit-up', 'deck-enter-up');
+  body.classList.add(exitClass);
+  clearTimeout(flipTimer);
+  flipTimer = setTimeout(() => {
+    body.classList.remove(exitClass);
+    index = nextIndex;
+    render();
+    void body.offsetWidth;
+    body.classList.add(enterClass);
+    flipTimer = setTimeout(() => {
+      body.classList.remove(enterClass);
+      deckBusy = false;
+    }, 200);
+  }, 140);
+}
+
+function actions() {
+  const expanded = windowEl.classList.contains('expanded');
+  document.getElementById('windowActions').innerHTML = `<button class="iconbtn" data-window="pin" aria-label="${pinned ? '取消置顶' : '置顶窗口'}" aria-pressed="${pinned}">${icon('pin')}</button><button class="iconbtn" data-window="dock" aria-label="${dock ? '隐藏' : '显示'}悬浮入口" aria-pressed="${dock}">${icon('circle')}</button><button class="iconbtn" data-window="settings" aria-label="设置">${icon('gear')}</button><button class="iconbtn" data-window="size" aria-label="${expanded ? '收起为卡片' : '展开主界面'}">${icon(expanded ? 'collapse' : 'expand')}</button><button class="iconbtn" data-window="hide" aria-label="最小化">${icon('minus')}</button>`;
+}
+
+function quickActions() {
+  return `<div class="quick-actions"><button class="quick" data-mode="add">${icon('plus')}<span>新增事项</span></button><button class="quick" data-mode="ai">${icon('spark')}<span>AI 助手</span></button></div>`;
+}
+
+function aiBackButton() {
+  return `<button class="ai-back" data-mode="home" aria-label="返回下一项安排">${icon('back', 11)}<span>返回</span></button>`;
+}
+
+function closeAddSelector() {
+  body.querySelector('.add-selector')?.remove();
+  body.querySelectorAll('.add-tool.is-open').forEach(tool => {
+    tool.classList.remove('is-open');
+    tool.setAttribute('aria-expanded', 'false');
+  });
+  windowEl.classList.remove('selector-open', 'selector-datetime-task', 'selector-datetime-schedule', 'selector-priority', 'selector-tag', 'selector-more-task', 'selector-more-schedule', 'progress-expanded');
+}
+
+function selectorFooter(clearLabel, clearValue) {
+  return `<div class="selector-footer"><button type="button" data-add-selector-clear data-value="${clearValue}">${clearLabel}</button><button type="button" class="primary" data-add-selector-apply>确定</button></div>`;
+}
+
+function moreSummary(kind = addKind) {
+  if (kind === 'task') {
+    const state = addMoreState.task;
+    const parts = [];
+    if (state.trackProgress) parts.push(`进度 ${state.progress}%`);
+    if (state.note.trim()) parts.push('已有备注');
+    return { value: parts.join(' · ') || '进度与备注', active: parts.length > 0 };
+  }
+  const state = addMoreState.schedule;
+  const count = [state.location, state.attendees, state.agenda].filter(value => value.trim()).length;
+  return { value: count ? `已填写 ${count} 项` : '地点、参与人与议程', active: count > 0 };
+}
+
+function updateMoreTool(kind = addKind) {
+  const tool = body.querySelector('.add-tool[data-add-detail="更多"]');
+  if (!tool || kind !== addKind) return;
+  const summary = moreSummary(kind);
+  tool.setAttribute('aria-label', `更多：${summary.value}`);
+  tool.setAttribute('title', `更多 · ${summary.value}`);
+  tool.classList.toggle('active', summary.active);
+}
+
+function clearMoreState(kind) {
+  if (kind === 'task') Object.assign(addMoreState.task, { trackProgress: false, progress: 0, note: '' });
+  else Object.assign(addMoreState.schedule, { location: '', attendees: '', agenda: '' });
+}
+
+function closeTimePicker(selector = body.querySelector('.add-selector')) {
+  if (!selector) return;
+  selector.querySelector('[data-time-picker]')?.remove();
+  selector.querySelectorAll('[data-time-trigger]').forEach(trigger => trigger.setAttribute('aria-expanded', 'false'));
+}
+
+function closeCustomReminder(selector = body.querySelector('.add-selector')) {
+  if (!selector) return;
+  selector.querySelector('[data-custom-reminder-popover]')?.remove();
+  selector.querySelector('[data-custom-reminder]')?.setAttribute('aria-expanded', 'false');
+}
+
+function customReminderParts(value) {
+  const match = /^提前 (\d+) (分钟|小时|天)提醒$/.exec(value || '');
+  return match ? { amount: Number(match[1]), unit: match[2] } : { amount: 1, unit: '小时' };
+}
+
+function updateCustomReminderPreview(popover) {
+  popover.querySelector('[data-reminder-amount]').textContent = popover.dataset.amount;
+  popover.querySelector('[data-reminder-preview]').textContent = `将在${addKind === 'task' ? '截止' : '开始'}前 ${popover.dataset.amount} ${popover.dataset.unit}提醒`;
+}
+
+function openCustomReminder(trigger) {
+  const selector = trigger.closest('.add-selector');
+  const existing = selector.querySelector('[data-custom-reminder-popover]');
+  if (existing) {
+    closeCustomReminder(selector);
+    return;
+  }
+  closeTimePicker(selector);
+  const value = customReminderParts(selector.dataset.selectedReminder);
+  selector.insertAdjacentHTML('beforeend', `<section class="custom-reminder-popover" data-custom-reminder-popover data-amount="${value.amount}" data-unit="${value.unit}" role="dialog" aria-label="自定义提醒"><div class="custom-reminder-head"><strong>自定义提醒</strong><button type="button" data-custom-reminder-close aria-label="关闭自定义提醒">×</button></div><div class="custom-reminder-builder"><span>提前</span><div class="reminder-stepper"><button type="button" data-reminder-step="-1" aria-label="减少提醒时间">−</button><output data-reminder-amount>${value.amount}</output><button type="button" data-reminder-step="1" aria-label="增加提醒时间">＋</button></div><div class="reminder-unit-switch" role="group" aria-label="提醒单位"><button type="button" class="${value.unit === '分钟' ? 'is-selected' : ''}" data-reminder-unit="分钟">分钟</button><button type="button" class="${value.unit === '小时' ? 'is-selected' : ''}" data-reminder-unit="小时">小时</button><button type="button" class="${value.unit === '天' ? 'is-selected' : ''}" data-reminder-unit="天">天</button></div></div><p class="custom-reminder-preview" data-reminder-preview></p><div class="custom-reminder-footer"><button type="button" data-custom-reminder-close>取消</button><button type="button" class="primary" data-custom-reminder-apply>完成</button></div></section>`);
+  const popover = selector.querySelector('[data-custom-reminder-popover]');
+  const selectorRect = selector.getBoundingClientRect();
+  const triggerRect = trigger.getBoundingClientRect();
+  const triggerCenter = triggerRect.left + triggerRect.width / 2 - selectorRect.left;
+  const left = Math.max(8, Math.min(triggerCenter - popover.offsetWidth / 2, selector.clientWidth - popover.offsetWidth - 8));
+  popover.style.left = `${Math.round(left)}px`;
+  popover.style.setProperty('--reminder-arrow-x', `${Math.round(triggerCenter - left)}px`);
+  trigger.setAttribute('aria-expanded', 'true');
+  updateCustomReminderPreview(popover);
+}
+
+function syncSelectedTime(selector) {
+  const due = selector.querySelector('[data-time-trigger="due"]');
+  if (due) {
+    const value = due.dataset.timeValue;
+    selector.dataset.selectedTime = value ? `${value} 截止` : '不设时间';
+    selector.querySelector('[data-time-clear]')?.classList.toggle('is-selected', !value);
+    return;
+  }
+  const start = selector.querySelector('[data-time-trigger="start"]')?.dataset.timeValue || '--:--';
+  const end = selector.querySelector('[data-time-trigger="end"]')?.dataset.timeValue || '--:--';
+  selector.dataset.selectedTime = `${start}–${end}`;
+}
+
+function setTimePickerValue(picker, value) {
+  picker.dataset.time = value;
+  picker.querySelectorAll('[data-time-value]').forEach(option => {
+    const selected = option.dataset.timeValue === value;
+    option.classList.toggle('is-selected', selected);
+    option.setAttribute('aria-selected', selected);
+  });
+}
+
+function centerSelectedTime(picker) {
+  picker.querySelectorAll('.project-time-scroll').forEach(list => {
+    const selected = list.querySelector('.is-selected');
+    if (selected) list.scrollTop = Math.max(0, selected.offsetTop - list.offsetTop - (list.clientHeight - selected.offsetHeight) / 2);
+  });
+}
+
+function nextHalfHourValue(date = new Date()) {
+  let hour = date.getHours();
+  let minute = date.getMinutes();
+  if (minute !== 0 && minute !== 30) {
+    if (minute < 30) minute = 30;
+    else {
+      minute = 0;
+      hour = (hour + 1) % 24;
+    }
+  }
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function openTimePicker(trigger) {
+  const selector = trigger.closest('.add-selector');
+  const role = trigger.dataset.timeTrigger;
+  const existing = selector.querySelector('[data-time-picker]');
+  if (existing?.dataset.timeRole === role) {
+    closeTimePicker(selector);
+    return;
+  }
+  closeTimePicker(selector);
+  closeCustomReminder(selector);
+  const fallback = role === 'start' ? '09:00' : role === 'end' ? '09:30' : nextHalfHourValue();
+  const selectedTime = trigger.dataset.timeValue || fallback;
+  const labels = { due: '截止时间', start: '开始时间', end: '结束时间' };
+  const times = Array.from({ length: 48 }, (_, index) => {
+    const hour = String(Math.floor(index / 2)).padStart(2, '0');
+    const minute = index % 2 ? '30' : '00';
+    return `${hour}:${minute}`;
+  });
+  const values = times.map(value => {
+    return `<button type="button" class="project-time-value${value === selectedTime ? ' is-selected' : ''}" data-time-value="${value}" role="option" aria-selected="${value === selectedTime}">${value}</button>`;
+  }).join('');
+  selector.insertAdjacentHTML('beforeend', `<section class="project-time-picker" data-time-picker data-time-role="${role}" data-time="${selectedTime}" role="dialog" aria-label="选择${labels[role]}"><div class="project-time-head"><strong>${labels[role]}</strong><span>每 30 分钟</span><button type="button" data-time-picker-close aria-label="关闭时间选择">×</button></div><div class="project-time-scroll project-time-list" role="listbox" aria-label="半小时时间列表">${values}</div><div class="project-time-footer"><button type="button" data-time-now aria-label="选择下个半点">下个半点</button><button type="button" class="primary" data-time-apply>确定</button></div></section>`);
+  const picker = selector.querySelector('[data-time-picker]');
+  const selectorRect = selector.getBoundingClientRect();
+  const triggerRect = trigger.getBoundingClientRect();
+  const triggerCenter = triggerRect.left + triggerRect.width / 2 - selectorRect.left;
+  const left = Math.max(8, Math.min(triggerCenter - picker.offsetWidth / 2, selector.clientWidth - picker.offsetWidth - 8));
+  picker.style.left = `${Math.round(left)}px`;
+  picker.style.setProperty('--time-arrow-x', `${Math.round(triggerCenter - left)}px`);
+  trigger.setAttribute('aria-expanded', 'true');
+  centerSelectedTime(picker);
+}
+
+function applyTimePicker(picker) {
+  const selector = picker.closest('.add-selector');
+  const role = picker.dataset.timeRole;
+  const value = picker.dataset.time;
+  const trigger = selector.querySelector(`[data-time-trigger="${role}"]`);
+  trigger.dataset.timeValue = value;
+  trigger.querySelector('span').textContent = value;
+  const labels = { due: '待办具体时间', start: '日程开始时间', end: '日程结束时间' };
+  trigger.setAttribute('aria-label', `${labels[role]} ${value}`);
+  closeTimePicker(selector);
+  syncSelectedTime(selector);
+}
+
+function openAddSelector(kind) {
+  const panel = body.querySelector('.add-panel');
+  if (!panel) return;
+  const currentSelector = panel.querySelector('.add-selector');
+  if (currentSelector?.dataset.selectorKind === kind) {
+    closeAddSelector();
+    return;
+  }
+  closeAddSelector();
+  let type = '';
+  let markup = '';
+
+  if (kind === '时间安排') {
+    const schedule = addKind === 'schedule';
+    const datetimeState = addDateTimeState[addKind];
+    type = schedule ? 'datetime-schedule' : 'datetime-task';
+    const defaultTime = schedule ? '09:00–09:30' : '不设时间';
+    const initial = `${datetimeState.date} · ${datetimeState.time} · ${datetimeState.reminder}`;
+    const defaultSummary = `今天 · ${defaultTime} · 不提醒`;
+    const days = [30, 31, ...Array.from({ length: 30 }, (_, index) => index + 1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const dayMarkup = days.map((day, index) => {
+      const outside = index < 2 || index >= 32;
+      const today = !outside && day === 18;
+      const value = today ? '今天' : `${outside && index < 2 ? '8月' : outside ? '10月' : '9月'}${day}日`;
+      return `<button type="button" class="calendar-day${outside ? ' outside' : ''}${today ? ' today' : ''}${value === datetimeState.date ? ' is-selected' : ''}" data-add-selector-choice data-choice-group="date" data-value="${value}" aria-label="${value}">${day}</button>`;
+    }).join('');
+    const timeTrigger = (role, value, label) => `<button type="button" class="datetime-time-trigger" data-time-trigger="${role}" data-time-value="${value}" aria-label="${label}${value ? ` ${value}` : ' 未设置'}" aria-haspopup="dialog" aria-expanded="false"><span>${value || '--:--'}</span>${icon('down', 8)}</button>`;
+    const timeMarkup = schedule
+      ? `<div class="datetime-time-controls schedule">${timeTrigger('start', datetimeState.start, '日程开始时间')}<span class="datetime-time-separator" aria-hidden="true">—</span>${timeTrigger('end', datetimeState.end, '日程结束时间')}</div>`
+      : `<div class="datetime-time-controls task"><button type="button" class="datetime-no-time${datetimeState.due ? '' : ' is-selected'}" data-time-clear>不设时间</button>${timeTrigger('due', datetimeState.due, '待办具体时间')}</div>`;
+    const reminderChoices = [['不提醒', '不提醒'], ['准时', '准时提醒'], ['提前10分', '提前10分钟提醒']];
+    const customReminderSelected = !reminderChoices.some(([, value]) => value === datetimeState.reminder);
+    markup = `<section class="add-selector datetime ${schedule ? 'schedule' : 'task'}" data-selector-kind="时间安排" data-selected-date="${datetimeState.date}" data-selected-time="${datetimeState.time}" data-selected-reminder="${datetimeState.reminder}" aria-label="时间安排设置"><div class="add-selector-head"><strong class="add-selector-title">${icon('calendar', 13)}时间安排</strong><button type="button" class="add-selector-close" data-add-selector-close aria-label="关闭时间安排设置">×</button></div><div class="date-presets"><button type="button" class="selector-choice${datetimeState.date === '今天' ? ' is-selected' : ''}" data-add-selector-choice data-choice-group="date" data-value="今天">今天</button><button type="button" class="selector-choice${datetimeState.date === '明天' ? ' is-selected' : ''}" data-add-selector-choice data-choice-group="date" data-value="明天">明天</button><button type="button" class="selector-choice${datetimeState.date === '下周一' ? ' is-selected' : ''}" data-add-selector-choice data-choice-group="date" data-value="下周一">下周一</button></div><div class="calendar-head"><strong>2026年9月</strong><span class="calendar-nav"><button type="button" aria-label="上个月">‹</button><button type="button" aria-label="下个月">›</button></span></div><div class="calendar-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div class="calendar-grid">${dayMarkup}</div><div class="datetime-settings"><div class="datetime-setting"><strong class="datetime-setting-label">${icon('clock', 11)}${schedule ? '时间段' : '时间'}</strong>${timeMarkup}</div><div class="datetime-setting"><strong class="datetime-setting-label">${icon('bell', 11)}提醒</strong><div class="datetime-options">${reminderChoices.map(([label, value]) => `<button type="button" class="datetime-option${value === datetimeState.reminder ? ' is-selected' : ''}" data-add-selector-choice data-choice-group="reminder" data-value="${value}">${label}</button>`).join('')}<button type="button" class="datetime-option${customReminderSelected ? ' is-selected' : ''}" data-custom-reminder aria-haspopup="dialog" aria-expanded="false">自定义</button></div></div></div>${selectorFooter('恢复默认', defaultSummary)}</section>`;
+  } else if (kind === '优先级') {
+    type = 'priority';
+    const value = addPriorityState.value;
+    markup = `<section class="add-selector priority" data-selector-kind="优先级" data-selected-value="${value}" aria-label="优先级设置"><div class="add-selector-head"><strong class="add-selector-title">${icon('flag', 13)}优先级</strong><button type="button" class="add-selector-close" data-add-selector-close aria-label="关闭优先级设置">×</button></div><div class="selector-options one priority-list"><button type="button" class="selector-option${value === '高' ? ' is-selected' : ''}" data-add-selector-choice data-value="高"><span class="priority-flag high">${icon('flag', 14, true)}</span><span><b>高</b><small>尽快处理</small></span></button><button type="button" class="selector-option${value === '中' ? ' is-selected' : ''}" data-add-selector-choice data-value="中"><span class="priority-flag medium">${icon('flag', 14, true)}</span><span><b>中</b><small>正常安排</small></span></button><button type="button" class="selector-option${value === '低' ? ' is-selected' : ''}" data-add-selector-choice data-value="低"><span class="priority-flag low">${icon('flag', 14, true)}</span><span><b>低</b><small>低压跟进</small></span></button></div>${selectorFooter('恢复默认', '中')}</section>`;
+  } else if (kind === '标签') {
+    type = 'tag';
+    const value = addTagState.value;
+    markup = `<section class="add-selector tag" data-selector-kind="标签" data-selected-value="${value}" aria-label="标签设置"><div class="add-selector-head"><strong class="add-selector-title">${icon('tag', 13)}标签</strong><button type="button" class="add-selector-close" data-add-selector-close aria-label="关闭标签设置">×</button></div><p class="selector-help">每项最多选择一个标签。</p><div class="selector-options one tag-list"><button type="button" class="selector-option${value === '无标签' ? ' is-selected' : ''}" data-add-selector-choice data-value="无标签"><span class="tag-icon neutral">${icon('tag', 14)}</span>无标签</button><button type="button" class="selector-option${value === '工作' ? ' is-selected' : ''}" data-add-selector-choice data-value="工作"><span class="tag-icon work">${icon('tag', 14, true)}</span>工作</button><button type="button" class="selector-option${value === '个人' ? ' is-selected' : ''}" data-add-selector-choice data-value="个人"><span class="tag-icon personal">${icon('tag', 14, true)}</span>个人</button><button type="button" class="selector-option${value === '学习' ? ' is-selected' : ''}" data-add-selector-choice data-value="学习"><span class="tag-icon study">${icon('tag', 14, true)}</span>学习</button><button type="button" class="selector-option new-tag" data-new-tag>＋ 新建标签</button></div>${selectorFooter('清除', '无标签')}</section>`;
+  } else if (kind === '更多') {
+    const task = addKind === 'task';
+    type = task ? 'more-task' : 'more-schedule';
+    if (task) {
+      const state = addMoreState.task;
+      markup = `<section class='add-selector more more-task${state.trackProgress ? ' progress-expanded' : ''}' data-selector-kind='更多' data-more-kind='task' aria-label='待办更多设置'><div class='add-selector-head'><strong class='add-selector-title'>${icon('more', 13)}更多设置</strong><button type='button' class='add-selector-close' data-add-selector-close aria-label='关闭待办更多设置'>×</button></div><p class='selector-help'>进度与备注放在这里，不挤占快速创建区。</p><div class='more-form'><div class='more-progress${state.trackProgress ? ' is-tracking' : ''}'><div class='more-row'><strong>维护进度</strong><button type='button' class='more-switch' data-more-progress-toggle aria-pressed='${state.trackProgress}' aria-label='${state.trackProgress ? '关闭' : '开启'}进度维护'></button><output class='more-progress-output' data-more-progress-output>${state.progress}%</output></div><div class='more-progress-details' aria-hidden='${!state.trackProgress}'><input class='more-range' type='range' min='0' max='100' step='5' value='${state.progress}' data-more-progress aria-label='待办进度' ${state.trackProgress ? '' : 'disabled'}><div class='more-scale'><span>未开始</span><span>完成</span></div></div></div><label class='more-field'><span>备注 / 进展<small>创建后仍可继续补充</small></span><textarea data-more-input='note' maxlength='5000' placeholder='补充信息，或记录当前进展'></textarea></label></div>${selectorFooter('清除内容', '')}</section>`;
+    } else {
+      markup = `<section class='add-selector more more-schedule' data-selector-kind='更多' data-more-kind='schedule' aria-label='日程更多设置'><div class='add-selector-head'><strong class='add-selector-title'>${icon('more', 13)}更多设置</strong><button type='button' class='add-selector-close' data-add-selector-close aria-label='关闭日程更多设置'>×</button></div><p class='selector-help'>补充不必每次填写的日程信息。</p><div class='more-form schedule-more-grid'><label class='more-field'><span>地点</span><input data-more-input='location' maxlength='160' placeholder='会议室或链接'></label><label class='more-field'><span>参与人</span><input data-more-input='attendees' maxlength='300' placeholder='姓名或群组'></label><label class='more-field'><span>议程 / 备注<small>创建后仍可编辑</small></span><textarea data-more-input='agenda' maxlength='5000' placeholder='议题、准备材料或其他说明'></textarea></label></div>${selectorFooter('清除内容', '')}</section>`;
+    }
+  } else {
+    showToast(`打开${kind}设置`);
+    return;
+  }
+
+  windowEl.classList.add('selector-open', `selector-${type}`);
+  panel.insertAdjacentHTML('beforeend', markup);
+  const selector = panel.querySelector('.add-selector');
+  const anchorTool = panel.querySelector(`.add-tool[data-add-detail="${kind}"]`);
+  if (selector && anchorTool) {
+    anchorTool.classList.add('is-open');
+    anchorTool.setAttribute('aria-expanded', 'true');
+    const arrowX = anchorTool.offsetLeft + anchorTool.offsetWidth / 2 - selector.offsetLeft;
+    selector.style.setProperty('--selector-arrow-x', `${Math.round(arrowX)}px`);
+  }
+  const moreSelector = panel.querySelector('.add-selector[data-more-kind]');
+  if (moreSelector) {
+    const state = addMoreState[moreSelector.dataset.moreKind];
+    windowEl.classList.toggle('progress-expanded', moreSelector.dataset.moreKind === 'task' && state.trackProgress);
+    moreSelector.querySelectorAll('[data-more-input]').forEach(field => {
+      field.value = state[field.dataset.moreInput] || '';
+    });
+  }
+}
+
+function setAddToolValue(kind, value) {
+  const tool = body.querySelector(`.add-tool[data-add-detail="${kind}"]`);
+  if (!tool) return;
+  tool.setAttribute('aria-label', `${kind}：${value}`);
+  tool.setAttribute('title', `${kind} · ${value}`);
+  if (kind === '优先级') {
+    addPriorityState.value = value;
+    addPriorityState.confirmed = true;
+    tool.classList.remove(...Object.values(priorityToolClasses));
+    tool.classList.add(priorityToolClasses[value]);
+  }
+  if (kind === '标签') {
+    addTagState.value = value;
+    addTagState.confirmed = true;
+    tool.classList.remove(...Object.values(tagToolClasses));
+    if (tagToolClasses[value]) tool.classList.add(tagToolClasses[value]);
+  }
+  const defaultValue = kind === '时间安排'
+    ? `今天 · ${addKind === 'task' ? '不设时间' : '09:00–09:30'} · 不提醒`
+    : kind === '优先级' ? '中'
+    : kind === '标签' ? '无标签'
+    : '';
+  tool.classList.toggle('active', value !== defaultValue);
+  if (kind === '时间安排') tool.classList.toggle('required', addKind === 'schedule' && value.includes('--:--'));
+}
+
+function currentTimelineItem() {
+  if (empty) return null;
+  const timeline = visibleItems();
+  if (!timeline.length) return null;
+  return timeline[normalizeIndex(timeline)];
+}
+
+function aiCommandsFor(item) {
+  if (!item) return ['规划今天', '添加待办', '添加日程'];
+  if (item.kind === 'task') return ['拆成步骤', '安排专注', '调整截止'];
+  return item.icon === 'video'
+    ? ['会前准备', '改期建议', '会后跟进']
+    : ['规划出发', '改期建议', '设置提醒'];
+}
+
+function activeModelLabel() {
+  return aiModels[selectedModel].name;
+}
+
+function fullModelLabel(model = aiModels[selectedModel]) {
+  return `${model.provider} / ${model.name}`;
+}
+
+function renderModelControl(disabled = false) {
+  return `<button type='button' class='ai-model-toggle' data-model-toggle aria-label='切换模型，当前为${fullModelLabel()}' aria-haspopup='menu' aria-expanded='${aiModelOpen}' ${disabled ? 'disabled' : ''}><span>${activeModelLabel()}</span>${icon('down', 9)}</button>`;
+}
+
+function renderModelMenu() {
+  if (!aiModelOpen) return '';
+  const providers = [...new Set(aiModels.map(model => model.provider))];
+  const groups = providers.map(provider => {
+    const models = aiModels
+      .map((model, modelIndex) => ({ ...model, modelIndex }))
+      .filter(model => model.provider === provider);
+    return `<section class='ai-model-group' role='group' aria-label='${provider}'><strong class='ai-model-provider'>${provider}</strong>${models.map(model => `<button type='button' class='ai-model-option${model.modelIndex === selectedModel ? ' active' : ''}' data-model-select='${model.modelIndex}' role='menuitemradio' aria-checked='${model.modelIndex === selectedModel}'><span>${model.name}</span><small>${model.modelIndex === selectedModel ? '✓' : ''}</small></button>`).join('')}</section>`;
+  }).join('');
+  return `<div class='ai-model-menu' role='menu' aria-label='按供应商选择模型'>${groups}<button type='button' class='ai-model-manage' data-model-manage><span>管理模型…</span>${icon('right', 9)}</button></div>`;
+}
+
+function renderAiHeader(item, busy = false) {
+  const contextTitle = item ? `针对：${item.title}` : '从今天开始规划';
+  const contextMeta = item ? `${itemType(item)} · ${itemTime(item)}` : '还没有待办或日程';
+  const endControl = busy
+    ? `<button type='button' class='ai-back' data-ai-cancel aria-label='取消 AI 请求'>${icon('minus', 10)}<span>取消</span></button>`
+    : aiBackButton();
+  return `<div class='ai-context-row'><span class='ai-mark'>${icon('spark', 11)}</span><span class='ai-context-copy'><strong>${contextTitle}</strong><small>${contextMeta}</small></span>${endControl}</div>`;
+}
+
+function clearAiRunTimers() {
+  aiRunTimers.forEach(clearTimeout);
+  aiRunTimers = [];
+}
+
+function cancelAiRun() {
+  clearAiRunTimers();
+  Object.assign(aiRun, { busy: false, phase: 'idle', step: 0, logOpen: false, prompt: '', answer: '' });
+  renderAi();
+  showToast('已取消本次处理');
+}
+
+function aiAnswerFor(item) {
+  if (!item) return '我会先按截止时间整理今天，再把第一件可执行的事项放到最前面。';
+  if (item.kind === 'task') return `我建议先拆出「${item.title}」的下一步，再安排一段不被打断的专注时间。`;
+  if (item.icon === 'video') return '我建议把会前准备拆成目标、数据和提问三步，并在 10:00–10:20 集中完成。';
+  return `我建议为「${item.title}」预留出发时间，并在出发前设置一次提醒。`;
+}
+
+function finishAiRun() {
+  if (!aiRun.busy || mode !== 'ai') return;
+  Object.assign(aiRun, { busy: false, phase: 'done', step: aiToolEvents(currentTimelineItem()).length, logOpen: false });
+  renderAi();
+  showToast('方案已生成，等待应用');
+}
+
+function streamAiAnswer(target, offset = 0) {
+  if (!aiRun.busy || aiRun.phase !== 'stream' || mode !== 'ai') return;
+  const nextOffset = Math.min(offset + 2, target.length);
+  aiRun.answer = target.slice(0, nextOffset);
+  const answer = body.querySelector('[data-ai-stream-text]');
+  if (answer) answer.textContent = aiRun.answer;
+  if (nextOffset < target.length) {
+    aiRunTimers.push(setTimeout(() => streamAiAnswer(target, nextOffset), 55));
+    return;
+  }
+  aiRunTimers.push(setTimeout(finishAiRun, 420));
+}
+
+function startAiRun(prompt) {
+  if (aiRun.busy) return;
+  clearAiRunTimers();
+  aiModelOpen = false;
+  const tools = aiToolEvents(currentTimelineItem());
+  Object.assign(aiRun, { busy: true, phase: 'tools', step: 0, logOpen: false, prompt, answer: '' });
+  renderAi();
+  tools.slice(1).forEach((_, offset) => {
+    aiRunTimers.push(setTimeout(() => {
+      if (!aiRun.busy || mode !== 'ai') return;
+      aiRun.step = offset + 1;
+      renderAi();
+    }, 900 + offset * 1000));
+  });
+  aiRunTimers.push(setTimeout(() => {
+    if (!aiRun.busy || mode !== 'ai') return;
+    Object.assign(aiRun, { phase: 'stream', step: tools.length, logOpen: false, answer: '' });
+    renderAi();
+    streamAiAnswer(aiAnswerFor(currentTimelineItem()));
+  }, 900 + Math.max(0, tools.length - 1) * 1000));
+}
+
+function aiToolEvents(item) {
+  const proposalLabel = item?.kind === 'task' ? '生成修改事项建议' : '生成新增事项建议';
+  return [
+    { kind: '工具', label: '读取事项和标签', title: '正在读取事项和标签', detail: item ? `读取「${item.title}」相关信息` : '读取今天的安排', result: '已读取相关事项' },
+    { kind: '工具', label: proposalLabel, title: `正在${proposalLabel}`, detail: '只生成建议，确认前不会修改事项', result: '建议已生成' }
+  ];
+}
+
+function renderAiLog(item, complete = false) {
+  const stages = aiToolEvents(item);
+  const observed = complete || aiRun.phase !== 'tools' ? stages : stages.slice(0, Math.min(aiRun.step + 1, stages.length));
+  return `<ol class='ai-run-log' aria-label='AI 处理记录'>${observed.map((stage, stepIndex) => {
+    const done = complete || aiRun.phase !== 'tools' || stepIndex < aiRun.step;
+    const active = !complete && aiRun.phase === 'tools' && stepIndex === aiRun.step;
+    const detail = done ? stage.result : active ? '进行中' : '等待';
+    return `<li class='${active ? 'active' : ''}'><span class='ai-run-kind'>${stage.kind}</span><span class='ai-run-label'>${stage.label}</span><small class='ai-run-detail'>${detail}</small><span class='ai-run-status'>${done ? '✓' : active ? '•' : '·'}</span></li>`;
+  }).join('')}</ol>`;
+}
+
+function renderAiWorking() {
+  const item = currentTimelineItem();
+  const stages = aiToolEvents(item);
+  windowEl.classList.remove('ai-model-open');
+  if (aiRun.logOpen) {
+    body.innerHTML = `<section class='ai-surface ai-unified is-working is-log' aria-label='AI 处理记录'>${renderAiHeader(item, true)}${renderAiLog(item)}<div class='ai-working-footer'><span class='ai-progress-note' title='只展示操作与结果，不展示内部推理'>操作记录 · 不含内部推理</span><button type='button' class='ai-log-toggle ai-log-back' data-ai-log>返回进度</button>${renderModelControl(true)}</div></section>`;
+    return;
+  }
+  if (aiRun.phase === 'stream') {
+    body.innerHTML = `<section class='ai-surface ai-unified is-working is-streaming' aria-label='AI 正在流式回复' aria-live='polite'>${renderAiHeader(item, true)}<div class='ai-stream-main'><div class='ai-stream-head'><span class='ai-stream-pulse' aria-hidden='true'></span><strong>AI 正在回复</strong><small>流式</small></div><p class='ai-stream-answer'><span data-ai-stream-text>${aiRun.answer}</span><i class='ai-stream-caret' aria-hidden='true'></i></p></div><div class='ai-working-footer'><span class='ai-progress-note'>${icon('spark', 9)}正在生成可确认方案</span><button type='button' class='ai-log-toggle' data-ai-log>处理记录</button>${renderModelControl(true)}</div></section>`;
+    return;
+  }
+  const stage = stages[aiRun.step];
+  body.innerHTML = `<section class='ai-surface ai-unified is-working' aria-label='AI 正在处理' aria-live='polite'>${renderAiHeader(item, true)}<div class='ai-operation-main'><span class='ai-spinner' aria-hidden='true'></span><span class='ai-operation-copy'><em class='ai-operation-kind'>${stage.kind}</em><strong>${stage.title}</strong><small>${stage.detail}</small></span><span class='ai-loop-status'>执行中</span></div><div class='ai-working-footer'><span class='ai-loop-track' aria-label='执行时间与工具次数不固定'><i></i></span><span class='ai-loop-count'>已完成 ${aiRun.step} 项</span><button type='button' class='ai-log-toggle' data-ai-log>处理记录</button>${renderModelControl(true)}</div></section>`;
+}
+
+function renderAiResult() {
+  const item = currentTimelineItem();
+  const suggestion = item && aiSuggestions[item.title];
+  windowEl.classList.toggle('ai-model-open', aiModelOpen);
+  if (aiRun.logOpen) {
+    body.innerHTML = `<section class='ai-surface ai-unified is-result is-log' aria-label='已完成的 AI 处理记录'>${renderAiHeader(item)}${renderAiLog(item, true)}<div class='ai-result-footer'><span class='ai-progress-note' title='只展示操作与结果，不展示内部推理'>操作记录 · 不含内部推理</span><button type='button' class='ai-log-toggle ai-log-back' data-ai-log>返回回答</button>${renderModelControl()}</div></section>`;
+  } else {
+    const change = suggestion?.change || '生成今日安排草案';
+    const time = suggestion?.time || '确认后再写入';
+    body.innerHTML = `<section class='ai-surface ai-unified is-result' aria-label='AI 回复与待确认方案'>${renderAiHeader(item)}<div class='ai-result-main'><p class='ai-result-answer'><span class='ai-answer-badge'>AI 回复</span><span>${aiRun.answer || aiAnswerFor(item)}</span></p><div class='ai-result-change'><span class='ai-change-icon'>＋</span><span class='ai-change-copy'><strong>${change}</strong><small>${time}</small></span><button type='button' class='ai-result-action' data-ai-result-adjust>调整</button><button type='button' class='ai-result-action primary' data-ai-result-apply>应用</button></div></div><div class='ai-result-footer'><button type='button' class='ai-log-toggle' data-ai-log>处理记录 · ${aiToolEvents(item).length}</button><span class='ai-result-state'>等待应用</span>${renderModelControl()}</div></section>`;
+  }
+  const surface = body.querySelector('.ai-unified');
+  surface.classList.toggle('model-open', aiModelOpen);
+  surface.insertAdjacentHTML('beforeend', renderModelMenu());
+}
+
+function renderAi() {
+  windowEl.classList.toggle('ai-model-open', aiModelOpen);
+  if (aiRun.busy) {
+    renderAiWorking();
+    return;
+  }
+  if (aiRun.phase === 'done') {
+    renderAiResult();
+    return;
+  }
+  const item = currentTimelineItem();
+  const commands = aiCommandsFor(item);
+  const contextTitle = item ? `针对：${item.title}` : '从今天开始规划';
+  const contextMeta = item ? `${itemType(item)} · ${itemTime(item)}` : '还没有待办或日程';
+  body.innerHTML = `<section class="ai-surface ai-unified" aria-label="AI 助手"><div class="ai-context-row"><span class="ai-mark">${icon('spark', 11)}</span><span class="ai-context-copy"><strong>${contextTitle}</strong><small>${contextMeta}</small></span>${aiBackButton()}</div><form class="ai-compose"><input aria-label="AI 对话输入" placeholder="一句话告诉 AI 你想怎么处理"><button class="ai-send" aria-label="生成方案预览">${icon('send', 12)}</button></form><div class="ai-quick-row" aria-label="针对当前事项的快捷指令"><span class="ai-quick-label">快捷指令</span>${commands.map(command => `<button class="ai-shortcut" data-ai-command="${command}">${command}</button>`).join('')}${renderModelControl()}</div></section>`;
+  const surface = body.querySelector('.ai-unified');
+  surface.classList.toggle('model-open', aiModelOpen);
+  surface.insertAdjacentHTML('beforeend', renderModelMenu());
+}
+
+function renderSuggestion() {
+  const item = currentTimelineItem();
+  const suggestion = item && aiSuggestions[item.title];
+  if (!suggestion) {
+    mode = 'home';
+    render();
+    return;
+  }
+  body.innerHTML = `<button type="button" class="home-insight suggestion-anchor" data-mode="home" aria-expanded="true" aria-label="收起 AI 建议：${suggestion.title}"><span class="home-insight-label">AI 建议</span><strong class="home-insight-title">${suggestion.title}</strong><span class="home-insight-context">${suggestion.context}</span><span class="home-insight-action">收起</span></button><section class="suggestion-preview" aria-label="AI 建议变更预览"><div class="suggestion-plan"><strong>${suggestion.change}</strong><small>${suggestion.time}</small></div><div class="suggestion-actions"><button class="suggestion-action" data-suggestion-ignore>忽略</button><button class="suggestion-action" data-suggestion-adjust>调整</button><button class="suggestion-action primary" data-suggestion-apply aria-label="应用安排">应用</button></div></section>`;
+}
+
+function render() {
+  windowEl.scrollTop = 0;
+  closeAddSelector();
+  windowEl.classList.remove('ai-model-open');
+  windowEl.classList.toggle('suggestion-expanded', mode === 'suggestion');
+  body.classList.toggle('suggestion-open', mode === 'suggestion');
+  body.classList.remove('home-with-insight');
+  actions();
+
+  if (mode === 'add') {
+    const isTask = addKind === 'task';
+    const inputLabel = isTask ? '待办标题' : '日程名称';
+    const placeholder = isTask ? '输入待办标题' : '输入日程名称';
+    const more = moreSummary(addKind);
+    const tools = isTask
+      ? [
+          { label: '时间安排', value: '今天 · 不设时间 · 不提醒', iconName: 'calendar' },
+          { label: '优先级', value: addPriorityState.value, iconName: 'flag', priority: addPriorityState.confirmed ? addPriorityState.value : '' },
+          { label: '标签', value: addTagState.value, iconName: 'tag', tag: addTagState.confirmed ? addTagState.value : '' },
+          { label: '更多', value: more.value, iconName: 'more', active: more.active }
+        ]
+      : [
+          { label: '时间安排', value: '今天 · 09:00–09:30 · 不提醒', iconName: 'calendar' },
+          { label: '标签', value: addTagState.value, iconName: 'tag', tag: addTagState.confirmed ? addTagState.value : '' },
+          { label: '更多', value: more.value, iconName: 'more', active: more.active }
+        ];
+    const toolMarkup = tools.map(tool => `<button type="button" class="add-tool${tool.active ? ' active' : ''}${tool.required ? ' required' : ''}${tool.priority ? ` ${priorityToolClasses[tool.priority]}` : ''}${tool.tag && tagToolClasses[tool.tag] ? ` ${tagToolClasses[tool.tag]}` : ''}" data-add-detail="${tool.label}" aria-label="${tool.label}：${tool.value}" aria-expanded="false" title="${tool.label} · ${tool.value}">${icon(tool.iconName, 14, Boolean(tool.priority || (tool.tag && tagToolClasses[tool.tag])))}</button>`).join('');
+    body.innerHTML = `<section class="compact-panel add-panel" aria-label="新增${isTask ? '待办' : '日程'}"><div class="panel-head">${icon('plus', 17)}新增事项<span class="add-type-switch" role="group" aria-label="新增类型"><button type="button" class="add-type-option" data-add-kind="task" aria-pressed="${isTask}">待办</button><button type="button" class="add-type-option" data-add-kind="schedule" aria-pressed="${!isTask}">日程</button></span><button class="back" data-mode="home">返回</button></div><form class="inline-form"><input aria-label="${inputLabel}" placeholder="${placeholder}"><button>创建</button></form><div class="add-tools" role="group" aria-label="${isTask ? '待办' : '日程'}设置">${toolMarkup}</div></section>`;
+    return;
+  }
+
+  if (mode === 'ai') {
+    renderAi();
+    return;
+  }
+
+  if (mode === 'suggestion') {
+    renderSuggestion();
+    return;
+  }
+
+  const timeline = visibleItems();
+  if (empty || !timeline.length) {
+    body.innerHTML = `<div class="task-stack"><div class="task-front empty-front"><span class="empty-symbol">${icon('plus')}</span><span class="task-copy"><strong class="task-title">今天还没有安排</strong><span class="task-meta">新增一项待办或日程</span></span></div></div>${quickActions()}`;
+    return;
+  }
+
+  const currentIndex = normalizeIndex(timeline);
+  const item = timeline[currentIndex];
+  const itemIndex = items.indexOf(item);
+  const suggestion = aiSuggestions[item.title];
+  const showSuggestion = suggestion && !hiddenSuggestions.has(item.title);
+  const itemControl = item.kind === 'task'
+    ? `<button class="check" data-complete="${itemIndex}" aria-label="完成待办 ${item.title}"></button>`
+    : `<button class="schedule-action" data-item-action="${itemIndex}" aria-label="${item.action} ${item.title}" title="${item.action}">${icon(item.icon, 14)}</button>`;
+
+  body.classList.toggle('home-with-insight', showSuggestion);
+  const suggestionMarkup = showSuggestion ? `<button class="home-insight" data-suggestion-open aria-expanded="false" aria-label="查看 AI 建议：${suggestion.title}"><span class="home-insight-label">AI 建议</span><strong class="home-insight-title">${suggestion.title}</strong><span class="home-insight-context">${suggestion.context}</span><span class="home-insight-action">查看</span></button>` : '';
+  body.innerHTML = `${suggestionMarkup}<div class="task-stack"><button class="stack-sheet" data-next tabindex="-1" aria-label="下一项安排"></button><span class="stack-sheet middle"></span><section class="task-front" data-kind="${item.kind}">${itemControl}<button class="task-open" data-open="${itemIndex}" title="打开${itemType(item)}"><span class="task-kicker">${itemType(item)} · ${itemTime(item)}</span><strong class="task-title">${item.title}</strong><span class="task-meta">${item.meta}</span></button><div class="deck-pager" aria-label="安排分页"><span>${currentIndex + 1} / ${timeline.length}</span><button class="page-prev" data-prev aria-label="上一项安排">${icon('down', 10)}</button><button data-next aria-label="下一项安排">${icon('down', 10)}</button></div></section></div>${quickActions()}`;
+}
+
+function toggleWindow() {
+  closeAddSelector();
+  const expanding = !windowEl.classList.contains('expanded');
+  const phase = expanding ? 'is-expanding' : 'is-collapsing';
+  windowEl.classList.remove('is-expanding', 'is-collapsing');
+  windowEl.classList.add(phase);
+  windowEl.classList.toggle('expanded', expanding);
+  motion.textContent = expanding ? '演示收起' : '演示展开';
+  actions();
+  setTimeout(() => windowEl.classList.remove(phase), 280);
+}
+
+document.addEventListener('click', event => {
+  const openTimePickerElement = body.querySelector('[data-time-picker]');
+  if (openTimePickerElement && !event.target.closest('[data-time-picker],[data-time-trigger]')) {
+    closeTimePicker(openTimePickerElement.closest('.add-selector'));
+  }
+  const control = event.target.closest('[data-window]');
+  if (control) {
+    const action = control.dataset.window;
+    if (action === 'pin') {
+      pinned = !pinned;
+      showToast(pinned ? '窗口已置顶' : '已取消置顶');
+    } else if (action === 'dock') {
+      dock = !dock;
+      showToast(dock ? '悬浮入口已显示' : '悬浮入口已隐藏');
+    } else if (action === 'size') {
+      toggleWindow();
+    } else if (action === 'settings') {
+      showToast('设置将在完整窗口中打开');
+    } else {
+      showToast('主界面将隐藏');
+    }
+    actions();
+    return;
+  }
+
+  if (event.target.closest('[data-model-toggle]')) {
+    aiModelOpen = !aiModelOpen;
+    renderAi();
+    return;
+  }
+
+  const modelSelect = event.target.closest('[data-model-select]');
+  if (modelSelect) {
+    selectedModel = Number(modelSelect.dataset.modelSelect);
+    aiModelOpen = false;
+    renderAi();
+    showToast(`已切换到${fullModelLabel()}`);
+    return;
+  }
+
+  if (event.target.closest('[data-model-manage]')) {
+    aiModelOpen = false;
+    renderAi();
+    showToast('将在完整设置中管理模型');
+    return;
+  }
+
+  if (event.target.closest('[data-ai-cancel]')) {
+    cancelAiRun();
+    return;
+  }
+
+  if (event.target.closest('[data-ai-log]')) {
+    aiRun.logOpen = !aiRun.logOpen;
+    renderAi();
+    return;
+  }
+
+  if (event.target.closest('[data-ai-result-adjust]')) {
+    const item = currentTimelineItem();
+    const previousPrompt = aiRun.prompt;
+    Object.assign(aiRun, { busy: false, phase: 'idle', step: 0, logOpen: false, answer: '' });
+    renderAi();
+    const input = body.querySelector('.ai-compose input');
+    if (input) input.value = previousPrompt ? `调整：${previousPrompt}` : `调整「${item?.title || '今日安排'}」方案`;
+    focusCompactInput();
+    return;
+  }
+
+  if (event.target.closest('[data-ai-result-apply]')) {
+    const item = currentTimelineItem();
+    if (item) hiddenSuggestions.add(item.title);
+    Object.assign(aiRun, { busy: false, phase: 'idle', step: 0, logOpen: false, prompt: '', answer: '' });
+    mode = 'home';
+    render();
+    showToast('方案已应用，仍可撤销');
+    return;
+  }
+
+  const addType = event.target.closest('[data-add-kind]');
+  if (addType) {
+    addKind = addType.dataset.addKind;
+    render();
+    setTimeout(focusCompactInput, 0);
+    return;
+  }
+
+  const addDetail = event.target.closest('[data-add-detail]');
+  if (addDetail) {
+    openAddSelector(addDetail.dataset.addDetail);
+    return;
+  }
+
+  if (event.target.closest('[data-add-selector-close]')) {
+    closeAddSelector();
+    return;
+  }
+
+  const timeTrigger = event.target.closest('[data-time-trigger]');
+  if (timeTrigger) {
+    openTimePicker(timeTrigger);
+    return;
+  }
+
+  if (event.target.closest('[data-time-picker-close]')) {
+    closeTimePicker(event.target.closest('.add-selector'));
+    return;
+  }
+
+  const timeValue = event.target.closest('.project-time-value[data-time-value]');
+  if (timeValue) {
+    const picker = timeValue.closest('[data-time-picker]');
+    setTimePickerValue(picker, timeValue.dataset.timeValue);
+    return;
+  }
+
+  if (event.target.closest('[data-time-now]')) {
+    const picker = event.target.closest('[data-time-picker]');
+    setTimePickerValue(picker, nextHalfHourValue());
+    centerSelectedTime(picker);
+    return;
+  }
+
+  if (event.target.closest('[data-time-apply]')) {
+    applyTimePicker(event.target.closest('[data-time-picker]'));
+    return;
+  }
+
+  const customReminder = event.target.closest('[data-custom-reminder]');
+  if (customReminder) {
+    openCustomReminder(customReminder);
+    return;
+  }
+
+  if (event.target.closest('[data-custom-reminder-close]')) {
+    closeCustomReminder(event.target.closest('.add-selector'));
+    return;
+  }
+
+  const reminderUnit = event.target.closest('[data-reminder-unit]');
+  if (reminderUnit) {
+    const popover = reminderUnit.closest('[data-custom-reminder-popover]');
+    popover.dataset.unit = reminderUnit.dataset.reminderUnit;
+    popover.dataset.amount = reminderUnit.dataset.reminderUnit === '分钟' ? '30' : '1';
+    popover.querySelectorAll('[data-reminder-unit]').forEach(button => button.classList.toggle('is-selected', button === reminderUnit));
+    updateCustomReminderPreview(popover);
+    return;
+  }
+
+  const reminderStep = event.target.closest('[data-reminder-step]');
+  if (reminderStep) {
+    const popover = reminderStep.closest('[data-custom-reminder-popover]');
+    const unit = popover.dataset.unit;
+    const step = unit === '分钟' ? 5 : 1;
+    const max = unit === '分钟' ? 120 : unit === '小时' ? 24 : 30;
+    const amount = Number(popover.dataset.amount) + Number(reminderStep.dataset.reminderStep) * step;
+    popover.dataset.amount = String(Math.max(1, Math.min(max, amount)));
+    updateCustomReminderPreview(popover);
+    return;
+  }
+
+  if (event.target.closest('[data-custom-reminder-apply]')) {
+    const popover = event.target.closest('[data-custom-reminder-popover]');
+    const selector = popover.closest('.add-selector');
+    const trigger = selector.querySelector('[data-custom-reminder]');
+    const value = `提前 ${popover.dataset.amount} ${popover.dataset.unit}提醒`;
+    selector.dataset.selectedReminder = value;
+    selector.querySelectorAll('[data-choice-group="reminder"]').forEach(choice => choice.classList.remove('is-selected'));
+    trigger.classList.add('is-selected');
+    trigger.setAttribute('aria-label', `自定义提醒：${value}`);
+    closeCustomReminder(selector);
+    return;
+  }
+
+  const progressToggle = event.target.closest('[data-more-progress-toggle]');
+  if (progressToggle) {
+    const enabled = progressToggle.getAttribute('aria-pressed') !== 'true';
+    progressToggle.setAttribute('aria-pressed', enabled);
+    progressToggle.setAttribute('aria-label', `${enabled ? '关闭' : '开启'}进度维护`);
+    const selector = progressToggle.closest('.add-selector');
+    const progress = progressToggle.closest('.more-progress');
+    const details = progress.querySelector('.more-progress-details');
+    const range = selector.querySelector('[data-more-progress]');
+    selector.classList.toggle('progress-expanded', enabled);
+    windowEl.classList.toggle('progress-expanded', enabled);
+    progress.classList.toggle('is-tracking', enabled);
+    details.setAttribute('aria-hidden', String(!enabled));
+    range.disabled = !enabled;
+    if (enabled) range.focus({ preventScroll: true });
+    return;
+  }
+
+  const timeClear = event.target.closest('[data-time-clear]');
+  if (timeClear) {
+    const selector = timeClear.closest('.add-selector');
+    const trigger = selector.querySelector('[data-time-trigger="due"]');
+    trigger.dataset.timeValue = '';
+    trigger.querySelector('span').textContent = '--:--';
+    trigger.setAttribute('aria-label', '待办具体时间 未设置');
+    closeTimePicker(selector);
+    closeCustomReminder(selector);
+    syncSelectedTime(selector);
+    return;
+  }
+
+  const selectorChoice = event.target.closest('[data-add-selector-choice]');
+  if (selectorChoice) {
+    const selector = selectorChoice.closest('.add-selector');
+    closeTimePicker(selector);
+    closeCustomReminder(selector);
+    const group = selectorChoice.dataset.choiceGroup;
+    const choices = group
+      ? selector.querySelectorAll(`[data-choice-group="${group}"]`)
+      : selector.querySelectorAll('[data-add-selector-choice]');
+    choices.forEach(choice => choice.classList.remove('is-selected'));
+    selectorChoice.classList.add('is-selected');
+    if (group === 'date') selector.dataset.selectedDate = selectorChoice.dataset.value;
+    else if (group === 'time') selector.dataset.selectedTime = selectorChoice.dataset.value;
+    else if (group === 'reminder') selector.dataset.selectedReminder = selectorChoice.dataset.value;
+    else selector.dataset.selectedValue = selectorChoice.dataset.value;
+    return;
+  }
+
+  if (event.target.closest('[data-new-tag]')) {
+    showToast('打开新建标签输入');
+    return;
+  }
+
+  const selectorClear = event.target.closest('[data-add-selector-clear]');
+  if (selectorClear) {
+    const selector = selectorClear.closest('.add-selector');
+    const kind = selector.dataset.selectorKind;
+    if (kind === '更多') {
+      const moreKind = selector.dataset.moreKind;
+      clearMoreState(moreKind);
+      updateMoreTool(moreKind);
+      closeAddSelector();
+      showToast(`已清除${moreKind === 'task' ? '待办' : '日程'}更多设置`);
+      return;
+    }
+    const value = selectorClear.dataset.value;
+    if (kind === '时间安排') {
+      if (addKind === 'task') Object.assign(addDateTimeState.task, { date: '今天', time: '不设时间', reminder: '不提醒', due: '' });
+      else Object.assign(addDateTimeState.schedule, { date: '今天', time: '09:00–09:30', reminder: '不提醒', start: '09:00', end: '09:30' });
+    }
+    setAddToolValue(kind, value);
+    closeAddSelector();
+    showToast(`已清除${kind}`);
+    return;
+  }
+
+  const selectorApply = event.target.closest('[data-add-selector-apply]');
+  if (selectorApply) {
+    const selector = selectorApply.closest('.add-selector');
+    const kind = selector.dataset.selectorKind;
+    if (kind === '更多') {
+      const moreKind = selector.dataset.moreKind;
+      if (moreKind === 'task') {
+        const trackProgress = selector.querySelector('[data-more-progress-toggle]').getAttribute('aria-pressed') === 'true';
+        Object.assign(addMoreState.task, {
+          trackProgress,
+          progress: trackProgress ? Number(selector.querySelector('[data-more-progress]').value) : 0,
+          note: selector.querySelector('[data-more-input="note"]').value.trim()
+        });
+      } else {
+        selector.querySelectorAll('[data-more-input]').forEach(field => {
+          addMoreState.schedule[field.dataset.moreInput] = field.value.trim();
+        });
+      }
+      updateMoreTool(moreKind);
+      const summary = moreSummary(moreKind).value;
+      closeAddSelector();
+      showToast(`已保存更多设置：${summary}`);
+      return;
+    }
+    const value = kind === '时间安排'
+      ? `${selector.dataset.selectedDate} · ${selector.dataset.selectedTime} · ${selector.dataset.selectedReminder}`
+      : selector.dataset.selectedValue;
+    if (kind === '时间安排') {
+      const state = addDateTimeState[addKind];
+      Object.assign(state, {
+        date: selector.dataset.selectedDate,
+        time: selector.dataset.selectedTime,
+        reminder: selector.dataset.selectedReminder
+      });
+      if (addKind === 'task') state.due = selector.querySelector('[data-time-trigger="due"]').dataset.timeValue;
+      else {
+        state.start = selector.querySelector('[data-time-trigger="start"]').dataset.timeValue;
+        state.end = selector.querySelector('[data-time-trigger="end"]').dataset.timeValue;
+      }
+    }
+    setAddToolValue(kind, value);
+    closeAddSelector();
+    showToast(`已设置${kind}：${value}`);
+    return;
+  }
+
+  const aiCommand = event.target.closest('[data-ai-command]');
+  if (aiCommand) {
+    startAiRun(aiCommand.dataset.aiCommand);
+    return;
+  }
+
+  if (event.target.closest('[data-suggestion-open]')) {
+    mode = 'suggestion';
+    render();
+    return;
+  }
+
+  const suggestionClose = event.target.closest('.suggestion-anchor[data-mode="home"]');
+  if (suggestionClose) {
+    const preview = body.querySelector('.suggestion-preview');
+    if (!preview || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      mode = 'home';
+      render();
+      return;
+    }
+    suggestionClose.disabled = true;
+    preview.classList.add('is-closing');
+    modeTransitionTimer = setTimeout(() => {
+      mode = 'home';
+      render();
+    }, 220);
+    return;
+  }
+
+  if (event.target.closest('[data-suggestion-apply]')) {
+    const item = currentTimelineItem();
+    if (item) hiddenSuggestions.add(item.title);
+    mode = 'home';
+    render();
+    showToast('建议已应用，新增事项仍可撤销');
+    return;
+  }
+
+  if (event.target.closest('[data-suggestion-adjust]')) {
+    const item = currentTimelineItem();
+    const suggestion = item && aiSuggestions[item.title];
+    transitionMode('ai', () => {
+      const input = body.querySelector('input');
+      if (input && suggestion) input.value = `调整建议：${suggestion.title}`;
+      focusCompactInput();
+    });
+    return;
+  }
+
+  if (event.target.closest('[data-suggestion-ignore]')) {
+    const item = currentTimelineItem();
+    if (item) hiddenSuggestions.add(item.title);
+    mode = 'home';
+    render();
+    showToast('已忽略这条建议');
+    return;
+  }
+
+  const switcher = event.target.closest('[data-mode]');
+  if (switcher) {
+    const nextMode = switcher.dataset.mode;
+    transitionMode(nextMode, () => {
+      if (nextMode === 'ai' || nextMode === 'add') focusCompactInput();
+    });
+    return;
+  }
+
+  const complete = event.target.closest('[data-complete]');
+  if (complete) {
+    const item = items[Number(complete.dataset.complete)];
+    item.done = true;
+    index = Math.min(index, Math.max(visibleItems().length - 1, 0));
+    showToast(`已完成待办「${item.title}」`);
+    render();
+    return;
+  }
+
+  const itemAction = event.target.closest('[data-item-action]');
+  if (itemAction) {
+    const item = items[Number(itemAction.dataset.itemAction)];
+    showToast(`${item.action}「${item.title}」`);
+    return;
+  }
+
+  const open = event.target.closest('[data-open]');
+  if (open) {
+    const item = items[Number(open.dataset.open)];
+    showToast(`打开${itemType(item)}「${item.title}」`);
+    return;
+  }
+
+  if (event.target.closest('[data-prev]')) {
+    cycle(-1);
+    return;
+  }
+  if (event.target.closest('[data-next]')) cycle(1);
+});
+
+body.addEventListener('input', event => {
+  if (!event.target.matches('[data-more-progress]')) return;
+  const output = event.target.closest('.add-selector').querySelector('[data-more-progress-output]');
+  output.textContent = `${event.target.value}%`;
+});
+
+body.addEventListener('wheel', event => {
+  if (!event.target.closest('.task-stack')) return;
+  event.preventDefault();
+  cycle(event.deltaY >= 0 ? 1 : -1);
+}, { passive: false });
+
+body.addEventListener('keydown', event => {
+  const timePicker = body.querySelector('[data-time-picker]');
+  if (event.key === 'Escape' && timePicker) {
+    event.preventDefault();
+    closeTimePicker(timePicker.closest('.add-selector'));
+    return;
+  }
+  if (event.key === 'Escape' && aiModelOpen) {
+    event.preventDefault();
+    aiModelOpen = false;
+    renderAi();
+    return;
+  }
+  if (event.key === 'Escape' && aiRun.logOpen) {
+    event.preventDefault();
+    aiRun.logOpen = false;
+    renderAi();
+    return;
+  }
+  if (event.key === 'Escape' && body.querySelector('.add-selector')) {
+    event.preventDefault();
+    closeAddSelector();
+    return;
+  }
+  if (!event.target.closest('[data-next],[data-prev]')) return;
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    cycle(event.key === 'ArrowDown' ? 1 : -1);
+  }
+});
+
+body.addEventListener('submit', event => {
+  event.preventDefault();
+  const value = event.target.querySelector('input')?.value.trim();
+  if (!value) return;
+  if (mode === 'ai') {
+    startAiRun(value);
+    return;
+  }
+  showToast(`已添加${addKind === 'schedule' ? '日程' : '待办'}「${value}」`);
+  mode = 'home';
+  render();
+});
+
+motion.onclick = toggleWindow;
+document.getElementById('next').onclick = () => {
+  mode = 'home';
+  cycle(1);
+};
+document.getElementById('empty').onclick = event => {
+  empty = !empty;
+  mode = 'home';
+  event.currentTarget.setAttribute('aria-pressed', empty);
+  render();
+};
+document.getElementById('narrow').onclick = event => {
+  narrow = !narrow;
+  windowEl.classList.toggle('narrow', narrow);
+  event.currentTarget.setAttribute('aria-pressed', narrow);
+};
+document.getElementById('reset').onclick = () => {
+  clearTimeout(modeTransitionTimer);
+  clearTimeout(modeSettleTimer);
+  clearAiRunTimers();
+  modeTransitionBusy = false;
+  aiModelOpen = false;
+  selectedModel = 0;
+  Object.assign(aiRun, { busy: false, phase: 'idle', step: 0, logOpen: false, prompt: '', answer: '' });
+  body.classList.remove('mode-exit-to-ai', 'mode-enter-ai', 'mode-exit-from-ai', 'mode-enter-home', 'mode-exit-to-add', 'mode-enter-add', 'mode-exit-from-add', 'mode-enter-home-from-add');
+  index = 0;
+  mode = 'home';
+  addKind = 'task';
+  clearMoreState('task');
+  clearMoreState('schedule');
+  Object.assign(addDateTimeState.task, { date: '今天', time: '不设时间', reminder: '不提醒', due: '' });
+  Object.assign(addDateTimeState.schedule, { date: '今天', time: '09:00–09:30', reminder: '不提醒', start: '09:00', end: '09:30' });
+  Object.assign(addPriorityState, { value: '中', confirmed: false });
+  Object.assign(addTagState, { value: '无标签', confirmed: false });
+  empty = false;
+  narrow = false;
+  pinned = false;
+  dock = false;
+  items.forEach(item => {
+    if (item.kind === 'task') item.done = false;
+  });
+  hiddenSuggestions.clear();
+  windowEl.className = 'app-window';
+  motion.textContent = '演示展开';
+  document.getElementById('empty').setAttribute('aria-pressed', 'false');
+  document.getElementById('narrow').setAttribute('aria-pressed', 'false');
+  render();
+};
+
+render();
+</script>
+</html>
+
+

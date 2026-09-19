@@ -1,0 +1,22 @@
+Pixel-crisp UI design comp of a Windows desktop to-do widget panel, portrait orientation, full-bleed: the panel fills the entire frame edge to edge, no desktop wallpaper, no surrounding context. The widget is 440x700 CSS px rendered at 2x scale. Chinese UI, product name "To Do List".
+
+WORLD — frosted glass scene, committed fully: inside the panel lives its own soft aurora scene. Slow-breathing glowing light blobs in blue-violet #8b7fd4 and periwinkle-blue #7fb8d4 rise from the lower half of the panel over a pale lavender-white base #f0eef7, dreamy and luminous. Every surface floats over this aurora as frosted glass: translucent white fills with visible backdrop blur softening the glow behind each card, hairline specular highlight borders along the top edges, soft diffused drop shadows. All text is deep ink #1d2027 for contrast. Exactly one terracotta accent #b54f2b, used only for the current timeline node and the circular AI button.
+
+STRUCTURE, top to bottom, with these scale relationships:
+
+1) Titlebar — a slim frosted glass strip across the full width at top. Left: a small circular logo, a thin ink ring with a tiny red dot at its center. Right: three small monochrome ink icons in a row — a pin, a minus, a gear.
+
+2) "下一项" hero card — the brightest, most opaque frosted glass card in the panel, sitting directly under the titlebar with generous margin; it is the largest card, roughly 2.5x the height of a list row. Contents stacked inside: a small eyebrow label "下一项", then a very large bold time "15:00" dominating the card, then the task title "产品评审" in medium weight, then a small muted line "14:50 提醒".
+
+3) Timeline list — five task rows below the hero card, each row a smaller frosted glass card of equal height, connected by a thin vertical timeline line running down the left with a circle node per row:
+   - "09:30 写周报" — done: strikethrough text, a checked square checkbox at the node, muted and dimmed
+   - "11:00 设计走查" — open circle node
+   - "13:00 面试候选人" — open circle node
+   - "15:00 产品评审" — current: the circle node filled solid terracotta #b54f2b, this row's card slightly brighter and emphasized
+   - "17:30 健身" — open circle node
+
+4) Floating AI button — bottom-right corner of the panel, a circular terracotta #b54f2b button with a white four-point sparkle "✦" centered, soft shadow, floating above the glass list.
+
+TEXT — render this Chinese text exactly, crisp and legible even at small sizes: 下一项, 15:00, 产品评审, 14:50 提醒, 09:30 写周报, 11:00 设计走查, 13:00 面试候选人, 17:30 健身. No other words, no lorem ipsum, no English UI labels, no watermarks, no commercial claims.
+
+STYLE — high-fidelity modern UI design mockup, vector-sharp edges, precise 8px-grid spacing, dramatic aurora glow kept behind the glass so foreground text stays perfectly readable. Bold, atmospheric, refined.

@@ -1,0 +1,13 @@
+{
+  "locked": true,
+  "world": "whisper-mesh-gradient",
+  "defaultView": "rows",
+  "alternateView": "tiles",
+  "search": false,
+  "userNotes": "几乎纯米白，仅边角极淡的晨光；无搜索；今日计划大卡；默认紧凑行（进度同一行）；可切磁贴。",
+  "approved": true,
+  "comps": {
+    "rows": ".impeccable/mocks/comp-mesh-rows-whisper.png",
+    "tiles": ".impeccable/mocks/comp-mesh-tiles-whisper.png"
+  }
+}

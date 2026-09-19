@@ -1,0 +1,20 @@
+Pixel-crisp high-fidelity UI comp of a premium Windows desktop to-do widget panel, portrait, full-bleed: the panel itself fills the entire frame edge to edge. No desktop wallpaper, no window drop shadow, no surrounding environment, no device mockup chrome.
+
+Design language: the category standard for a premium to-do app, executed at the craft level of Things 3 and TickTick. Flat neutral light ground #FAFAFA across the whole panel; near-black ink #171923 for text; ONE restrained terracotta accent #B54F2B used only for the primary action button and the current task; hairline separators #E4E0DA. System sans-serif type (Segoe UI / PingFang SC character), generous whitespace, consistent 12px rounded corners on list rows, perfect alignment and optical rhythm. No gimmicks, no texture, no gradients, no glass effects — just immaculate spacing, hierarchy, and state clarity.
+
+Layout, top to bottom:
+
+1) Titlebar row: at left, a small circular logo mark — a thin dark ring with a small red dot inside it; at right, three small quiet gray line icons in a row: a pin, a minus, a gear.
+
+2) "Next up" section: a small muted-gray eyebrow label 「下一项」; beneath it a very large time 「15:00」 in near-black, the dominant element of the whole panel; beneath it the task title 「产品评审」 in medium weight near-black; beneath it a small muted line 「14:50 提醒」.
+
+3) A hairline separator, then a task list of exactly 5 rows. Each row: a small square checkbox at left, a time in small muted tabular numerals, then a Chinese title; rows have soft 12px rounded corners and even vertical rhythm.
+- Row 1 (done): checkbox filled with a terracotta check mark, time 09:30, title 「写周报」 in muted gray with strikethrough.
+- Row 2: empty checkbox, 11:00, 「设计走查」.
+- Row 3: empty checkbox, 13:00, 「面试候选人」.
+- Row 4 (current): time 「15:00」 and title 「产品评审」 in terracotta #B54F2B, square checkbox outlined in terracotta — the single accented row.
+- Row 5: empty checkbox, 17:30, 「健身」.
+
+4) Bottom-right corner: a circular floating action button in solid terracotta #B54F2B with a white four-point star ✦ glyph centered, one soft subtle shadow.
+
+All Chinese text rendered exactly as written: 下一项, 产品评审, 14:50 提醒, 写周报, 设计走查, 面试候选人, 健身. Crisp vector-sharp edges, flat color, balanced margins, calm premium software aesthetic. Portrait composition, the widget panel only.

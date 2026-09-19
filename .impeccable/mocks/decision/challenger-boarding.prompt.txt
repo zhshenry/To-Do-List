@@ -1,0 +1,14 @@
+Pixel-crisp portrait UI comp of a single Windows desktop widget panel for a Chinese to-do app named "To Do List", full-bleed: the panel IS the whole image, edge to edge, flat front view, no desktop wallpaper, no desk, no perspective, no outer shadow, no device frame. Portrait panel proportion about 440x700 dp. Design language: an airport departure gate information board fused with a segmented boarding pass — high-contrast neutral panels, labeled segments divided by hairline rules. Ground color #f4f4f2 warm off-white; primary ink #171923 near-black; ONE alert color terracotta #b54f2b reserved strictly for the current item and the action button; hairline segment rules #e4ded6. All times use tabular monospace numerals (IBM Plex Mono character); Chinese labels in a clean modern sans (Noto Sans SC character); razor-sharp flat vector rendering, crisp 2x screenshot look, no gradients, no noise, no 3D, no glass, no photo realism.
+
+Layout, top to bottom, with clear scale relationships:
+1) TITLEBAR strip at the very top: left, a small circular logo mark — a thin ink ring with a small terracotta-red dot inside the ring; right, three tiny ink line icons in a row: a pushpin, a minus sign, a gear.
+2) NEXT-ITEM segment (the "departing flight", the visual anchor, roughly the top 40% of the panel): a small eyebrow label "下一项" in small caps-like Chinese with wide letterspacing; beneath it a VERY large tabular monospace time "15:00" in ink #171923, the biggest element on the panel; beneath the time, the title "产品评审" in medium-weight Chinese sans; beneath that a small muted secondary line "14:50 提醒". A hairline #e4ded6 rule closes the segment.
+3) TIME-RANKED LIST like a gate board sorted by departure time — five rows, each row separated by a #e4ded6 hairline rule, each row showing a tabular monospace time at the left, a Chinese title, and a small square checkbox:
+   row 1: "09:30  写周报" — done state: struck-through muted text and a CHECKED square (ink check inside the square);
+   row 2: "11:00  设计走查" — normal ink, empty square outline;
+   row 3: "13:00  面试候选人" — normal ink, empty square outline;
+   row 4: "15:00  产品评审" — the CURRENT item: this entire row carries the terracotta alert color #b54f2b (terracotta time and title, small terracotta square marker at the row's left edge) — the only colored row;
+   row 5: "17:30  健身" — normal ink, empty square outline.
+4) BOTTOM-RIGHT corner: a circular filled terracotta #b54f2b floating action button with a white four-point sparkle "✦" glyph centered.
+
+Mood: precise, calm, timetable discipline; Swiss-influenced information design; boarding-pass segmentation with labeled sections. Every glyph sharp and legible, exact Chinese characters as written: 下一项, 产品评审, 14:50 提醒, 写周报, 设计走查, 面试候选人, 健身.

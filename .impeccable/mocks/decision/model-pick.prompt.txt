@@ -1,0 +1,22 @@
+Pixel-crisp high-fidelity UI design comp of a Windows 11 desktop widget panel, portrait orientation, full-bleed: the panel itself fills the entire image edge to edge. No desktop wallpaper around it, no outer window shadow, no perspective tilt — a flat frontal view of the panel only. The widget is a floating to-do list app with a Chinese interface, rendered in authentic Windows 11 Fluent design language ("Windows 原生玻璃" direction).
+
+MATERIAL — Windows 11 Mica / Acrylic done with restraint: the titlebar and the panel's thin outer edge chrome carry a soft frosted-glass tint, as if the user's desktop wallpaper is sampled through Mica — gentle blurred pale blue, sage green and warm sand hues quietly bleeding into those chrome areas only, subtle and static, exactly like the Windows 11 Settings or File Explorer titlebar. The main content area stays near-opaque warm off-white #f5f3ef for perfect readability. Quiet depth: a whisper of shadow under the titlebar, hairline separators in #e9e5de. Ink color #1d2027 for text. A single terracotta accent #b54f2b used sparingly. Dignified, calm, native to the OS — absolutely NOT a vivid Dribbble glassmorphism scene: no heavy blur over colorful photos, no neon gradients, no saturated glow.
+
+STRUCTURE, top to bottom:
+
+1. TITLEBAR (this is where the Mica frosted tint is most visible): at the left a small circular logo — a thin dark ring outline with a small red dot inside it; at the right three small monochrome ink icons in a row: a pin, a minus, a gear.
+
+2. HERO SECTION: a small eyebrow label "下一项" in terracotta; below it a very large elegant time "15:00" in dark ink; below it the task title "产品评审" in medium weight; below it a small quiet gray line "14:50 提醒".
+
+3. VERTICAL TIMELINE of five tasks, each row showing the time on the left, a small circle node sitting on a thin vertical rail, then the task title:
+   - 09:30 写周报 — completed: the title has a strikethrough in muted gray and its node is a small checked square with a terracotta checkmark;
+   - 11:00 设计走查 — upcoming, dark ink, hollow circle node;
+   - 13:00 面试候选人 — upcoming, dark ink, hollow circle node;
+   - 15:00 产品评审 — the current task: a filled terracotta circle node with a soft outer ring, the row gently emphasized;
+   - 17:30 健身 — upcoming, dark ink, hollow circle node.
+
+4. BOTTOM-RIGHT corner: a circular floating button in terracotta #b54f2b containing a white four-point sparkle "✦" (the AI assistant entry), with a subtle soft shadow.
+
+TYPOGRAPHY: clean modern sans-serif in the spirit of Microsoft YaHei / Segoe UI Variable, razor-crisp rendering, generous whitespace, left-aligned. All Chinese text rendered exactly as given, no substitutions: 下一项 / 产品评审 / 14:50 提醒 / 写周报 / 设计走查 / 面试候选人 / 健身.
+
+OVERALL FEEL: a piece of Windows 11 itself — subtle, static, dignified; warm off-white paper held inside frosted-glass chrome. Sharp pixel-crisp edges, professional product design mock quality.

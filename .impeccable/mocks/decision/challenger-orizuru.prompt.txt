@@ -1,0 +1,20 @@
+A pixel-crisp, high-fidelity portrait UI design comp of ONE Windows desktop widget panel for a Chinese to-do list app, rendered full-bleed so the panel fills the entire frame edge to edge. No desktop wallpaper, no OS window frame, no surrounding environment. Flat front view, portrait orientation, tall narrow panel (about 440:700 proportions).
+
+Layout, top to bottom:
+
+1. TITLEBAR (slim strip at the very top): on the left, a small circular logo drawn as a thin ring outline with one small red dot inside the ring; on the right, three tiny quiet icons in a row — a pushpin, a minus sign, a gear.
+
+2. "NEXT UP" HERO SECTION just below the titlebar, set directly on the vermilion ground: a small cream eyebrow label 「下一项」, then a very large thin elegant time 「15:00」 in cream, then the task title 「产品评审」 in cream at medium size, then one smaller muted line 「14:50 提醒」. A single small gold dot (#d4a017) sits beside this section as the only ornament.
+
+3. TASK LIST below the hero: five task cards stacked with even spacing, each card a warm cream paper window (#f5f1e4) floating over the vermilion ground with a crisp paper edge, all notes in sumi ink black (#1d1a16). Each card shows its time at the left, then the Chinese task name:
+   - 「09:30 写周报」 — COMPLETED: this card is folded shut like a finished origami corner, the paper visibly tucked and creased, fold lines kept, its text dimmed and quiet.
+   - 「11:00 设计走查」 — plain cream paper card.
+   - 「13:00 面试候选人」 — plain cream paper card.
+   - 「15:00 产品评审」 — the current item, marked by ONE small gold dot (#d4a017) beside the card.
+   - 「17:30 健身」 — plain cream paper card.
+
+4. BOTTOM-RIGHT CORNER of the panel: one circular button in gold (#d4a017) or cream, with a centered ✦ four-pointed sparkle symbol.
+
+Materials and palette: the entire ground is deep vermilion red washi paper (#c8432b) with visible kozo mulberry fiber texture and faded fold-white crease lines forming a quiet geometric origami grid across the background; warm cream paper (#f5f1e4) for all content windows; sumi ink black (#1d1a16) for text on paper; exactly one gold accent (#d4a017) used sparingly (the current-item dot and possibly the corner button). Restrained, quiet, crafted Japanese origami-and-washi sensibility; sharp clean vector-crisp edges; precise typography; no photography, no 3D scene, no extra decorative objects, no shadows cast by the panel itself.
+
+Render all Chinese text exactly as written, character for character: 下一项 / 产品评审 / 14:50 提醒 / 09:30 写周报 / 11:00 设计走查 / 13:00 面试候选人 / 15:00 产品评审 / 17:30 健身. No English words anywhere; digits and the ✦ symbol only.

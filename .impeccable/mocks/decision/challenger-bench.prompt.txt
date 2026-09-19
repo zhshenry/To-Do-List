@@ -1,0 +1,26 @@
+Pixel-crisp user-interface design comp of a single Windows desktop widget panel for the shipped product "To Do List" (a floating to-do list widget with a Chinese interface). Flat straight-on front view, full-bleed portrait panel only — no desktop wallpaper, no drop shadow, no device frame, no perspective, no photo scene.
+
+MATERIAL WORLD — a film cutting bench flattened into one sheet: the panel background is a true-black field (#0f0e0c) covered in coarse analog film grain; all running content lives only inside punched warm-white windows (#e8e4dc), like frames die-cut out of the black sheet with sprocket perforations; a bold flag orange (#e86a1f) covers up to one third of the panel, carried physically by cloth tape flags and one button. Matte paper tooth inside the warm-white windows, crisp vector edges everywhere else. A task's state is shown as a physical mark on its frame, never as a change of hue.
+
+LAYOUT, top to bottom, in a tall narrow portrait panel (about 440x700 CSS px proportions):
+
+1. TOP TITLEBAR (full width, slim): left — a small circular ring logo with a tiny red dot in its center (thin warm-white ring, small red center dot), with a tiny tracked-out condensed label "TO DO LIST" beside it; right — a row of three small warm-white line icons: a pushpin, a minus sign, a gear.
+
+2. HERO — THE FLAGGED FRAME (upper third): one large landscape-format warm-white punched window with rectangular sprocket perforation holes along its top and bottom edges, spanning most of the panel width. Folded over its top perforation edge, left of center: a flag-orange matte cloth tape flag, folded in an L shape. Inside the window, black ink, left-aligned, generous margins: a small tracked-out eyebrow label "下一项"; beneath it a very large time "15:00" in condensed grotesk numerals — the largest type on the panel; beneath it the title "产品评审" in a clean Chinese gothic sans; beneath it a small line "14:50 提醒".
+
+3. THE RAIL (middle): a full-width horizontal black rail band carrying two rows of punched warm-white rectangular sprocket holes, like a film transport rail crossing the panel; a few small flag-orange registration tick marks on the band.
+
+4. FIVE TASK FRAMES under the rail (lower half): five full-width horizontal warm-white punched frames stacked with even spacing; each frame is a punched window held between two small round metal pin dots at its left and right edges. Each frame shows, in black condensed grotesk, the time at the left and the Chinese title after it:
+   - "09:30 写周报" — DONE: a hand-drawn grease-pencil cross, a rough waxy dark chinagraph X stroke, struck diagonally across the whole frame.
+   - "11:00 设计走查" — plain.
+   - "13:00 面试候选人" — plain.
+   - "15:00 产品评审" — CURRENT: a small folded flag-orange tape flag on its top perforation edge; otherwise identical to the other frames.
+   - "17:30 健身" — plain.
+
+5. BOTTOM-RIGHT: a circular flag-orange (#e86a1f) floating action button with a centered black four-pointed sparkle glyph "✦"; subtle grain on the button.
+
+TYPOGRAPHY: condensed grotesk (DIN Condensed / Archivo Narrow character) for all numerals and Latin labels; a neutral Chinese gothic sans for Chinese text. Render the simplified Chinese characters exactly and legibly: 下一项, 产品评审, 提醒, 写周报, 设计走查, 面试候选人, 健身. Black ink on the warm-white windows; warm-white ink on the black field. No other text anywhere; no English UI copy except the tiny "TO DO LIST" label.
+
+FINISH: coarse analog film grain across the black field; faint paper texture on the warm-white windows; everything else pixel-crisp flat UI. Palette strictly limited to true black #0f0e0c, warm white #e8e4dc, flag orange #e86a1f, one small red dot in the logo, and the dark grease-pencil cross. Balanced margins, no extra decoration, no glassmorphism, no gradients, no 3D, no background scene.
+
+Reference images are material and craft references only — match their coarse grain, print texture, orange-on-black warmth, and punched-film physicality — do NOT copy their composition or layout.

@@ -1,0 +1,20 @@
+.settings-advanced[hidden] { display: none; }
+.settings-advanced { display: flex; flex-direction: column; gap: 8px; }
+.settings-advanced-toggle { color: var(--muted); }
+.settings-advanced-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.settings-save-state { flex: 1; min-width: 0; margin: 0; }
+.settings-modal .key-actions { flex-wrap: wrap; }
+.settings-modal .provider-card-head b { min-width: 0; overflow-wrap: anywhere; }
+.settings-modal .model-list button { min-height: 32px; }
+.settings-modal .sticky-actions .field-help { font-size: 12px; }
+.settings-modal .provider-card input, .settings-modal .provider-card .select-trigger { min-height: 36px; font-size: 13px; }
+.settings-modal .provider-card .field-help, .settings-modal .provider-card .warning { font-size: 12px; }
+.settings-modal .provider-card .icon-button { min-width: 32px; min-height: 32px; }
+.settings-modal .model-create { grid-template-columns: 1fr auto; margin-top: 8px; }
+.settings-modal .model-create > input { grid-column: 1 / -1; }
+.settings-modal .settings-advanced-toggle { margin-top: 8px; }
+.modal.settings-modal .settings-pane[hidden] { display: none; }
+.window-width-setting { display: grid; gap: 7px; margin-top: 10px; }
+.window-width-setting > span { font-weight: 600; }
+.window-width-setting .segmented { width: 100%; }
+.window-width-setting .segmented button { min-height: 32px; }

@@ -1,0 +1,21 @@
+Pixel-crisp UI design comp, portrait 9:16, full-bleed: a single Windows desktop to-do widget panel "To Do List" fills the entire frame edge to edge — no desktop wallpaper, no outer window chrome, no shadow outside the panel. High-fidelity flat product UI render at 2x scale; the widget is 440x700 CSS px in proportion.
+
+Surface and atmosphere: the panel ground is warm off-white #faf8f5. Very pale, soft mesh-gradient color blocks — terracotta mist #f6e2d9, fog blue #e8ecf5, warm yellow #f3efe0 — blur and blend into each other ONLY at the panel's edges and corners, drifting like morning light through rice paper: extremely soft, desaturated, quiet, never loud, never saturated. The central content zone stays nearly pure white so text stays perfectly readable. All text and icons are ink-dark #1d2027. One single accent color: terracotta #b54f2b.
+
+Layout, top to bottom, with generous whitespace:
+
+1. Titlebar strip at top (~7% of height): at far left a small circular logo — a thin dark ink ring with a small red dot at its upper right; at far right three tiny minimal line icons in a row: a pushpin, a minus, a gear.
+
+2. "Next item" hero section (~30% of height): a small eyebrow label "下一项" in terracotta #b54f2b letterspaced caps style; beneath it a VERY large light-weight time "15:00" in ink-dark; beneath it the task title "产品评审" in medium weight; beneath it a small muted line "14:50 提醒" with a tiny bell icon. Behind this whole section glows the softest terracotta-mist halo, bleeding gently toward the panel edges.
+
+3. Vertical timeline list of EXACTLY 5 task rows (~50% of height) on the nearly pure white content zone: a thin vertical hairline runs down the left with small circular outline nodes, one node per row; each row shows a small muted gray time label left of the node and the task title right of the node, evenly spaced. The 5 rows appear in this exact order, each exactly once, with no other rows and no duplicated rows:
+   - row 1: "09:30 写周报" — completed state: small checked square checkbox, title with strikethrough, faded gray
+   - row 2: "11:00 设计走查" — normal
+   - row 3: "13:00 面试候选人" — normal
+   - row 4: "15:00 产品评审" — the current task: its timeline node is a filled terracotta #b54f2b dot with a soft halo ring, row slightly emphasized
+   - row 5: "17:30 健身" — normal
+   After row 5 the list ends; nothing follows except empty space and the floating button.
+
+4. Bottom-right corner: one circular floating action button in solid terracotta #b54f2b with a white sparkle "✦" glyph centered, one soft subtle drop shadow.
+
+Typography: clean modern Chinese sans-serif UI type, crisp anti-aliased rendering, comfortable line spacing. The overall feeling is quiet, spacious, breathable — a calm morning desk. Render all Chinese text EXACTLY as written: 下一项 / 15:00 / 产品评审 / 14:50 提醒 / 09:30 写周报 / 11:00 设计走查 / 13:00 面试候选人 / 17:30 健身. No other text anywhere. No commercial claims, no prices, no badges, no dates beyond those given.

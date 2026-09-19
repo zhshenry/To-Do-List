@@ -1,0 +1,42 @@
+{
+  "title": "选一种卡片布局",
+  "question": "三种结构稿，只比排版不比材质。选定后视觉世界会套在这个骨架上。",
+  "options": [
+    {
+      "id": "layout-a",
+      "label": "日期分组卡片",
+      "kicker": "最接近你的参考图",
+      "thesis": "搜索在上，今天/明天分组，每件事一张卡：勾选、色点、标题、右侧时间。当前卡用浅底和状态 pill 标出，不再单独写「下一项」。",
+      "palette": ["#faf8f5", "#ffffff", "#1d2027", "#b54f2b"],
+      "materials": ["圆角卡片", "色点标签", "右侧时间"],
+      "viewport": "标题栏 → 搜索框 → 今天 + → 三张卡片（完成 / 普通 / 当前高亮）→ 明天 → 一张卡 → 右下 ✦。",
+      "risk": "卡片偏高，今天事项一多就要滚；稿里「产品审批」是错字，实现时用「产品评审」。",
+      "comp": ".impeccable/mocks/layouts/layout-a-cards.png"
+    },
+    {
+      "id": "layout-b",
+      "label": "时间列日程",
+      "kicker": "扫时间最快",
+      "thesis": "时间做成左侧大号等宽列，标题在右。像日历的 agenda：一眼能对上几点有什么，当前项只把时间染成陶土色。",
+      "palette": ["#faf8f5", "#1d2027", "#b54f2b", "#e4ded6"],
+      "materials": ["左侧时间列", "细分割线", "紧凑行"],
+      "viewport": "标题栏 → 9月16日 · 周三 与搜索/+ → 今天 → 五条时间行 → 明天 → 一条 → 右下 ✦。",
+      "risk": "不像「卡片」那么饱满；无时间的任务（产品允许）要单独处理占位。",
+      "comp": ".impeccable/mocks/layouts/layout-b-agenda.png"
+    },
+    {
+      "id": "layout-c",
+      "label": "领头卡 + 列表",
+      "kicker": "下一件用尺度说",
+      "thesis": "不写「下一项」四个字，但把最近一件做成更大的第一张卡，其余用紧凑行。顶部用 今天/全部/已删除 分段。",
+      "palette": ["#faf8f5", "#ffffff", "#1d2027", "#b54f2b"],
+      "materials": ["领头大卡", "左侧色条", "紧凑行"],
+      "viewport": "标题栏 → 今天|全部|已删除 → 大卡产品评审 → 四条紧凑卡 → 明天周会 → 右下 ✦。",
+      "risk": "领头卡仍占掉一块英雄区，和「不必写下一项」只差口气；列表被压短。",
+      "comp": ".impeccable/mocks/layouts/layout-c-lead-card.png"
+    }
+  ],
+  "reroll": false,
+  "steer": true,
+  "canon": false
+}

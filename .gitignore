@@ -9,3 +9,8 @@ test-results/
 *.db-wal
 .env*
 !.env.example
+/.codeai/
+/.claude/
+/ai-sessions/
+/.claude_snapshot/
+.impeccable/config.local.json

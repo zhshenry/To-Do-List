@@ -1,5 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
+import type { ChatSession, ChatSummary } from '../shared/contracts';
 import { aiPlanSchema, categoryInputSchema, localDay, taskInputSchema, taskPatchSchema, type AIPlan, type Category, type CategoryInput, type Task, type TaskInput } from '../shared/contracts';
 
 export class Store {
@@ -10,7 +11,65 @@ export class Store {
       CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS categories (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-      PRAGMA user_version=2;`);
+      CREATE TABLE IF NOT EXISTS chats (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+      PRAGMA user_version=3;`);
+    this.recoverChats();
+  }
+  chats(): ChatSummary[] {
+    return (this.db.prepare('SELECT payload FROM chats').all() as { payload: string }[])
+      .map(row => { const { id, title, updatedAt } = JSON.parse(row.payload) as ChatSession; return { id, title, updatedAt }; })
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+  chat(id: string): ChatSession {
+    const row = this.db.prepare('SELECT payload FROM chats WHERE id=?').get(id) as { payload: string } | undefined;
+    if (!row) throw new Error('对话不存在，请重新选择');
+    return JSON.parse(row.payload) as ChatSession;
+  }
+  saveChat(chat: ChatSession): ChatSession {
+    const next = { ...chat, updatedAt: new Date().toISOString() };
+    this.db.prepare('INSERT OR REPLACE INTO chats(id,payload) VALUES (?,?)').run(next.id, JSON.stringify(next));
+    return next;
+  }
+  newChat(): ChatSession {
+    const chat = this.saveChat({ id: randomUUID(), title: '新对话', updatedAt: new Date().toISOString(), entries: [], draft: '' });
+    this.setSetting('activeChatId', chat.id);
+    return chat;
+  }
+  resolveChatProposal(token: string, state: 'applied' | 'discarded' | 'expired' | 'revised'): ChatSession | undefined {
+    for (const summary of this.chats()) {
+      const chat = this.chat(summary.id);
+      const entry = chat.entries.find(item => item.proposal?.token === token && item.actionState === 'pending');
+      if (!entry) continue;
+      entry.actionState = state;
+      return this.saveChat(chat);
+    }
+  }
+  updateChatProposal(token: string, actions: AIPlan['actions']): ChatSession {
+    for (const summary of this.chats()) {
+      const chat = this.chat(summary.id);
+      const entry = chat.entries.find(item => item.proposal?.token === token && item.actionState === 'pending');
+      if (!entry?.proposal) continue;
+      entry.proposal = { ...entry.proposal, actions };
+      return this.saveChat(chat);
+    }
+    throw new Error('建议已应用或已过期，请重新生成');
+  }
+  recoverChats(): void {
+    this.transaction(() => {
+      for (const summary of this.chats()) {
+        const chat = this.chat(summary.id);
+        let changed = false;
+        for (const entry of chat.entries) {
+          if (entry.streaming) {
+            entry.streaming = false; entry.error = '上次回复因应用退出而中断，可以重新发送。'; changed = true;
+            for (const tool of entry.tools ?? []) if (tool.status === 'running') tool.status = 'interrupted';
+            chat.draft ||= [...chat.entries].reverse().find(item => item.role === 'user')?.content ?? '';
+          }
+          if (entry.actionState === 'pending') { entry.actionState = 'expired'; changed = true; }
+        }
+        if (changed) this.saveChat(chat);
+      }
+    });
   }
   all(includeDeleted = false): Task[] {
     return (this.db.prepare('SELECT payload FROM tasks').all() as { payload: string }[])
@@ -21,7 +80,9 @@ export class Store {
     if (!row) throw new Error('事项不存在，请刷新后重试');
     return this.normalizeTask(JSON.parse(row.payload));
   }
-  normalizeTask(task: Task): Task { return { ...task, categoryId: task.categoryId ?? null }; }
+  normalizeTask(task: Task): Task {
+    return { ...task, categoryId: task.categoryId ?? null, progress: typeof task.progress === 'number' ? task.progress : null, priority: task.priority === 'high' || task.priority === 'low' ? task.priority : 'medium' };
+  }
   put(task: Task): Task {
     this.db.prepare('INSERT OR REPLACE INTO tasks(id,payload) VALUES (?,?)').run(task.id, JSON.stringify(task));
     return task;
@@ -45,8 +106,8 @@ export class Store {
       notifiedFor: next.remindAt !== old.remindAt || (old.status === 'done' && next.status !== 'done') ? null : old.notifiedFor });
   }
   fields(task: Task): TaskInput {
-    const { title, kind, status, priority, plannedDate, dueAt, remindAt, categoryId, note } = task;
-    return { title, kind, status, priority, plannedDate, dueAt, remindAt, categoryId, note };
+    const { title, kind, status, priority, plannedDate, dueAt, remindAt, categoryId, progress, note } = task;
+    return { title, kind, status, priority, plannedDate, dueAt, remindAt, categoryId, progress, note };
   }
   categories(): Category[] {
     return (this.db.prepare('SELECT payload FROM categories').all() as { payload: string }[])
@@ -55,18 +116,21 @@ export class Store {
   }
   getCategory(id: string): Category {
     const row = this.db.prepare('SELECT payload FROM categories WHERE id=?').get(id) as { payload: string } | undefined;
-    if (!row) throw new Error('分类不存在，请刷新后重试');
+    if (!row) throw new Error('标签不存在，请刷新后重试');
     return JSON.parse(row.payload);
   }
   putCategory(category: Category): Category {
     this.db.prepare('INSERT OR REPLACE INTO categories(id,payload) VALUES (?,?)').run(category.id, JSON.stringify(category));
     return category;
   }
+  hasCategory(id: string): boolean {
+    return !!(this.db.prepare('SELECT 1 FROM categories WHERE id=?').get(id));
+  }
   assertCategory(id: string | null): void { if (id) this.getCategory(id); }
-  assertUniqueCategory(name: string, exceptId?: string): void {
+  assertUniqueCategory(name: string, exceptId?: string, ignoreIds: Set<string> = new Set()): void {
     const normalized = name.trim().toLocaleLowerCase('zh-CN');
-    if (this.categories().some(category => category.id !== exceptId && category.name.toLocaleLowerCase('zh-CN') === normalized)) {
-      throw new Error('已有同名分类');
+    if (this.categories().some(category => category.id !== exceptId && !ignoreIds.has(category.id) && category.name.toLocaleLowerCase('zh-CN') === normalized)) {
+      throw new Error('已有同名标签');
     }
   }
   createCategory(input: unknown): Category {
@@ -77,22 +141,23 @@ export class Store {
   }
   updateCategory(id: string, input: unknown, revision: string): Category {
     const old = this.getCategory(id);
-    if (old.updatedAt !== revision) throw new Error('分类已在其他操作中更新，请刷新后重试');
+    if (old.updatedAt !== revision) throw new Error('标签已在其他操作中更新，请刷新后重试');
     const data = categoryInputSchema.parse(input);
     this.assertUniqueCategory(data.name, id);
     const updatedAt = new Date(Math.max(Date.now(), Date.parse(old.updatedAt) + 1)).toISOString();
     return this.putCategory({ ...old, ...data, updatedAt });
   }
+  dropCategory(id: string): void {
+    for (const task of this.all(true).filter(item => item.categoryId === id)) {
+      const updatedAt = new Date(Math.max(Date.now(), Date.parse(task.updatedAt) + 1)).toISOString();
+      this.put({ ...task, categoryId: null, updatedAt });
+    }
+    this.db.prepare('DELETE FROM categories WHERE id=?').run(id);
+  }
   removeCategory(id: string, revision: string): void {
     const category = this.getCategory(id);
-    if (category.updatedAt !== revision) throw new Error('分类已在其他操作中更新，请刷新后重试');
-    this.transaction(() => {
-      for (const task of this.all(true).filter(item => item.categoryId === id)) {
-        const updatedAt = new Date(Math.max(Date.now(), Date.parse(task.updatedAt) + 1)).toISOString();
-        this.put({ ...task, categoryId: null, updatedAt });
-      }
-      this.db.prepare('DELETE FROM categories WHERE id=?').run(id);
-    });
+    if (category.updatedAt !== revision) throw new Error('标签已在其他操作中更新，请刷新后重试');
+    this.transaction(() => this.dropCategory(id));
   }
   remove(id: string, revision: string): void {
     const task = this.get(id);
@@ -131,16 +196,47 @@ export class Store {
     try { const value = run(); this.db.exec('COMMIT'); return value; }
     catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
-  applyPlan(input: AIPlan, revisions: Map<string, string>): void {
+  applyPlan(input: AIPlan, revisions: Map<string, string>, proposalToken?: string): void {
     const plan = aiPlanSchema.parse(input);
     this.transaction(() => {
+      const removing = new Set(plan.actions.filter(action => action.type === 'remove_category').map(action => action.id));
       for (const action of plan.actions) {
         if (action.type === 'update' && this.get(action.id).updatedAt !== revisions.get(action.id)) throw new Error('AI 建议中的事项已变化，请重新生成建议');
+        if ((action.type === 'update_category' || action.type === 'remove_category') && this.getCategory(action.id).updatedAt !== revisions.get(action.id)) {
+          throw new Error('AI 建议中的标签已变化，请重新生成建议');
+        }
+        if ((action.type === 'create' && action.task.categoryId && removing.has(action.task.categoryId))
+          || (action.type === 'update' && action.patch.categoryId && removing.has(action.patch.categoryId))) {
+          throw new Error('不能把事项挂到将要删除的标签');
+        }
+      }
+      const createdNames = new Set<string>();
+      for (const action of plan.actions) {
+        if (action.type !== 'create_category') continue;
+        if (this.hasCategory(action.category.id)) throw new Error('标签已存在');
+        const normalized = action.category.name.trim().toLocaleLowerCase('zh-CN');
+        if (createdNames.has(normalized)) throw new Error('已有同名标签');
+        createdNames.add(normalized);
+        this.assertUniqueCategory(action.category.name, undefined, removing);
+        const now = new Date().toISOString();
+        this.putCategory({ ...action.category, createdAt: now, updatedAt: now });
+      }
+      for (const action of plan.actions) {
+        if (action.type !== 'update_category') continue;
+        const old = this.getCategory(action.id);
+        const data = categoryInputSchema.parse({ name: old.name, color: old.color, ...action.patch });
+        this.assertUniqueCategory(data.name, old.id, removing);
+        const updatedAt = new Date(Math.max(Date.now(), Date.parse(old.updatedAt) + 1)).toISOString();
+        this.putCategory({ ...old, ...data, updatedAt });
       }
       for (const action of plan.actions) {
         if (action.type === 'create') this.create(action.task);
-        else this.update(action.id, action.patch);
+        else if (action.type === 'update') this.update(action.id, action.patch);
       }
+      for (const action of plan.actions) {
+        if (action.type === 'remove_category') this.dropCategory(action.id);
+      }
+      if (proposalToken) this.resolveChatProposal(proposalToken, 'applied');
     });
   }
   review(today = localDay()): string {

@@ -1,6 +1,6 @@
 {
-  "name": "daily-focus-desktop",
-  "version": "0.4.0",
+  "name": "to-do-list",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "description": "Windows 悬浮待办与 AI 日程助手",
@@ -12,15 +12,21 @@
     "build": "node tooling/assets.mjs && tsc --noEmit && vite build && node tooling/build.mjs",
     "start": "electron .",
     "test": "tsx --test tests/*.test.ts",
-    "test:desktop": "node tooling/desktop-test.mjs",
+    "test:desktop": "node tooling/ux-smoke.mjs",
     "dist:win": "npm run dist:portable",
     "dist:portable": "npm run build && electron-builder --win dir --x64 --config.electronDist=node_modules/electron/dist && powershell -NoProfile -ExecutionPolicy Bypass -File tooling/package-release.ps1 -Mode Portable",
     "dist:installer": "npm run build && electron-builder --win nsis --x64 --config.electronDist=node_modules/electron/dist && powershell -NoProfile -ExecutionPolicy Bypass -File tooling/package-release.ps1 -Mode All",
-    "dist:all": "npm run dist:installer"
+    "dist:all": "npm run dist:installer",
+    "release": "npm run dist:installer && node tooling/publish.mjs"
   },
   "build": {
-    "appId": "com.zhshenry.todolist",
+    "appId": "com.zhshenry.todolist.app",
     "productName": "To Do List",
+    "publish": {
+      "provider": "github",
+      "owner": "zhshenry",
+      "repo": "To-Do-List"
+    },
     "directories": {
       "output": "release"
     },
@@ -28,6 +34,7 @@
       "dist/**",
       "dist-electron/**",
       "assets/icon.png",
+      "assets/icon.ico",
       "assets/phosphor-license.txt",
       "package.json"
     ],
@@ -46,9 +53,12 @@
     "artifactName": "To Do List Setup-${version}-${arch}.${ext}"
   },
   "dependencies": {
+    "@earendil-works/pi-coding-agent": "^0.85.1",
     "@phosphor-icons/react": "2.1.10",
+    "electron-updater": "^6.8.9",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "typebox": "^1.3.7",
     "zod": "4.6.5"
   },
   "devDependencies": {

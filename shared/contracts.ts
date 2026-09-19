@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+// Keep the dock implementation and saved preferences available for a future return,
+// while excluding the feature from the current shipping runtime and UI.
+export const DOCK_FEATURE_ENABLED = false;
+
 export function localDay(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -9,20 +13,22 @@ const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '请填写有效的计划日
 }, '日期无效');
 const instant = z.iso.datetime({ offset: true, error: '请填写有效时间' }).nullable();
 export const categoryInputSchema = z.object({
-  name: z.string().trim().min(1, '请填写分类名称').max(30, '分类名称最多30字'),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, '请选择有效的分类颜色'),
+  name: z.string().trim().min(1, '请填写标签名称').max(30, '标签名称最多30字'),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, '请选择有效的标签颜色'),
 }).strict();
 export type CategoryInput = z.infer<typeof categoryInputSchema>;
+export const categoryPatchSchema = categoryInputSchema.partial().strict();
 export interface Category extends CategoryInput { id: string; createdAt: string; updatedAt: string; }
 export const taskFields = z.object({
   title: z.string().trim().min(1, '请填写事项名称').max(200, '名称最多200字'),
   kind: z.enum(['task', 'meeting']),
   status: z.enum(['todo', 'doing', 'done']),
-  priority: z.enum(['normal', 'high']),
+  priority: z.enum(['high', 'medium', 'low']),
   plannedDate: day,
   dueAt: instant,
   remindAt: instant,
   categoryId: z.string().uuid().nullable().default(null),
+  progress: z.number().int().min(0).max(100).nullable().default(null),
   note: z.string().max(5000, '备注最多5000字'),
 }).strict();
 export type TaskInput = z.infer<typeof taskFields>;
@@ -31,26 +37,73 @@ export interface Task extends TaskInput {
   notifiedFor: string | null; deletedAt: string | null;
 }
 export const taskInputSchema = taskFields;
-export const taskPatchSchema = taskFields.partial().strict();
+// Creation defaults must not turn omitted patch fields into destructive nulls.
+export const taskPatchSchema = taskFields.extend({
+  categoryId: taskFields.shape.categoryId.removeDefault(),
+  progress: taskFields.shape.progress.removeDefault(),
+}).partial().strict();
+export const aiActionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('create'), task: taskFields }).strict(),
+  z.object({ type: z.literal('update'), id: z.string().uuid(), patch: taskPatchSchema }).strict(),
+  z.object({ type: z.literal('create_category'), category: categoryInputSchema.extend({ id: z.string().uuid() }) }).strict(),
+  z.object({ type: z.literal('update_category'), id: z.string().uuid(), patch: categoryPatchSchema.refine(patch => Object.keys(patch).length > 0, '请提供要修改的标签字段') }).strict(),
+  z.object({ type: z.literal('remove_category'), id: z.string().uuid() }).strict(),
+]);
+export type AIAction = z.infer<typeof aiActionSchema>;
 export const aiPlanSchema = z.object({
   message: z.string().max(6000),
-  actions: z.array(z.discriminatedUnion('type', [
-    z.object({ type: z.literal('create'), task: taskFields }).strict(),
-    z.object({ type: z.literal('update'), id: z.string().uuid(), patch: taskPatchSchema }).strict(),
-  ])).max(20),
+  actions: z.array(aiActionSchema).max(20),
 }).strict();
 export type AIPlan = z.infer<typeof aiPlanSchema>;
+export interface AIProposalSelection { index: number; action: AIAction; }
 export const aiConversationTurnSchema = z.object({
   role: z.enum(['user', 'assistant']),
   content: z.string().trim().min(1).max(6000),
 }).strict();
 export type AIConversationTurn = z.infer<typeof aiConversationTurnSchema>;
+export const aiProtocolSchema = z.enum(['openai-chat', 'openai-responses', 'anthropic']);
+export type AIProtocol = z.infer<typeof aiProtocolSchema>;
+export const aiProviderKindSchema = z.enum(['openai', 'anthropic', 'deepseek', 'custom']);
+export type AIProviderKind = z.infer<typeof aiProviderKindSchema>;
+export const AI_PROVIDER_PRESETS: Record<AIProviderKind, { name: string; endpoint: string; protocol: AIProtocol }> = {
+  openai: { name: 'OpenAI', endpoint: 'https://api.openai.com/v1', protocol: 'openai-chat' },
+  anthropic: { name: 'Anthropic', endpoint: 'https://api.anthropic.com', protocol: 'anthropic' },
+  deepseek: { name: 'DeepSeek', endpoint: 'https://api.deepseek.com/v1', protocol: 'openai-chat' },
+  custom: { name: '', endpoint: '', protocol: 'openai-chat' },
+};
 export interface Proposal extends AIPlan { token: string; }
+export interface AIToolEvent { id: string; name: string; label: string; status: 'running' | 'complete' | 'error' | 'interrupted'; output: string; }
+export interface ChatEntry {
+  id: string; role: 'user' | 'assistant'; content: string; proposal?: Proposal;
+  actionState?: 'pending' | 'applied' | 'discarded' | 'expired' | 'revised'; streaming?: boolean;
+  tools?: AIToolEvent[]; error?: string;
+}
+export interface ChatSession { id: string; title: string; updatedAt: string; entries: ChatEntry[]; draft: string; }
+export interface ChatSummary { id: string; title: string; updatedAt: string; }
+export interface AIProvider {
+  id: string; kind: AIProviderKind; name: string; endpoint: string; protocol: AIProtocol; hasKey: boolean;
+}
+export interface AIModel {
+  id: string; providerId: string; name: string;
+}
+export interface AIProfile {
+  id: string; name: string; endpoint: string; model: string; protocol: AIProtocol; hasKey: boolean;
+}
+export const dockIconPresetSchema = z.enum(['orbit', 'note', 'sprout', 'cat']);
+export type DockIconPreset = z.infer<typeof dockIconPresetSchema>;
+export const mainWindowWidthSchema = z.enum(['standard', 'narrow']);
+export type MainWindowWidth = z.infer<typeof mainWindowWidthSchema>;
 export interface Settings {
-  endpoint: string; model: string; hasKey: boolean; aiEnabled: boolean;
-  alwaysOnTop: boolean; autoStart: boolean; compact: boolean;
+  providers: AIProvider[]; models: AIModel[]; activeModelId: string;
+  profiles: AIProfile[]; activeProfileId: string;
+  endpoint: string; model: string; protocol: AIProtocol; hasKey: boolean; aiEnabled: boolean;
+  alwaysOnTop: boolean; autoStart: boolean; mainVisible: boolean; mainCollapsed: boolean; mainWindowWidth: MainWindowWidth; dockEnabled: boolean; dockAlwaysOnTop: boolean;
+  dockSide: 'left' | 'right'; dockIcon: string; dockIconSource: 'default' | 'custom'; dockIconPreset: DockIconPreset;
 }
 export interface State { tasks: Task[]; categories: Category[]; settings: Settings; }
+export type UpdaterState = 'idle' | 'checking' | 'downloading' | 'ready' | 'latest' | 'error';
+export interface UpdaterStatus { active: boolean; version: string; state: UpdaterState; progress: number; readyVersion: string | null; message: string; }
+export type AssistantAnchor = { side: 'left' | 'right' | 'top' | 'bottom'; along: number };
 export interface DesktopAPI {
   state(): Promise<State>;
   create(task: TaskInput): Promise<State>;
@@ -61,25 +114,50 @@ export interface DesktopAPI {
   createCategory(category: CategoryInput): Promise<State>;
   updateCategory(id: string, category: CategoryInput, revision: string): Promise<State>;
   removeCategory(id: string, revision: string): Promise<State>;
-  window(action: 'compact' | 'expand' | 'hide' | 'pin'): Promise<State>;
-  assistant(input: { action: 'toggle' | 'show' | 'hide' | 'status'; prompt?: string }): Promise<boolean>;
+  window(action: 'show' | 'hide' | 'pin' | 'dockPin' | 'collapse' | 'expand', animate?: boolean): Promise<State>;
+  windowWidth(width: MainWindowWidth, animate?: boolean): Promise<State>;
+  compactHeight(height: number | null): Promise<void>;
+  dockEnabled(enabled: boolean): Promise<State>;
+  dockHover(open: boolean): Promise<'left' | 'right'>;
+  dockMove(point: { x: number; y: number } | null): Promise<void>;
+  dockIcon(action: 'choose' | 'useDefault' | 'useCustom', preset?: DockIconPreset): Promise<State>;
+  assistant(input: { action: 'toggle' | 'show' | 'hide' | 'status'; source?: 'main' | 'dock' | 'tray'; prompt?: string; animate?: boolean }): Promise<boolean>;
   assistantReady(): Promise<void>;
-  openSettings(): Promise<void>;
-  settings(input: { endpoint: string; model: string; apiKey?: string; clearKey?: boolean; aiEnabled: boolean; autoStart: boolean }): Promise<State>;
+  openSettings(animate?: boolean): Promise<void>;
+  settings(input: { aiEnabled: boolean; autoStart: boolean }): Promise<State>;
+  saveProvider(input: { id?: string; kind: AIProviderKind; name: string; endpoint: string; protocol: AIProtocol; apiKey?: string; clearKey?: boolean }): Promise<State>;
+  removeProvider(id: string): Promise<State>;
+  saveModel(input: { id?: string; providerId: string; name: string }): Promise<State>;
+  removeModel(id: string): Promise<State>;
+  testConnection(input: { providerId?: string; endpoint?: string; protocol?: AIProtocol; apiKey?: string; model: string }): Promise<string>;
+  activateProfile(id: string): Promise<State>;
   ask(input: { text: string; history: AIConversationTurn[] }): Promise<Proposal>;
-  apply(token: string): Promise<State>;
+  chatList(): Promise<ChatSummary[]>;
+  chatOpen(id?: string): Promise<ChatSession>;
+  chatNew(): Promise<ChatSession>;
+  chatDraft(id: string, text: string): Promise<void>;
+  chatAsk(input: { sessionId: string; text: string }): Promise<ChatSession>;
+  onChatUpdate(callback: (session: ChatSession) => void): () => void;
+  onChatSelected(callback: (session: ChatSession) => void): () => void;
+  updateProposal(input: { token: string; index: number; action: AIAction }): Promise<ChatSession>;
+  apply(input: { token: string; items: AIProposalSelection[] }): Promise<State>;
   cancelAI(): Promise<void>;
+  onAskDelta(callback: (text: string) => void): () => void;
   review(): Promise<string>;
   exportData(): Promise<string | null>;
   openData(): Promise<void>;
-  testNotification(): Promise<void>;
+  updaterStatus(): Promise<UpdaterStatus>;
+  updaterCheck(): Promise<void>;
+  updaterInstall(): Promise<void>;
+  onUpdater(callback: (status: UpdaterStatus) => void): () => void;
   onChanged(callback: () => void): () => void;
   onAssistantVisibility(callback: (visible: boolean) => void): () => void;
   onAssistantPrompt(callback: (prompt: string) => void): () => void;
+  onAssistantAnchor(callback: (anchor: AssistantAnchor) => void): () => void;
   onOpenSettings(callback: () => void): () => void;
 }
 export function newTask(title = ''): TaskInput {
-  return { title, kind: 'task', status: 'todo', priority: 'normal', plannedDate: localDay(), dueAt: null, remindAt: null, categoryId: null, note: '' };
+  return { title, kind: 'task', status: 'todo', priority: 'medium', plannedDate: localDay(), dueAt: null, remindAt: null, categoryId: null, progress: null, note: '' };
 }
 export function taskTime(task: Task): number { return task.dueAt ? Date.parse(task.dueAt) : Number.MAX_SAFE_INTEGER; }
 export function activeToday(tasks: Task[], today = localDay()): Task[] {
