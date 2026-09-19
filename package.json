@@ -50,7 +50,7 @@
       "createDesktopShortcut": true,
       "deleteAppDataOnUninstall": false
     },
-    "artifactName": "To Do List Setup-${version}-${arch}.${ext}"
+    "artifactName": "To-Do-List-Setup-${version}-${arch}.${ext}"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.85.1",

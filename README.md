@@ -4,9 +4,9 @@
 
 ## 下载与运行（推荐安装版）
 
-推荐安装版 `release/installer/To Do List Setup-0.5.1-x64.exe`：双击安装，自动创建开始菜单与桌面快捷方式；安装版内置自动更新，之后的新版本会在应用内自动下载并提示安装。0.4.x 及更早的安装版请先卸载旧版再安装本版（应用标识已更新，直接安装会留下旧的卸载入口；事项数据保存在 `%APPDATA%/To-Do-List`，卸载旧版不会清除数据），此后即可自动更新。
+推荐安装版 `release/installer/To-Do-List-Setup-0.5.1-x64.exe`：双击安装，自动创建开始菜单与桌面快捷方式；安装版内置自动更新，之后的新版本会在应用内自动下载并提示安装。0.4.x 及更早的安装版请先卸载旧版再安装本版（应用标识已更新，直接安装会留下旧的卸载入口；事项数据保存在 `%APPDATA%/To-Do-List`，卸载旧版不会清除数据），此后即可自动更新。
 
-免安装版 `release/portable/To Do List-0.5.1-Windows-x64-Portable.zip` 作为备选：
+免安装版 `release/portable/To-Do-List-0.5.1-Windows-x64-Portable.zip` 作为备选：
 
 1. 将 ZIP 完整解压到任意普通文件夹。
 2. 双击其中的 `To Do List.exe`。
@@ -69,7 +69,7 @@ npm run dist:installer # 同时生成免安装版和可选安装版
 发布新版本（顺序固定，缺一不可）：
 
 1. 升版本号并推送标签：工作区干净时 `npm version patch|minor` 会生成提交与标签（有未提交改动需先提交，或手动改版本号后 `git tag vX.Y.Z`）；随后 `git push origin main --tags`——发布脚本用 `--verify-tag`，要求标签已先推送到远端。
-2. `npm run release`：构建 NSIS 安装包与免安装包，上传安装器、blockmap、latest.yml、免安装包与 SHA256SUMS 到 GitHub Releases；含空格的文件名会自动转为与 latest.yml 一致的连字符资产名，保证自动更新下载可达。
+2. `npm run release`：构建 NSIS 安装包与免安装包，上传安装器、blockmap、latest.yml、免安装包与 SHA256SUMS 到 GitHub Releases；产物文件名统一为连字符格式（与 latest.yml 一致），保证自动更新下载 URL 可达。
 3. 确认 Release 为正式版（非 Draft、非 Pre-release）：electron-updater 只从正式 Release 发现新版本，草稿与预发布对已安装客户端不可见。
 
 需要本机已安装并登录 GitHub CLI（`winget install GitHub.cli` + `gh auth login`）。上传的 latest.yml 与安装器是应用内自动更新的数据源。

@@ -36,7 +36,7 @@ New-Item -ItemType Directory -Force -Path $portableRoot, $installerRoot, $archiv
 foreach ($artifact in Get-ChildItem -LiteralPath $portableRoot) {
   $artifactVersion = $null
   if ($artifact.Name -match '^To Do List (?<version>.+) Portable$') { $artifactVersion = $Matches.version }
-  elseif ($artifact.Name -match '^To Do List-(?<version>.+)-Windows-x64-Portable\.zip$') { $artifactVersion = $Matches.version }
+  elseif ($artifact.Name -match '^To-Do-List-(?<version>.+)-Windows-x64-Portable\.zip$') { $artifactVersion = $Matches.version }
   if ($artifactVersion -and $artifactVersion -ne $version) {
     $oldRoot = Resolve-ReleaseTarget (Join-Path (Join-Path $archiveRoot $artifactVersion) 'portable')
     New-Item -ItemType Directory -Force -Path $oldRoot | Out-Null
@@ -49,7 +49,7 @@ foreach ($artifact in Get-ChildItem -LiteralPath $portableRoot) {
 }
 
 foreach ($artifact in Get-ChildItem -LiteralPath $installerRoot -File) {
-  if ($artifact.Name -match '^To Do List Setup-(?<version>.+)-x64(?:\.exe|\.exe\.blockmap)$' -and $Matches.version -ne $version) {
+  if ($artifact.Name -match '^To-Do-List-Setup-(?<version>.+)-x64(?:\.exe|\.exe\.blockmap)$' -and $Matches.version -ne $version) {
     $oldRoot = Resolve-ReleaseTarget (Join-Path (Join-Path $archiveRoot $Matches.version) 'installer')
     New-Item -ItemType Directory -Force -Path $oldRoot | Out-Null
     Move-Item -LiteralPath $artifact.FullName -Destination (Join-Path $oldRoot $artifact.Name) -Force
@@ -58,7 +58,7 @@ foreach ($artifact in Get-ChildItem -LiteralPath $installerRoot -File) {
 
 $unpacked = Resolve-ReleaseTarget (Join-Path $releaseRoot 'win-unpacked')
 $portableDirectory = Resolve-ReleaseTarget (Join-Path $portableRoot "To Do List $version Portable")
-$portableZip = Resolve-ReleaseTarget (Join-Path $portableRoot "To Do List-$version-Windows-x64-Portable.zip")
+$portableZip = Resolve-ReleaseTarget (Join-Path $portableRoot "To-Do-List-$version-Windows-x64-Portable.zip")
 if (Test-Path -LiteralPath (Join-Path $unpacked 'To Do List.exe')) {
   if (Test-Path -LiteralPath $portableDirectory) { Remove-Item -LiteralPath $portableDirectory -Recurse -Force }
   Move-Item -LiteralPath $unpacked -Destination $portableDirectory
@@ -79,7 +79,7 @@ foreach ($artifact in Get-ChildItem -LiteralPath $releaseRoot -File) {
     $oldRoot = Resolve-ReleaseTarget (Join-Path $archiveRoot '0.1.0')
     New-Item -ItemType Directory -Force -Path $oldRoot | Out-Null
     Move-Item -LiteralPath $artifact.FullName -Destination (Join-Path $oldRoot $artifact.Name) -Force
-  } elseif ($artifact.Name -like 'To Do List Setup-*') {
+  } elseif ($artifact.Name -like 'To-Do-List-Setup-*') {
     Move-Item -LiteralPath $artifact.FullName -Destination (Join-Path $installerRoot $artifact.Name) -Force
   } elseif ($artifact.Extension -eq '.yml') {
     Move-Item -LiteralPath $artifact.FullName -Destination (Join-Path $metadataRoot $artifact.Name) -Force

@@ -13,7 +13,7 @@ const packageInfo = JSON.parse(await readFile('package.json', 'utf8'));
 let executablePath = process.env.TODO_PACKAGED_EXECUTABLE;
 if (!executablePath) {
   // Portable ships as a zip only; extract it to a throwaway dir for this run.
-  const portableZip = path.resolve(`release/portable/To Do List-${packageInfo.version}-Windows-x64-Portable.zip`);
+  const portableZip = path.resolve(`release/portable/To-Do-List-${packageInfo.version}-Windows-x64-Portable.zip`);
   const extractRoot = await mkdtemp(path.resolve('test-results/packaged-zip-'));
   // Windows ships bsdtar, which reads zip archives and takes argv-safe paths.
   execFileSync('tar.exe', ['-xf', portableZip, '-C', extractRoot], { stdio: 'inherit' });
