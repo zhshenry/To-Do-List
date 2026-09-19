@@ -57,4 +57,18 @@
 
 ---
 
+## 发布守则（强制遵守）
+
+本项目通过 GitHub Releases 分发 Windows 安装版（内置自动更新）。任何"发版 / 发布新版本 / 更新到 Release"的请求必须严格遵循 [DEVELOPMENT.md](DEVELOPMENT.md) 的「发布流程」章节，不得自创路径。要点：
+
+1. **发布四步固定**：更新 CHANGELOG.md 与版本号 → commit 并 `git push origin main --tags`（tag 必须先于发布在远端存在）→ `npm run release` → 核验 Release 为正式版（非 Draft/Pre-release）、latest.yml 与资产一致。
+2. **产物文件名禁止含空格**（GitHub 会归一化为点号，破坏自动更新 404）；命名改动只能通过 `package.json` 的 `artifactName`，禁止在发布时手工重命名或用 `#label` 补救。
+3. **CHANGELOG.md 必须随版本更新**（Keep a Changelog 格式，新版本条目置顶），版本号变更必须同步 package.json 与 package-lock.json。
+4. **发布后必须验证**：`latest.yml` 的 version、连字符安装包 URL 返回 200，任何一项不符视为发布失败。
+5. 版本号与平台：遵循语义化版本；本项目只发布 Windows x64。
+
+发布前的代码改动属于普通代码变更，同样适用上方编码行为准则。
+
+---
+
 这些准则生效的标志：diff 中无关改动变少 / 因过度复杂导致的返工变少 / 澄清问题出现在动手之前而不是出错之后。

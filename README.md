@@ -46,50 +46,9 @@
 
 安装版（NSIS）内置自动更新：启动约半分钟后向 GitHub Releases 检查新版，发现即后台下载，完成后弹出通知，可点击立即重启安装，或等退出应用时自动安装；也可随时从托盘菜单选择"检查更新"。免安装版（Portable）不含自动更新，请手动下载新版解压替换。在首个带更新器的版本发布之前，更早的安装版仍需手动升级一次。
 
-## 开发与验证
+## 面向开发者
 
-需要 Node.js 24+，在本仓库运行：
-
-```powershell
-npm ci
-npm run setup:runtime
-npm run dev
-```
-
-修改主进程或 preload 后重启开发进程；React/CSS 支持热更新。
-
-```powershell
-npm test
-npm run build
-npm run test:desktop
-npm run dist:win       # 默认：只生成免安装版
-npm run dist:installer # 同时生成免安装版和可选安装版
-```
-
-发布新版本（顺序固定，缺一不可）：
-
-1. 升版本号并推送标签：工作区干净时 `npm version patch|minor` 会生成提交与标签（有未提交改动需先提交，或手动改版本号后 `git tag vX.Y.Z`）；随后 `git push origin main --tags`——发布脚本用 `--verify-tag`，要求标签已先推送到远端。
-2. `npm run release`：构建 NSIS 安装包与免安装包，上传安装器、blockmap、latest.yml、免安装包与 SHA256SUMS 到 GitHub Releases；产物文件名统一为连字符格式（与 latest.yml 一致），保证自动更新下载 URL 可达。
-3. 确认 Release 为正式版（非 Draft、非 Pre-release）：electron-updater 只从正式 Release 发现新版本，草稿与预发布对已安装客户端不可见。
-
-需要本机已安装并登录 GitHub CLI（`winget install GitHub.cli` + `gh auth login`）。上传的 latest.yml 与安装器是应用内自动更新的数据源。
-
-运行时下载必须通过官方 SHA256 校验，不关闭 TLS 校验。打包可复用已安装运行时：
-
-```powershell
-npm run dist:portable
-```
-
-测试使用独立 `test-results/ux-current` SQLite；不读取真实事项或密钥，不发送系统示例通知。AI 使用本机模拟流式服务器，验证真实 Pi 工具循环与渲染，不代表所有远程模型兼容。旧版桌面测试保留在 `tooling/desktop-test.mjs`，当前入口使用 `tooling/ux-smoke.mjs`。
-
-## 目录
-
-- `electron/`：窗口、托盘、通知、加密、SQLite、Pi 助手循环与 IPC。
-- `shared/contracts.ts`：共享 Zod 校验和类型。
-- `src/`：悬浮面板、编辑、设置与交互状态。
-- `tests/`、`tooling/ux-smoke.mjs`：数据与当前真实桌面流程测试。
-- `docs/approved-design.png`、`docs/approved-ai-floating-design.png`、`DESIGN.md`、`UX-CONTRACT.md`、`design-qa.md`：视觉来源、设计规范与验证记录。
-- `release/portable/`：对外提供的免安装 ZIP（打包后不再保留解压目录，`tooling/packaged-smoke.mjs` 会按需解压验证）；`release/installer/`：安装包与更新 blockmap；`release/archive/`：构建新版时自动归档的上一版产物，各版本均已存档在 GitHub Releases，可随时删除。
+构建、测试与版本发布的完整流程见 [DEVELOPMENT.md](DEVELOPMENT.md)。
 
 当前没有重复事项、云同步、语音输入或多设备功能。安装版支持检查更新；免安装版手动替换目录。对话历史保存在本机，不提供云端同步。
 
@@ -99,26 +58,4 @@ npm run dist:portable
 
 ## 版本历史
 
-### 0.5.1
-
-- **发布与更新链路加固**：上传 GitHub 时资产名自动转为与 latest.yml 一致的连字符格式，修复自动更新下载 404 的隐患；发布脚本新增 latest.yml 版本一致性校验，陈旧元数据会被拦截而不是静默上传。
-- **免安装版不再启用自动更新**：打包时剥离更新配置，且仅安装版运行更新器（与文档行为一致）；免安装版仍手动下载替换。
-- **打包脚本重构**：免安装版只保留 ZIP（解压目录压缩后即删，验证时按需解压），消除了重复逻辑，减少约 800 MB 冗余。
-- **体积优化**：electron-updater 不再重复打入主进程包（约省 0.6 MB）。
-- README 固化发布顺序：标签先推送、Release 须为正式版（非 Draft/Pre-release）。
-
-### 0.5.0
-
-- **AI 多供应商管理**：设置中可添加最多 8 个供应商、每家最多 8 个模型；预设 OpenAI、Anthropic、DeepSeek，支持自定义服务与三种协议（OpenAI Chat Completions / OpenAI Responses / Anthropic Messages）；每个模型可单独测试连接；API Key 使用 Windows 系统加密保存，不进入渲染进程与备份。
-- **AI 对话会话**：支持历史对话列表、输入草稿、新对话确认；对话与草稿保存在本机 SQLite，退出或崩溃后可恢复；重启后未确认的建议自动失效，防止重复执行。
-- **AI 内核重写（Pi Agent Loop）**：界面展示真实的工具执行记录与流式回复，不虚构步骤；所有修改类操作改为"建议"模式——先生成可逐项选择、编辑的变更卡片，点击"应用"才写入；针对提示注入加固（事项文字仅作为数据处理，工具返回的 ID 全部对照本地数据校验）。
-- **安装版内置自动更新**：启动后自动向 GitHub Releases 检查新版并后台下载，完成后可一键重启安装；0.4.x 及更早的安装版需手动升级到本版一次，之后即可自动更新。免安装版仍需手动替换。
-- **主窗口增强**：新增"收起为卡片"迷你模式；标准 440px / 窄版 340px 宽度预设并自动保存；今日计划支持列表/方块视图切换；新增"明天 / 近期 / 更晚"后续事项文件夹；新增"今日复盘"入口。
-- **事项库（Ctrl+F）**：全部日期的搜索、标签筛选、未完成/已完成/已删除过滤、批量完成与恢复。
-- **设置交互重构**：开关即时保存、文本失焦保存，底部实时显示保存状态；供应商与模型管理全部收进设置的 AI 配置页。
-- **修复**：任务栏图标在部分 Windows 11 机器上显示为通用图标的问题（按 AUMID 缓存的旧图标污染）。
-- **清理**：移除历史遗留的 Python 脚本；悬浮入口功能暂时下线（实现保留，见上文）。
-
-### 0.4.2
-
-- 悬浮待办与提醒的基础版本：主窗口、托盘、通知、标签、AI 助手单轮对话（单供应商配置）。
+完整更新日志见 [CHANGELOG.md](CHANGELOG.md)，各版本下载见 [GitHub Releases](https://github.com/zhshenry/To-Do-List/releases)。
