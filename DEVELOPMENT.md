@@ -38,7 +38,7 @@ npm run dist:portable  # 复用已安装运行时，只做免安装版
 
 1. **版本与日志**：在 [CHANGELOG.md](CHANGELOG.md) 顶部写入本版变更（Keep a Changelog 格式），更新 `package.json` 版本号。工作区干净时 `npm version patch|minor` 会自动生成提交与标签；有未提交改动则先提交，或手动改版本号后 `git tag vX.Y.Z`。
 2. **推送**：`git push origin main --tags`。发布脚本用 `--verify-tag`，要求标签已先存在于远端——因此代码推送是发布的前置动作，不可跳过。
-3. **发布**：`npm run release`。构建 NSIS 安装包与免安装包，上传安装器、blockmap、latest.yml、免安装包与 SHA256SUMS 到 GitHub Releases。产物文件名统一为连字符格式（与 latest.yml 一致），保证自动更新下载 URL 可达。
+3. **发布**：`npm run release`。构建 NSIS 安装包与免安装包，上传安装器、blockmap、latest.yml、免安装包与 SHA256SUMS 到 GitHub Releases；发布说明自动取自 CHANGELOG.md 当前版本的条目（缺失或为空时中止发布）。产物文件名统一为连字符格式（与 latest.yml 一致），保证自动更新下载 URL 可达。
 4. **核验**：确认 Release 为正式版（非 Draft、非 Pre-release，electron-updater 只从正式 Release 发现新版本）；`latest.yml` 的 version 与资产名一致；连字符安装包 URL 返回 HTTP 200。
 
 ### 发布红线（历史踩坑，勿重蹈）

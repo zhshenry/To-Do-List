@@ -32,10 +32,24 @@ if (metadataVersion !== version) {
   fail(`release/metadata/latest.yml 的版本是 ${metadataVersion ?? '无法解析'}，与 package.json 的 ${version} 不一致；请先完整运行 npm run dist:installer 重新生成产物。`);
 }
 
+// Release notes carry the version's changelog; a missing or empty entry means the
+// changelog was forgotten — stop here rather than publish a release without release notes.
+const changelog = readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8');
+const entryStart = new RegExp(`^## \\[${version}\\][^\\n]*\\n`, 'm').exec(changelog);
+if (!entryStart) fail(`CHANGELOG.md 中没有 ${version} 的条目，请先按 Keep a Changelog 格式补写本版变更。`);
+const bodyStart = entryStart.index + entryStart[0].length;
+const entryEnd = changelog.indexOf('\n## [', bodyStart);
+const changelogEntry = changelog.slice(bodyStart, entryEnd === -1 ? undefined : entryEnd).trim();
+if (!changelogEntry) fail(`CHANGELOG.md 中 ${version} 的条目是空的，请先补写本版变更。`);
+
 const notes = [
   `Windows x64，版本 ${version}。`,
   '- 安装版（Setup）内置自动更新，之后的新版本会在应用内自动下载安装；',
   '- 免安装版（Portable）需手动下载解压替换，事项数据保存在 %APPDATA%/To-Do-List。',
+  '',
+  '## 更新内容',
+  '',
+  changelogEntry,
 ].join('\n');
 const result = spawnSync('gh.exe', ['release', 'create', tag, '--verify-tag', ...files, '--title', `To Do List ${version}`, '--notes', notes], { stdio: 'inherit' });
 if ((result.status ?? 1) === 0) {

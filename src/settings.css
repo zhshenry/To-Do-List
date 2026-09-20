@@ -1,20 +1,16 @@
-.settings-advanced[hidden] { display: none; }
-.settings-advanced { display: flex; flex-direction: column; gap: 8px; }
-.settings-advanced-toggle { color: var(--muted); }
-.settings-advanced-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
 .settings-save-state { flex: 1; min-width: 0; margin: 0; }
 .settings-modal .provider-card-head b { min-width: 0; overflow-wrap: anywhere; }
-.settings-modal .model-list button:not(.model-test-button) { min-height: 32px; }
-.settings-modal .sticky-actions .field-help { font-size: 12px; }
 .settings-modal .provider-card input, .settings-modal .provider-card .select-trigger { min-height: 36px; font-size: 13px; }
+.settings-modal .sticky-actions .field-help { font-size: 12px; }
 .settings-modal .provider-card .field-help, .settings-modal .provider-card .warning { font-size: 12px; }
 .settings-modal .provider-card .icon-button { min-width: 32px; min-height: 32px; }
+.settings-modal .model-list li .icon-button { min-width: 24px; min-height: 24px; }
 .settings-modal .model-create { grid-template-columns: 1fr auto; margin-top: 8px; }
 .settings-modal .model-create > input { grid-column: 1 / -1; }
-.settings-modal .settings-advanced-toggle { margin-top: 8px; }
 .modal.settings-modal .settings-pane[hidden] { display: none; }
 .window-width-setting { display: grid; gap: 7px; margin-top: 10px; }
 .window-width-setting > .label-with-help { font-weight: 600; }
 .window-width-setting .segmented { width: 100%; }
 .window-width-setting .segmented button { min-height: 28px; }
-.sheet-card .actions > button:not(.dock-icon-choice) { min-height: 28px; padding: 4px 12px; }
+.sheet-card .actions > button:not(.dock-icon-choice) { min-height: 22px; padding: 2px 8px; font-size: 11px; white-space: nowrap; }
+.sheet-card .release-notes { max-height: 160px; overflow-y: auto; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--muted); font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }

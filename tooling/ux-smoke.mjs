@@ -1,9 +1,9 @@
-import { _electron as electron } from 'playwright';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import { _electron as electron } from 'playwright';
 
 // All fixtures and conversations live in a fresh test profile, never the user's database.
 const output = path.resolve('test-results/ux-current');
@@ -320,6 +320,17 @@ try {
   await settingsDialog.getByRole('radio', { name: '标准', exact: true }).click();
   await poll(() => page.evaluate(async () => (await window.desktop.state()).settings.mainWindowWidth === 'standard' && innerWidth === 440), 'standard width preset');
   const generalSettingsBox = await settingsDialog.boundingBox();
+  await page.getByRole('button', { name: '窗口宽度说明', exact: true }).hover();
+  const generalTipFits = await page.evaluate(() => {
+    const bubble = document.querySelector('.window-width-setting .help-tip-bubble');
+    const modal = document.querySelector('.settings-modal');
+    if (!bubble || !modal) return false;
+    const b = bubble.getBoundingClientRect(); const m = modal.getBoundingClientRect();
+    return getComputedStyle(bubble).display === 'block' && b.left >= m.left + 4 && b.right <= m.right - 4;
+  });
+  assert.equal(generalTipFits, true, 'general help tip bubble stays fully inside the settings modal');
+  const sheetActionHeights = await page.evaluate(() => [...document.querySelectorAll('.sheet-card .actions > button')].map(button => Math.round(button.getBoundingClientRect().height)));
+  assert.ok(sheetActionHeights.length === 2 && sheetActionHeights.every(height => height <= 24), `local data action buttons stay compact: ${JSON.stringify(sheetActionHeights)}`);
   assert.equal(await settingsDialog.getByRole('tab').count(), 2, 'settings only keeps the general and AI tabs');
   assert.equal(await settingsDialog.getByRole('tab', { name: '待办配置', exact: true }).count(), 0);
   assert.equal(await page.getByRole('button', { name: '悬浮入口说明', exact: true }).count(), 0, 'Dock settings are absent from the shipping UI');
@@ -333,9 +344,9 @@ try {
   assert.equal((await page.evaluate(() => window.desktop.state())).settings.aiEnabled, false);
   assert.equal(await page.getByRole('switch', { name: '启用 AI', exact: true }).getAttribute('aria-checked'), 'false', 'failed immediate save rolls switch back to persisted state');
   await page.getByRole('button', { name: '添加供应商', exact: true }).click();
-  assert.equal(await page.getByRole('button', { name: '高级设置', exact: true }).getAttribute('aria-expanded'), 'false');
+  assert.equal(await page.getByRole('button', { name: '高级设置', exact: true }).count(), 0, 'protocol lives in the main flow, no advanced disclosure');
   assert.equal(await page.getByLabel('服务地址', { exact: true }).isVisible(), true);
-  assert.equal(await page.getByLabel('服务协议', { exact: true }).isVisible(), false);
+  assert.equal(await page.getByLabel('服务协议', { exact: true }).isVisible(), true);
   await screenshot('settings-ai-simple');
   await choose('供应商类型', '自定义');
   await page.getByLabel('供应商名称', { exact: true }).fill('本地测试');
@@ -347,6 +358,17 @@ try {
   assert.equal((await page.evaluate(() => window.desktop.state())).settings.providers.length, 0, 'connection testing must not silently save a draft');
   await page.getByRole('button', { name: '添加并使用', exact: true }).click();
   await poll(async () => (await page.evaluate(() => window.desktop.state())).settings.models.length === 1, 'add provider and active model');
+  const modelRowMetrics = await page.evaluate(() => {
+    const row = document.querySelector('.model-list li');
+    if (!row) return null;
+    const buttons = [...row.querySelectorAll('button')].map(button => { const r = button.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; });
+    const name = row.querySelector('.category-name');
+    const nameStyle = name ? getComputedStyle(name) : null;
+    return { buttons, nameNowrap: nameStyle?.whiteSpace === 'nowrap', nameEllipsis: nameStyle?.textOverflow === 'ellipsis' };
+  });
+  assert.ok(modelRowMetrics, 'the created model renders a list row');
+  assert.ok(modelRowMetrics.buttons.every(([w, h]) => w === 24 && h === 24), `model row action buttons stay 24x24: ${JSON.stringify(modelRowMetrics.buttons)}`);
+  assert.ok(modelRowMetrics.nameNowrap && modelRowMetrics.nameEllipsis, 'model names stay on one line with an ellipsis');
   await page.getByRole('switch', { name: '启用 AI', exact: true }).click();
   await poll(async () => (await page.evaluate(() => window.desktop.state())).settings.aiEnabled, 'AI switch immediate save');
   await screenshot('settings-ai');

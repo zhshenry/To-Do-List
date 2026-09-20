@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type ButtonHTMLAttributes, type Ref } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type ComponentPropsWithRef } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarBlank, CaretDown, CaretLeft, CaretRight, Clock, Question, X } from '@phosphor-icons/react';
 import { localDay } from '../shared/contracts';
@@ -389,14 +389,36 @@ export function BrandMark() {
     </svg>
   );
 }
-export function IconButton({ label, children, onClick, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; ref?: Ref<HTMLButtonElement> }) {
+export function IconButton({ label, children, onClick, className, ...props }: ComponentPropsWithRef<'button'> & { label: string }) {
   return <button type="button" className={`icon-button${className ? ` ${className}` : ''}`} aria-label={label} title={label} onClick={onClick} {...props}>{children}</button>;
 }
 export function HelpTip({ label, children, place = 'down' }: { label: string; children: string; place?: 'down' | 'up' }) {
   const id = useId();
-  return <span className={`help-tip${place === 'up' ? ' is-up' : ''}`}>
-    <button type="button" className="help-tip-button" aria-label={label} aria-describedby={id}><Question size={15} /></button>
-    <span id={id} role="tooltip" className="help-tip-bubble">{children}</span>
+  const hostRef = useRef<HTMLSpanElement>(null);
+  const [bubbleStyle, setBubbleStyle] = useState<CSSProperties>({});
+  // Bubbles are clipped by the settings modal (overflow-y: auto), so fit them inside
+  // its padding box: keep the default left anchor while there is room, otherwise
+  // anchor from the button's right edge and grow leftward. Re-measured lazily on
+  // hover/focus so window resizes after mount are corrected.
+  const fit = useCallback(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const scope = host.closest('.modal');
+    const scopeRect = scope?.getBoundingClientRect();
+    const rightLimit = scopeRect ? scopeRect.right - 10 : window.innerWidth - 24;
+    const leftLimit = scopeRect ? scopeRect.left + 10 : 24;
+    const box = host.getBoundingClientRect();
+    const natural = 240; // keep in sync with .help-tip-bubble max-width in styles.css
+    const fromLeft = rightLimit - box.left;
+    const fromRight = box.right - leftLimit;
+    if (fromLeft >= natural) setBubbleStyle({});
+    else if (fromLeft >= 160) setBubbleStyle({ maxWidth: fromLeft });
+    else setBubbleStyle({ maxWidth: Math.min(natural, fromRight), left: 'auto', right: 0 });
+  }, []);
+  useLayoutEffect(fit, [fit]);
+  return <span ref={hostRef} className={`help-tip${place === 'up' ? ' is-up' : ''}`}>
+    <button type="button" className="help-tip-button" aria-label={label} aria-describedby={id} onPointerEnter={fit} onFocus={fit}><Question size={15} /></button>
+    <span id={id} role="tooltip" className="help-tip-bubble" style={bubbleStyle}>{children}</span>
   </span>;
 }
 export function Modal({ title, children, close, dirty = false, subhead, headingExtra, titleIcon, closeText, className }: { title: string; children: ReactNode; close(): void; dirty?: boolean; subhead?: ReactNode; headingExtra?: ReactNode; titleIcon?: ReactNode; closeText?: string; className?: string }) {

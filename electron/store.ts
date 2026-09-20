@@ -232,7 +232,11 @@ export class Store {
       for (const action of plan.actions) {
         if (action.type === 'create') this.create(action.task);
         else if (action.type === 'update') this.update(action.id, action.patch);
-        else if (action.type === 'remove') this.remove(action.id, revisions.get(action.id)!);
+        else if (action.type === 'remove') {
+          const revision = revisions.get(action.id);
+          if (revision === undefined) throw new Error('AI 建议缺少版本信息，请重新生成');
+          this.remove(action.id, revision);
+        }
       }
       for (const action of plan.actions) {
         if (action.type === 'remove_category') this.dropCategory(action.id);

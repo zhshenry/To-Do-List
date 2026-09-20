@@ -64,7 +64,6 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
   const [editingModel, setEditingModel] = useState<string | null>(null);
   const [modelDraft, setModelDraft] = useState('');
   const [testNote, setTestNote] = useState('');
-  const [advanced, setAdvanced] = useState(provider?.kind === 'custom');
   const draftRef = useRef(draft); draftRef.current = draft;
   const modelRef = useRef(modelName); modelRef.current = modelName;
   const modelEditRef = useRef({ id: editingModel, name: modelDraft }); modelEditRef.current = { id: editingModel, name: modelDraft };
@@ -176,14 +175,12 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
         // A stored credential is never forwarded to a different service by changing its preset.
         if (kind !== draft.kind && (saved?.hasKey || draftRef.current.apiKey)) { fail('当前已填写密钥。请先移除密钥再切换供应商，或添加新供应商。'); return; }
         update(next);
-        setAdvanced(kind === 'custom');
         if (saved) void flushProvider().catch(e => fail(errorText(e)));
       }} options={PROVIDER_KIND_OPTIONS} />
     </> : null}
     {rename || (!saved && draft.kind === 'custom') ? <>
       <div className="label-with-help">
         <label htmlFor={saved ? `ai-provider-name-${saved.id}` : 'ai-provider-name'}>供应商名称</label>
-        {!saved && canCancel ? <><span className="provider-card-spacer" /><IconButton label="取消添加供应商" onClick={onClose}><Trash size={16} /></IconButton></> : null}
       </div>
       <input id={saved ? `ai-provider-name-${saved.id}` : 'ai-provider-name'} aria-label="供应商名称" value={draft.name} maxLength={30} placeholder="请输入供应商名称" autoComplete="off" onChange={e => update({ ...draft, name: e.target.value })} onBlur={saveOnBlur} />
     </> : null}
@@ -193,12 +190,8 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
       {draft.endpoint.trim().toLowerCase().startsWith('http://') ? <p className="warning">当前使用 HTTP：API Key、事项和对话内容会明文传输。仅建议用于可信内网或本机服务；公网服务请使用 HTTPS。</p> : null}
       <label htmlFor={saved ? `ai-key-${saved.id}` : 'ai-key'} className="label-with-help">API Key <HelpTip label="API Key 说明" place="up">同一供应商的模型共用密钥。使用 Windows 加密后保存在本机。</HelpTip></label>
       <div className="secret-field"><input id={saved ? `ai-key-${saved.id}` : 'ai-key'} type={visible ? 'text' : 'password'} value={draft.apiKey} onChange={e => update({ ...draft, apiKey: e.target.value, clearKey: false })} onBlur={saveOnBlur} autoComplete="new-password" placeholder={saved?.hasKey && !draft.clearKey ? '••••••••' : '填写服务提供的密钥'} /><IconButton label={!draft.apiKey ? '输入新密钥后可查看' : visible ? '隐藏密钥' : '显示密钥'} disabled={!draft.apiKey} onClick={() => setVisible(!visible)}>{visible ? <EyeSlash size={20} /> : <Eye size={20} />}</IconButton>{saved?.hasKey && !draft.clearKey ? <IconButton className="text-danger" label="移除已保存的密钥" onClick={() => { update({ ...draftRef.current, clearKey: true, apiKey: '' }); void flushProvider().catch(e => fail(errorText(e))); }}><X size={16} /></IconButton> : null}</div>
-      <button type="button" className="model-toggle settings-advanced-toggle" aria-expanded={advanced} aria-controls={saved ? `advanced-${saved.id}` : 'advanced-new'} onClick={() => setAdvanced(open => !open)}>高级设置<CaretDown size={14} /></button>
-      <div className="settings-advanced" id={saved ? `advanced-${saved.id}` : 'advanced-new'} hidden={!advanced}>
-      <p className="field-help">使用官方服务无需修改，可在此调整服务协议。</p>
       <label htmlFor={saved ? `ai-protocol-${saved.id}` : 'ai-protocol'} className="label-with-help">服务协议 <HelpTip label="服务协议说明">助手通过所选协议访问 /chat/completions、/responses 或 /messages。预设供应商会填好协议，一般无需更改。</HelpTip></label>
       <Select id={saved ? `ai-protocol-${saved.id}` : 'ai-protocol'} aria-label="服务协议" value={draft.protocol} onChange={value => { update({ ...draftRef.current, protocol: value as AIProtocol }); if (saved) void flushProvider().catch(e => fail(errorText(e))); }} options={PROTOCOL_OPTIONS} />
-      </div>
     </> : null}
     <button type="button" className="model-toggle" aria-expanded={modelsOpen} aria-controls={saved ? `models-${saved.id}` : 'models-new'} onClick={() => setModelsOpen(open => !open)}>
       <span>模型列表{models.length ? `（${models.length}）` : ''}</span>
@@ -358,6 +351,7 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
             {updater.active && updater.state !== 'ready' ? <button type="button" disabled={updater.state === 'checking' || updater.state === 'downloading'} onClick={() => void api.updaterCheck()}>检查更新</button> : null}
             {updater.state === 'ready' && updater.readyVersion ? <button type="button" className="primary" onClick={() => void api.updaterInstall()}>重启并安装 v{updater.readyVersion}</button> : null}
           </div> : null}
+          {updater?.releaseNotes ? <div className="release-notes">{updater.releaseNotes}</div> : null}
         </section>
         <section className="sheet-card">
           <h3>本地数据</h3>

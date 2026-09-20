@@ -285,6 +285,7 @@ h3 { font-size: 15px; font-weight: 650; }
 .sheet-card > h3, .sheet-card > .label-with-help { margin: 0; font-size: 15px; font-weight: 650; }
 .sheet-card .field-help { margin: 0; }
 .sheet-card .actions { margin: 0; }
+.sheet-card .actions > .field-help { flex: 1; min-width: 0; }
 input, select, textarea { border: 1px solid var(--line); background: var(--white); color: var(--ink); border-radius: 8px; padding: 9px 11px; min-width: 0; width: 100%; }.form-body input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--accent); flex-shrink: 0; }textarea { resize: none; min-height: 84px; }[aria-invalid="true"] { border-color: var(--danger); }
 .select { width: 100%; min-width: 0; }
 .select-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 36px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); color: var(--ink); text-align: left; }
@@ -354,7 +355,7 @@ input, select, textarea { border: 1px solid var(--line); background: var(--white
 .help-tip:hover, .help-tip:focus-within { z-index: 30; }
 .help-tip-button { border: 0; width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--muted); border-radius: 50%; }
 .help-tip-button:hover, .help-tip-button:active { background: var(--subtle); color: var(--ink); }
-.help-tip-bubble { display: none; position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; width: max-content; max-width: min(260px, calc(100vw - 48px)); padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 400; line-height: 1.65; box-shadow: 0 8px 20px #1719231a; pointer-events: none; }
+.help-tip-bubble { display: none; position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; width: max-content; max-width: min(240px, calc(100vw - 48px)); /* 240 must stay in sync with the fit() natural width in ui.tsx HelpTip */ padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 400; line-height: 1.65; box-shadow: 0 8px 20px #1719231a; pointer-events: none; }
 .help-tip.is-up .help-tip-bubble { top: auto; bottom: calc(100% + 6px); }
 .help-tip:hover .help-tip-bubble, .help-tip:focus-within .help-tip-bubble { display: block; }
 /* The compact color helper intentionally overrides the inherited form label weight. */
@@ -454,10 +455,13 @@ input[type="range"].progress-range::-webkit-slider-thumb { appearance: none; wid
 .model-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
 .model-box { display: flex; flex-direction: column; gap: 5px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--subtle); }
 .model-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
-.model-list li { display: flex; align-items: center; gap: 5px; min-height: 32px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--white); }
+.model-list li { display: flex; align-items: center; gap: 4px; min-height: 28px; padding: 3px 5px; border: 1px solid var(--line); border-radius: 7px; background: var(--white); }
 .model-list li > input { flex: 1; width: auto; }
-.model-list li .category-name { min-width: 0; font-size: 12px; }
+.model-list li .category-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .model-list li > button:not(.icon-button):not(.model-test-button) { font-size: 11px; padding: 4px 7px; }
+.model-box .model-test-button { width: 24px; min-height: 24px; }
+.model-list li .icon-button { width: 24px; height: 24px; padding: 3px; }
+.model-list li .icon-button svg { width: 13px; height: 13px; }
 .model-test-button { flex-shrink: 0; width: 30px; min-height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .model-add-button, .provider-add-button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; width: 100%; background: var(--white); color: var(--muted); font-size: 12px; padding: 10px; border-radius: 14px; }
 .model-add-button:hover, .provider-add-button:hover { background: var(--line); color: var(--ink); }

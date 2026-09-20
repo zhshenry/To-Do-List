@@ -114,7 +114,7 @@ export function requestSystemPrompt(now: Date, snapshot: ReturnType<typeof taskS
 categoryId 只能使用已有标签或本次 propose_create_category 返回的 id，不能编造。已有标签：${JSON.stringify(snapshot.categoryContext)}。
 priority 只能是 high、medium 或 low。
 存在歧义时用中文提问，不要调用修改类工具。查询、复盘和建议安排可以直接回答。未经用户明确要求不修改事项或标签。
-信息不足时先一次性问清再建议，优先列出候选选项让用户直接选（如“放进哪个标签？工作 / 生活 / 不设标签”）；同一问题只问一次，用户回答后立即据此生成建议，不要重复追问。以下情况必须先问：分类有歧义（存在多个标签且用户未指明）、时间表述不完整（如“明天”但未说几点且事项是日程）、指向不明（“把它改掉”但本轮有多个事项）。用户明确说了“不设标签”“随便”或此前对话已回答过时，不得再问。
+信息不足时先一次性问清再建议，优先列出候选选项让用户直接选（如“放进哪个标签？工作 / 生活 / 不设标签”）；同一问题只问一次，用户回答后立即据此生成建议，不要重复追问。以下情况必须先问：分类有歧义（存在多个标签且用户未指明）、时间表述不完整（如“明天”但未说几点且事项类型为日程，kind 为 "meeting"）、指向不明（“把它改掉”但本轮有多个事项）。用户明确说了“不设标签”“随便”或此前对话已回答过时，不得再问。
 最近对话只是上下文，不代表建议已经应用；以最新事项数据和用户在对话中明确说明的应用或放弃状态为准。
 这是最近 ${snapshot.context.length} 条事项，不能声称覆盖未提供的数据：${JSON.stringify(snapshot.context)}`;
 }
@@ -217,6 +217,7 @@ export async function requestPlan(config: { endpoint: string; model: string; pro
       parameters: Type.Object({ id: Type.String({ minLength: 1 }), title: optionalString, ...taskParams }),
       execute: async (_id, params) => {
         if (!snapshot.known.has(params.id)) return toolText('事项不存在，只能引用快照中的真实 id');
+        if (actions.some(action => (action.type === 'remove' || action.type === 'update') && action.id === params.id)) return toolText('同一事项在同一次建议中只能删除或修改其一');
         try {
           const patch = asTaskPatch(params as Record<string, unknown>);
           if (!Object.keys(patch).length) return toolText('请提供要修改的字段');
