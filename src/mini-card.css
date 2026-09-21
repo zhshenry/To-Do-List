@@ -63,9 +63,9 @@
 .meta-cat { display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; }
 .meta-cat i { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; }
 .mini-home-with-insight .meta-cat { font-size: 9px; }
-.mini-deck-pager { margin-left: auto; display: flex; align-items: center; gap: 2px; color: var(--muted); font-size: 10px; white-space: nowrap; }
-.mini-deck-pager > span { padding-right: 3px; font-variant-numeric: tabular-nums; }
-.mini-deck-pager button { width: 18px; height: 18px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; }
+.mini-deck-pager { margin-left: auto; display: flex; align-items: center; color: var(--muted); font-size: 10px; white-space: nowrap; }
+.mini-deck-pager > span { font-variant-numeric: tabular-nums; }
+.mini-deck-pager button { width: 14px; height: 14px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; }
 .mini-deck-pager button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
 .mini-deck-pager .is-up { transform: rotate(180deg); }
 .deck-layer { position: absolute; inset: 0; }

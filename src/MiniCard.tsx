@@ -460,7 +460,7 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
       </div>
       <div className="front-meta">
         <span className="meta-cat">{taskCategory ? <><i style={{ backgroundColor: taskCategory.color }} />{taskCategory.name}</> : task.kind === 'meeting' ? '日程安排' : `优先级 · ${priorityName(task.priority)}`}</span>
-        {isArmed ? <span className="confirm-bar"><button type="button" className="confirm-btn" disabled={mutating} onClick={confirmComplete}><Check size={10} weight="bold" />确认完成</button><button type="button" className="confirm-cancel" disabled={mutating} onClick={disarmArm}>取消</button></span> : <div className="mini-deck-pager"><span>{counter}</span><button type="button" aria-label="上一项" disabled={remaining.length < 2} onClick={() => page(-1)}><CaretDown size={10} className="is-up" /></button><button type="button" aria-label="下一项" disabled={remaining.length < 2} onClick={() => page(1)}><CaretDown size={10} /></button></div>}
+        {isArmed ? <span className="confirm-bar"><button type="button" className="confirm-btn" disabled={mutating} onClick={confirmComplete}><Check size={10} weight="bold" />确认完成</button><button type="button" className="confirm-cancel" disabled={mutating} onClick={disarmArm}>取消</button></span> : <div className="mini-deck-pager"><span>{counter}</span><button type="button" aria-label="上一项" disabled={remaining.length < 2} onClick={() => page(-1)}><CaretDown size={9} className="is-up" /></button><button type="button" aria-label="下一项" disabled={remaining.length < 2} onClick={() => page(1)}><CaretDown size={9} /></button></div>}
       </div>
     </article>;
   }
