@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import {
   ArrowsOutLineVertical, Bell, CalendarBlank, CaretDown, CaretLeft, CaretRight, Check, Circle, Clock,
-  DotsThree, Flag, GearSix, Minus, Plus, PushPin, Sparkle, Tag, VideoCamera, X,
+  DotsThree, Flag, GearSix, Minus, Plus, PushPin, Sparkle, Tag, X,
 } from '@phosphor-icons/react';
 import {
   DOCK_FEATURE_ENABLED, activeToday, localDay, newTask,
@@ -456,8 +456,8 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
                 <article className="mini-task-front">
                   <span className="corner-badges">{current.kind === 'meeting' ? <span className="mini-pill pill-meeting">日程</span> : <span className="mini-pill pill-todo">待办</span>}{currentOverdue ? <span className="mini-pill pill-overdue">已超期</span> : null}</span>
                   <span className={`corner-time${currentOverdue ? ' overdue' : ''}`}><span className="time-label">{stampLabel(current.kind)}</span>{dueLabel}</span>
-                  <div className="front-main">
-                    {current.kind === 'meeting' ? <button type="button" className="mini-kind-button" aria-label={`打开日程 ${current.title}`} onClick={() => edit(current)}><VideoCamera size={11} /></button> : <button type="button" className={`mini-task-check${armed ? ' armed' : ''}`} aria-label={armed ? `确认完成 ${current.title}` : `完成 ${current.title}`} aria-pressed={armed} disabled={mutating} onClick={completeCurrent}><Check size={12} /></button>}
+                  <div className={`front-main${current.kind === 'meeting' ? ' is-meeting' : ''}`}>
+                    {current.kind === 'task' ? <button type="button" className={`mini-task-check${armed ? ' armed' : ''}`} aria-label={armed ? `确认完成 ${current.title}` : `完成 ${current.title}`} aria-pressed={armed} disabled={mutating} onClick={completeCurrent}><Check size={12} /></button> : null}
                     <button type="button" className="mini-task-open" title={`展开编辑：${current.title}`} onClick={() => edit(current)}><b>{current.title}</b></button>
                   </div>
                   <div className="front-meta">
