@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>版本与更新卡片 · 交互提案</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #faf8f5; --titlebar: #f2eee8; --ink: #171923; --muted: #726d67;
+    --accent: #b54f2b; --accent-hover: #963e20; --accent-soft: #f6e2d9; --line: #e4ded6; --subtle: #efebe6;
+    --danger: #a3312d; --white: #ffffff;
+    --font-body: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --card-radius: 14px; --control-radius: 10px;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 80% 45% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
+    font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: var(--ink);
+    font-synthesis: none; text-rendering: optimizeLegibility;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--mesh); padding: 36px 44px 44px; }
+
+  .sheet-head { max-width: 1200px; margin: 0 auto 26px; }
+  .sheet-head h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+  .sheet-head p { margin: 5px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .sheet-head .meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  h2.clip { max-width: 1200px; margin: 30px auto 10px; font-size: 13px; font-weight: 650; color: var(--ink); }
+  h2.clip small { font-weight: 400; color: var(--muted); font-size: 11.5px; margin-left: 8px; }
+
+  .duo { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+  .caption { font-size: 11px; color: var(--muted); padding-left: 2px; }
+  .caption b { color: var(--danger); font-weight: 600; }
+  .caption.ok b { color: var(--accent); }
+
+  /* ===== 以下为应用真实样式（src/styles.css / settings.css 摘录） ===== */
+  .sheet-card { background: var(--white); border: 1px solid var(--line); border-radius: var(--card-radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .sheet-card > h3, .sheet-card > .label-with-help { margin: 0; font-size: 15px; font-weight: 650; }
+  .label-with-help { display: flex; align-items: center; gap: 4px; }
+  .sheet-card .actions { margin: 0; }
+  .actions { display: flex; align-items: center; gap: 9px; }
+  .field-help { font-size: 12px; line-height: 1.7; color: var(--muted); }
+  .sheet-card .field-help { margin: 0; }
+  button { cursor: pointer; color: inherit; border: 1px solid var(--line); background: var(--white); border-radius: var(--control-radius); padding: 9px 13px; font: inherit; transition: background-color 120ms, color 120ms; }
+  button:hover { background: var(--subtle); }
+  button:disabled { cursor: default; opacity: .55; }
+  .sheet-card .actions > button { min-height: 22px; padding: 2px 8px; font-size: 11px; white-space: nowrap; }
+  .primary { background: var(--accent); color: var(--white); border-color: var(--accent); }
+  .primary:hover { background: var(--accent-hover); }
+  .help-tip { position: relative; display: inline-flex; }
+  .help-tip-button { border: 0; width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--muted); border-radius: 50%; font-size: 13px; font-weight: 600; }
+  .release-notes { max-height: 160px; overflow-y: auto; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--muted); font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .release-notes.is-raw { font-size: 11px; max-height: 132px; color: #8a847c; }
+
+  /* ===== 提案新增：下载进度条（沿用 plan-progress 的 3px 细条语言） ===== */
+  .download-progress { width: 100%; height: 3px; border-radius: 2px; background: var(--subtle); overflow: hidden; }
+  .download-progress > span { display: block; height: 100%; background: var(--accent); }
+
+  /* ===== 提案新增：更新日志链接 ===== */
+  .notes-link { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-size: 11px; color: var(--muted); text-decoration: none; white-space: nowrap; padding: 2px 2px; border-radius: 6px; transition: color 120ms; }
+  .notes-link:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  .notes-link svg { width: 12px; height: 12px; flex-shrink: 0; }
+  .notes-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .status-row { min-height: 18px; }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <h1>版本与更新卡片 · 交互提案</h1>
+  <p>① 下载更新过程中不再内嵌发布说明（下载进度本身已足够，日志框在网络不佳时长期占用半张卡片）；② 卡片内常驻一个「更新日志」链接跳转 GitHub Release，替代内嵌全文——顺带消除 HTML 源码裸露的显示问题。</p>
+  <div class="meta">2026-09-21 · 设置 › 通用 › 版本与更新 · 渲染为真实尺寸与真实令牌</div>
+</header>
+
+<h2 class="clip">变更对比：下载中 <small>左为 0.5.5 现状，右为提案</small></h2>
+<div class="duo">
+  <div class="stack">
+    <span class="caption"><b>现状</b> · 正在下载（日志框裸露 HTML、挤压滚动）</span>
+    <section class="sheet-card">
+      <h3 class="label-with-help">版本与更新 <span class="help-tip"><button class="help-tip-button" tabindex="-1">?</button></span></h3>
+      <div class="actions">
+        <span class="field-help">正在下载新版本…（85%）</span>
+        <button disabled>检查更新</button>
+      </div>
+      <div class="release-notes is-raw">&lt;p&gt;Windows x64，版本 0.5.5。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;安装版（Setup）内置自动更新，之后的新版本会在应用内自动下载安装；&lt;/li&gt;
+&lt;li&gt;免安装版（Portable）需手动下载解压替换，事项数据保存在 %APPDATA%/To-Do-List。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;更新内容&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;待办与日程分卡：主界面「今日计划」重构为待办卡与日程卡……</li>
+    </div>
+    </section>
+  </div>
+  <div class="stack">
+    <span class="caption ok"><b>提案</b> · 正在下载（只有进度与操作，链接常驻）</span>
+    <section class="sheet-card">
+      <h3 class="label-with-help">版本与更新 <span class="help-tip"><button class="help-tip-button" tabindex="-1">?</button></span></h3>
+      <p class="field-help status-row">正在下载新版本…（85%）</p>
+      <div class="download-progress" role="progressbar" aria-label="更新下载进度" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100"><span style="width: 85%;"></span></div>
+      <div class="actions">
+        <button disabled>检查更新</button>
+        <a class="notes-link" tabindex="-1">查看更新日志
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5H4.75A1.75 1.75 0 0 0 3 5.25v6A1.75 1.75 0 0 0 4.75 13h6a1.75 1.75 0 0 0 1.75-1.75V9.5"/><path d="M9.75 2.5h3.75v3.75M13.1 2.9 7.9 8.1"/></svg>
+        </a>
+      </div>
+    </section>
+  </div>
+</div>
+
+<h2 class="clip">提案后的完整状态流 <small>同一张卡片在不同更新阶段的样子</small></h2>
+<div class="duo" style="grid-template-columns: 1fr 1fr;">
+  <div class="stack">
+    <span class="caption">① 空闲 · 已是最新（链接指向 Releases 列表）</span>
+    <section class="sheet-card">
+      <h3 class="label-with-help">版本与更新 <span class="help-tip"><button class="help-tip-button" tabindex="-1">?</button></span></h3>
+      <p class="field-help status-row">当前版本 v0.5.5。</p>
+      <div class="actions">
+        <button>检查更新</button>
+        <a class="notes-link" tabindex="-1">查看更新日志
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5H4.75A1.75 1.75 0 0 0 3 5.25v6A1.75 1.75 0 0 0 4.75 13h6a1.75 1.75 0 0 0 1.75-1.75V9.5"/><path d="M9.75 2.5h3.75v3.75M13.1 2.9 7.9 8.1"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <span class="caption" style="margin-top:14px;">② 正在检查更新</span>
+    <section class="sheet-card">
+      <h3 class="label-with-help">版本与更新 <span class="help-tip"><button class="help-tip-button" tabindex="-1">?</button></span></h3>
+      <p class="field-help status-row">正在检查更新…</p>
+      <div class="actions">
+        <button disabled>正在检查更新…</button>
+        <a class="notes-link" tabindex="-1">查看更新日志
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5H4.75A1.75 1.75 0 0 0 3 5.25v6A1.75 1.75 0 0 0 4.75 13h6a1.75 1.75 0 0 0 1.75-1.75V9.5"/><path d="M9.75 2.5h3.75v3.75M13.1 2.9 7.9 8.1"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <span class="caption" style="margin-top:14px;">③ 正在下载新版本（无日志框）</span>
+    <section class="sheet-card">
+      <h3 class="label-with-help">版本与更新 <span class="help-tip"><button class="help-tip-button" tabindex="-1">?</button></span></h3>
+      <p class="field-help status-row">正在下载新版本…（85%）</p>
+      <div class="download-progress" role="progressbar" aria-label="更新下载进度" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100"><span style="width: 85%;"></span></div>
+      <div class="actions">
+        <button disabled>检查更新</button>
+        <a class="notes-link" tabindex="-1">查看更新日志
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5H4.75A1.75 1.75 0 0 0 3 5.25v6A1.75 1.75 0 0 0 4.75 13h6a1.75 1.75 0 0 0 1.75-1.75V9.5"/><path d="M9.75 2.5h3.75v3.75M13.1 2.9 7.9 8.1"/></svg>
+        </a>
+      </div>
+    </section>
+  </div>
+
+  <div class="stack">
+    <span class="caption">④ 新版本已就绪（链接文案统一，指向新版本 Release）</span>
+    <section class="sheet-card">
+      <h3 class="label-with-help">版本与更新 <span class="help-tip"><button class="help-tip-button" tabindex="-1">?</button></span></h3>
+      <p class="field-help status-row">新版本 v0.5.6 已下载，重启后即可完成安装。</p>
+      <div class="actions">
+        <button class="primary">重启并安装 v0.5.6</button>
+        <a class="notes-link" tabindex="-1">查看更新日志
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5H4.75A1.75 1.75 0 0 0 3 5.25v6A1.75 1.75 0 0 0 4.75 13h6a1.75 1.75 0 0 0 1.75-1.75V9.5"/><path d="M9.75 2.5h3.75v3.75M13.1 2.9 7.9 8.1"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <span class="caption" style="margin-top:14px;">⑤ 检查失败（可重试，链接不受影响）</span>
+    <section class="sheet-card">
+      <h3 class="label-with-help">版本与更新 <span class="help-tip"><button class="help-tip-button" tabindex="-1">?</button></span></h3>
+      <p class="field-help status-row" style="color: var(--danger);">检查更新失败：网络异常或服务不可用，可稍后重试。</p>
+      <div class="actions">
+        <button>检查更新</button>
+        <a class="notes-link" tabindex="-1">查看更新日志
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5H4.75A1.75 1.75 0 0 0 3 5.25v6A1.75 1.75 0 0 0 4.75 13h6a1.75 1.75 0 0 0 1.75-1.75V9.5"/><path d="M9.75 2.5h3.75v3.75M13.1 2.9 7.9 8.1"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <span class="caption" style="margin-top:14px;">⑥ 免安装版（更新器不可用，仅保留链接）</span>
+    <section class="sheet-card">
+      <h3 class="label-with-help">版本与更新 <span class="help-tip"><button class="help-tip-button" tabindex="-1">?</button></span></h3>
+      <p class="field-help status-row">当前版本 v0.5.5。自动更新仅在安装版中可用；免安装版请手动下载新版解压替换。</p>
+      <div class="actions">
+        <a class="notes-link">前往 GitHub 下载新版
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5H4.75A1.75 1.75 0 0 0 3 5.25v6A1.75 1.75 0 0 0 4.75 13h6a1.75 1.75 0 0 0 1.75-1.75V9.5"/><path d="M9.75 2.5h3.75v3.75M13.1 2.9 7.9 8.1"/></svg>
+        </a>
+      </div>
+    </section>
+  </div>
+</div>
+
+</body>
+</html>

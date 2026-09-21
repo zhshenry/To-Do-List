@@ -28,35 +28,52 @@
 .mini-home-with-insight .mini-home-main { height: 77px; }
 .mini-task-stack { position: relative; min-width: 0; height: 104px; }
 .mini-home-with-insight .mini-task-stack { height: 77px; }
-.mini-stack-sheet { position: absolute; left: 4px; right: 4px; top: 8px; height: 84px; border: 1px solid var(--line); border-radius: 14px; background: #f8f5f1; }
+.mini-stack-sheet { position: absolute; left: 4px; right: 4px; top: 8px; height: 90px; border: 1px solid var(--line); border-radius: 14px; background: #f8f5f1; }
 .mini-stack-sheet.back { left: 8px; right: 8px; top: 14px; z-index: 0; padding: 0; background: #f3efea; box-shadow: 0 3px 8px #453a2e0b; }
 .mini-stack-sheet.back:hover { border-color: #c9957e; background: #f2e9e3; }
 .mini-home-with-insight .mini-stack-sheet { top: 6px; height: 62px; }
-.mini-home-with-insight .mini-stack-sheet.back { top: 11px; }
-.mini-task-front { position: absolute; z-index: 2; inset: 0 0 auto; height: 86px; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 10px 10px 9px; border: 1px solid #e1dad1; border-radius: 14px; background: white; box-shadow: 0 5px 14px #4c40310b; }
-.mini-home-with-insight .mini-task-front { height: 66px; gap: 7px; padding: 7px 9px 6px; }
-.mini-task-check, .mini-kind-button { width: 22px; height: 22px; display: grid; place-items: center; padding: 0; border-radius: 7px; background: transparent; }
-.mini-task-check { border: 1.5px solid #827c74; color: transparent; }
-.mini-task-check:hover { border-color: var(--accent); color: var(--accent); }
-.mini-task-check.is-done { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
-.mini-kind-button { border-color: #d9c5ba; background: #faf1ec; color: var(--accent); }
+.mini-home-with-insight .mini-stack-sheet.back { top: 11px; height: 66px; }
+.mini-task-front { position: absolute; z-index: 2; inset: 0 0 auto; height: 92px; display: flex; flex-direction: column; padding: 26px 10px 8px; border: 1px solid #e1dad1; border-radius: 14px; background: white; box-shadow: 0 5px 14px #4c40310b; }
+.mini-home-with-insight .mini-task-front { height: 70px; padding: 20px 9px 5px; }
+.front-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 9px; align-items: center; }
+.mini-home-with-insight .front-main { gap: 7px; }
+.corner-badges { position: absolute; top: 8px; left: 10px; display: flex; gap: 4px; z-index: 1; }
+.mini-home-with-insight .corner-badges { top: 4px; left: 9px; }
+.mini-pill { font-size: 9.5px; font-weight: 650; line-height: 1; padding: 3px 8px; border-radius: 999px; }
+.mini-home-with-insight .mini-pill { font-size: 9px; padding: 2px 7px; }
+.mini-pill.pill-todo { background: var(--success-soft); color: var(--success); }
+.mini-pill.pill-meeting { background: #e3ecf3; color: #3f6b8f; }
+.mini-pill.pill-overdue { background: #f9e9e7; color: var(--danger); }
+.corner-time { position: absolute; top: 10px; right: 10px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.corner-time.overdue { color: var(--danger); font-weight: 600; }
+.mini-home-with-insight .corner-time { top: 6px; right: 9px; font-size: 9px; }
+.mini-task-check, .mini-kind-button { display: grid; place-items: center; padding: 0; background: transparent; }
+.mini-task-check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #b7b0a6; color: transparent; transition: border-color 120ms, background-color 120ms; }
+.mini-home-with-insight .mini-task-check { width: 18px; height: 18px; }
+.mini-task-check:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.mini-task-check.armed { background: var(--accent); border-color: var(--accent); color: var(--white); box-shadow: 0 0 0 3px var(--accent-soft); }
+.mini-kind-button { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #d9c5ba; background: #faf1ec; color: var(--accent); }
+.mini-home-with-insight .mini-kind-button { width: 18px; height: 18px; }
 .mini-task-open { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0; border: 0; background: transparent; text-align: left; }
 .mini-task-open:hover { background: transparent; }
-.mini-task-open > small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-size: 10px; font-weight: 650; }
 .mini-task-open > b { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 1.25; }
-.mini-task-front.is-done .mini-task-open > b { color: var(--completed); }
-.mini-task-open > span { display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; }
-.mini-task-open > span i { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; }
-.mini-home-with-insight .mini-task-open > b { font-size: 12px; line-height: 1.2; }
-.mini-home-with-insight .mini-task-open > span { font-size: 9px; }
-.mini-deck-pager { align-self: end; display: grid; grid-template-columns: auto 18px 18px; align-items: center; gap: 1px; margin-bottom: -2px; color: var(--muted); font-size: 10px; white-space: nowrap; }
-.mini-deck-pager > span { padding-right: 2px; font-variant-numeric: tabular-nums; }
+.mini-home-with-insight .mini-task-open > b { font-size: 12px; line-height: 1.2; -webkit-line-clamp: 1; }
+.front-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; min-height: 15px; }
+.mini-home-with-insight .front-meta { margin-top: 3px; min-height: 13px; }
+.meta-cat { display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; }
+.meta-cat i { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; }
+.mini-home-with-insight .meta-cat { font-size: 9px; }
+.mini-deck-pager { margin-left: auto; display: flex; align-items: center; gap: 2px; color: var(--muted); font-size: 10px; white-space: nowrap; }
+.mini-deck-pager > span { padding-right: 3px; font-variant-numeric: tabular-nums; }
 .mini-deck-pager button { width: 18px; height: 18px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; }
-.mini-deck-pager button:hover { background: var(--accent-soft); color: var(--accent); }
+.mini-deck-pager button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
 .mini-deck-pager .is-up { transform: rotate(180deg); }
-.mini-undo-done { align-self: end; min-height: 22px; margin-bottom: -2px; padding: 2px 8px; border: 1px solid var(--accent-soft); border-radius: 7px; background: var(--accent-soft); color: var(--accent); font-size: 11px; white-space: nowrap; }
-.mini-task-front.is-empty { grid-template-columns: 32px minmax(0, 1fr); height: 104px; }
-.mini-home-with-insight .mini-task-front.is-empty { height: 66px; }
+.confirm-bar { margin-left: auto; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.confirm-btn { display: inline-flex; align-items: center; gap: 4px; min-height: 20px; padding: 2px 10px; font-size: 10.5px; font-weight: 600; border-radius: 999px; background: var(--accent); color: var(--white); border: 1px solid var(--accent); white-space: nowrap; }
+.confirm-btn:hover { background: var(--accent-hover); }
+.confirm-cancel { min-height: 20px; padding: 2px 9px; font-size: 10.5px; border-radius: 999px; background: var(--white); color: var(--muted); }
+.mini-task-front.is-empty { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: center; height: 104px; padding-top: 10px; }
+.mini-home-with-insight .mini-task-front.is-empty { height: 70px; padding-top: 7px; }
 .mini-task-front.is-empty > span { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
 .mini-task-front.is-empty > button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0; border: 0; background: transparent; }
 .mini-task-front.is-empty small { color: var(--muted); font-size: 10px; }

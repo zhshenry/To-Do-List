@@ -247,9 +247,8 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
   const flushers = useRef(new Map<string, () => Promise<void>>());
   const [pending, setPending] = useState(0);
   const pendingWrites = useRef(new Set<Promise<unknown>>());
-  const [hasSaved, setHasSaved] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, boolean>>({});
-  const [uncommitted, setUncommitted] = useState<Record<string, boolean>>({});
+  const [, setUncommitted] = useState<Record<string, boolean>>({});
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [tab, setTab] = useState<SettingsTab>(initialTab);
   const [paneDir, setPaneDir] = useState<'next' | 'prev' | ''>('');
@@ -259,7 +258,7 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
   const api = useMemo<DesktopAPI>(() => {
     function track<T>(action: () => Promise<T>): Promise<T> {
       setPending(count => count + 1); setError('');
-      const request = action().then(value => { setHasSaved(true); return value; }).catch(cause => { setError(errorText(cause)); throw cause; }).finally(() => {
+      const request = action().then(value => value).catch(cause => { setError(errorText(cause)); throw cause; }).finally(() => {
         pendingWrites.current.delete(request); setPending(count => count - 1);
       });
       pendingWrites.current.add(request);
@@ -369,12 +368,17 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
         </section> : null}
         <section className="sheet-card">
           <h3 className="label-with-help">版本与更新 <HelpTip label="更新说明">启动后会自动检查更新，也可手动检查。</HelpTip></h3>
-          {updater ? <div className="actions">
-            <span aria-live="polite" className="field-help">{updaterText(updater)}</span>
-            {updater.active && updater.state !== 'ready' ? <button type="button" disabled={updater.state === 'checking' || updater.state === 'downloading'} onClick={() => void api.updaterCheck()}>{updater.state === 'checking' ? '正在检查更新…' : '检查更新'}</button> : null}
-            {updater.state === 'ready' && updater.readyVersion ? <button type="button" className="primary" onClick={() => void api.updaterInstall()}>重启并安装 v{updater.readyVersion}</button> : null}
-          </div> : null}
-          {updater?.releaseNotes ? <div className="release-notes">{updater.releaseNotes}</div> : null}
+          {updater ? <>
+            <p aria-live="polite" className={`field-help${updater.state === 'error' ? ' text-danger' : ''}`}>{updaterText(updater)}</p>
+            {updater.state === 'downloading' ? <div className="download-progress" role="progressbar" aria-label="更新下载进度" aria-valuenow={Math.round(updater.progress)} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${Math.min(100, Math.max(0, Math.round(updater.progress)))}%` }} /></div> : null}
+            <div className="actions">
+              {updater.active && updater.state !== 'ready' ? <button type="button" disabled={updater.state === 'checking' || updater.state === 'downloading'} onClick={() => void api.updaterCheck()}>{updater.state === 'checking' ? '正在检查更新…' : '检查更新'}</button> : null}
+              {updater.state === 'ready' && updater.readyVersion ? <button type="button" className="primary" onClick={() => void api.updaterInstall()}>重启并安装 v{updater.readyVersion}</button> : null}
+              <a className="notes-link" href={updater.state === 'ready' && updater.readyVersion ? `https://github.com/zhshenry/To-Do-List/releases/tag/v${updater.readyVersion}` : 'https://github.com/zhshenry/To-Do-List/releases'} onClick={e => { e.preventDefault(); void api.openUpdateLog(updater.state === 'ready' ? updater.readyVersion ?? undefined : undefined); }}>{updater.active ? '查看更新日志' : '前往 GitHub 下载新版'}
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6.5 3.5H4.75A1.75 1.75 0 0 0 3 5.25v6A1.75 1.75 0 0 0 4.75 13h6a1.75 1.75 0 0 0 1.75-1.75V9.5" /><path d="M9.75 2.5h3.75v3.75M13.1 2.9 7.9 8.1" /></svg>
+              </a>
+            </div>
+          </> : null}
         </section>
         <section className="sheet-card">
           <h3>本地数据</h3>
@@ -397,7 +401,7 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
       </div>
 
       {notice ? <p role="status" className="field-help">{notice}</p> : null}{error ? <p role="alert" className="error">{error}</p> : null}
-      <div className="actions sticky-actions"><span className="settings-save-state field-help" role="status">{pending || busy ? '保存中…' : error ? '请检查上方提示' : Object.values(uncommitted).some(Boolean) ? '离开输入框后自动保存' : hasSaved ? '已保存' : '已有设置自动保存'}</span><button className="primary" type="submit" disabled={busy || pending > 0}>完成</button></div>
+      <div className="actions sticky-actions"><button className="primary" type="submit" disabled={busy || pending > 0}>{busy || pending > 0 ? '保存中…' : '保存'}</button></div>
     </form>
   </Modal>{confirmDiscard ? <Modal className="confirm" title="放弃新建草稿？" close={() => setConfirmDiscard(false)}><p>新供应商或模型尚未添加。已有设置的修改已经保存。</p><div className="actions"><button type="button" onClick={() => setConfirmDiscard(false)}>继续填写</button><button type="button" className="danger" onClick={close}>放弃草稿并关闭</button></div></Modal> : null}</>;
 }

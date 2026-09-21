@@ -39,6 +39,7 @@ const api: DesktopAPI = {
   updaterStatus: () => ipcRenderer.invoke('updater:status'),
   updaterCheck: () => ipcRenderer.invoke('updater:check'),
   updaterInstall: () => ipcRenderer.invoke('updater:install'),
+  openUpdateLog: (tag?: string) => ipcRenderer.invoke('updater:openLog', tag),
   onAskDelta: callback => { const listener = (_event: Electron.IpcRendererEvent, text: string) => callback(text); ipcRenderer.on('ai:delta', listener); return () => ipcRenderer.removeListener('ai:delta', listener); },
   onChanged: callback => { const listener = () => callback(); ipcRenderer.on('changed', listener); return () => ipcRenderer.removeListener('changed', listener); },
   onAssistantVisibility: callback => { const listener = (_event: Electron.IpcRendererEvent, visible: boolean) => callback(visible); ipcRenderer.on('assistant:visibility', listener); return () => ipcRenderer.removeListener('assistant:visibility', listener); },

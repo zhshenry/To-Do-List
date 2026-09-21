@@ -103,7 +103,7 @@ export interface Settings {
 }
 export interface State { tasks: Task[]; categories: Category[]; settings: Settings; }
 export type UpdaterState = 'idle' | 'checking' | 'downloading' | 'ready' | 'latest' | 'error';
-export interface UpdaterStatus { active: boolean; version: string; state: UpdaterState; progress: number; readyVersion: string | null; message: string; releaseNotes: string | null; }
+export interface UpdaterStatus { active: boolean; version: string; state: UpdaterState; progress: number; readyVersion: string | null; message: string; }
 export type AssistantAnchor = { side: 'left' | 'right' | 'top' | 'bottom'; along: number };
 export interface DesktopAPI {
   state(): Promise<State>;
@@ -150,6 +150,7 @@ export interface DesktopAPI {
   updaterStatus(): Promise<UpdaterStatus>;
   updaterCheck(): Promise<void>;
   updaterInstall(): Promise<void>;
+  openUpdateLog(tag?: string): Promise<void>;
   onUpdater(callback: (status: UpdaterStatus) => void): () => void;
   onChanged(callback: () => void): () => void;
   onAssistantVisibility(callback: (visible: boolean) => void): () => void;

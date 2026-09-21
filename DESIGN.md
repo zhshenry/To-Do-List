@@ -14,6 +14,8 @@ colors:
   line: "#e4ded6"
   subtle: "#efebe6"
   danger: "#a3312d"
+  success: "#3e7d44"
+  success-soft: "#e2efe2"
   white: "#ffffff"
   completed: "#6d675f"
   progress-track: "#b8babd"

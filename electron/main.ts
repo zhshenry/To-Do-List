@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, Menu, Tray, Notification, globalShortcut, powerMonitor, screen, safeStorage, dialog, shell, nativeImage } from 'electron';
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron';
-import { autoUpdater, type UpdateInfo } from 'electron-updater';
+import { autoUpdater } from 'electron-updater';
 import path from 'node:path';
 import { mkdirSync, writeFileSync, appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -54,7 +54,6 @@ let queuedAssistantPrompt: string | null = null;
 let updaterActive = false;
 let manualSource: 'tray' | 'settings' | null = null;
 let updateReadyVersion: string | null = null;
-let updateNotes: string | null = null;
 let updaterPhase: UpdaterStatus['state'] = 'idle';
 let updaterProgress = 0;
 let updaterMessage = '';
@@ -751,21 +750,8 @@ function trayContextMenu(): MenuItemConstructorOptions[] {
 }
 // Release notes come from the GitHub release body (string or localized entries); the changelog
 // block sits below our "## 更新内容" marker, so prefer that part and strip markdown decoration.
-function normalizeReleaseNotes(notes: UpdateInfo['releaseNotes']): string | null {
-  const raw = typeof notes === 'string' ? notes : Array.isArray(notes) ? notes.map(entry => entry.note).join('\n') : '';
-  const text = raw.replace(/\r\n/g, '\n');
-  const marker = text.indexOf('## 更新内容');
-  const body = marker >= 0 ? text.slice(marker + '## 更新内容'.length) : text;
-  const cleaned = body.replace(/^##+[^\n]*\n/gm, '').replace(/\*\*/g, '').trim();
-  return cleaned || null;
-}
-function updateNotesHeadline(notes: string): string {
-  const first = notes.split('\n').find(line => line.trim().startsWith('-'))?.trim().replace(/^-\s*/, '');
-  if (!first) return '';
-  return first.length > 60 ? `${first.slice(0, 60)}…` : first;
-}
 function updaterPayload(): UpdaterStatus {
-  return { active: updaterActive, version: app.getVersion(), state: updaterPhase, progress: updaterProgress, readyVersion: updateReadyVersion, message: updaterMessage, releaseNotes: updateNotes };
+  return { active: updaterActive, version: app.getVersion(), state: updaterPhase, progress: updaterProgress, readyVersion: updateReadyVersion, message: updaterMessage };
 }
 function pushUpdater(): void {
   if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send('updater:status', updaterPayload());
@@ -786,16 +772,14 @@ function setupUpdater(): void {
   updaterActive = true;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
-  autoUpdater.on('update-available', info => { updateNotes = normalizeReleaseNotes(info.releaseNotes); if (manualSource === 'tray') notifyUpdate(`发现新版本 v${info.version}`, '正在后台下载，完成后会再次通知。'); manualSource = null; updaterPhase = 'downloading'; pushUpdater(); });
-  autoUpdater.on('update-not-available', () => { updateNotes = null; if (manualSource === 'tray') notifyUpdate('已是最新版本', `当前版本 v${app.getVersion()}。`); manualSource = null; updaterPhase = 'latest'; pushUpdater(); });
+  autoUpdater.on('update-available', info => { if (manualSource === 'tray') notifyUpdate(`发现新版本 v${info.version}`, '正在后台下载，完成后会再次通知。'); manualSource = null; updaterPhase = 'downloading'; pushUpdater(); });
+  autoUpdater.on('update-not-available', () => { if (manualSource === 'tray') notifyUpdate('已是最新版本', `当前版本 v${app.getVersion()}。`); manualSource = null; updaterPhase = 'latest'; pushUpdater(); });
   autoUpdater.on('download-progress', info => { const percent = Math.floor(info.percent); if (percent !== updaterProgress) { updaterProgress = percent; pushUpdater(); } });
   autoUpdater.on('error', error => { if (manualSource === 'tray') notifyUpdate('检查更新失败', '网络异常或服务不可用，可稍后从托盘重试。'); manualSource = null; updaterPhase = 'error'; updaterMessage = error instanceof Error ? error.message : '网络异常，请稍后重试。'; pushUpdater(); });
   autoUpdater.on('update-downloaded', info => {
-    updateNotes = normalizeReleaseNotes(info.releaseNotes);
     updateReadyVersion = info.version; updaterPhase = 'ready'; pushUpdater();
     if (tray && !tray.isDestroyed()) tray.setContextMenu(Menu.buildFromTemplate(trayContextMenu()));
-    const headline = updateNotes ? updateNotesHeadline(updateNotes) : '';
-    notifyUpdate(`新版本 v${info.version} 已下载`, `${headline ? `更新：${headline}\n` : ''}点击立即重启并安装；之后退出应用时也会自动安装。`, () => autoUpdater.quitAndInstall());
+    notifyUpdate(`新版本 v${info.version} 已下载`, '点击立即重启并安装；之后退出应用时也会自动安装。', () => autoUpdater.quitAndInstall());
   });
   setTimeout(() => checkForUpdates(null), 30000).unref();
   setInterval(() => checkForUpdates(null), 4 * 60 * 60 * 1000).unref();
@@ -1170,6 +1154,11 @@ function registerHandlers(): void {
   handle('updater:status', () => updaterPayload());
   handle('updater:check', () => { checkForUpdates('settings'); });
   handle('updater:install', () => { if (updateReadyVersion) autoUpdater.quitAndInstall(); });
+  handle('updater:openLog', (tag?: string) => {
+    const base = 'https://github.com/zhshenry/To-Do-List/releases';
+    const url = tag && /^\d+\.\d+\.\d+$/.test(tag) ? `${base}/tag/v${tag}` : base;
+    return shell.openExternal(url);
+  });
 }
 
 if (!app.requestSingleInstanceLock()) app.quit();

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>折叠卡片 · 完成二次确认流程（v5）</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #faf8f5; --ink: #171923; --muted: #726d67;
+    --accent: #b54f2b; --accent-hover: #963e20; --accent-soft: #f6e2d9; --line: #e4ded6; --subtle: #efebe6;
+    --danger: #a3312d; --danger-soft: #f9e9e7; --white: #ffffff;
+    --success: #3e7d44; --success-soft: #e2efe2;
+    --meeting: #3f6b8f; --meeting-soft: #e3ecf3;
+    --font-body: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 80% 45% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
+    font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: var(--ink);
+    font-synthesis: none; text-rendering: optimizeLegibility;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--mesh); padding: 36px 44px 44px; }
+  button { cursor: pointer; color: inherit; border: 1px solid var(--line); background: var(--white); border-radius: 10px; padding: 9px 13px; font: inherit; }
+  button:hover { background: var(--subtle); }
+
+  .sheet-head { max-width: 1200px; margin: 0 auto 26px; }
+  .sheet-head h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+  .sheet-head p { margin: 5px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .sheet-head .meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  h2.clip { max-width: 1200px; margin: 30px auto 10px; font-size: 13px; font-weight: 650; }
+  h2.clip small { font-weight: 400; color: var(--muted); font-size: 11.5px; margin-left: 8px; }
+
+  .duo { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+  .trio { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px; align-items: start; }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+  .caption { font-size: 11px; color: var(--muted); padding-left: 2px; }
+  .caption b { font-weight: 600; }
+  .caption.pick b { color: var(--accent); }
+
+  .mini-window { width: 312px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 14px; box-shadow: 0 7px 20px #17192312; }
+  .mini-task-stack { position: relative; min-width: 0; height: 104px; }
+  .new .mini-stack-sheet { position: absolute; left: 4px; right: 4px; top: 8px; height: 90px; border: 1px solid var(--line); border-radius: 14px; background: #f8f5f1; }
+  .new .mini-stack-sheet.back { left: 8px; right: 8px; top: 14px; z-index: 0; background: #f3efea; box-shadow: 0 3px 8px #453a2e0b; }
+  .mini-task-front.new-front { position: absolute; z-index: 2; inset: 0 0 auto; height: 92px; display: flex; flex-direction: column; padding: 26px 10px 8px; border: 1px solid #e1dad1; border-radius: 14px; background: white; box-shadow: 0 5px 14px #4c40310b; }
+  .corner-badges { position: absolute; top: 8px; left: 10px; display: flex; gap: 4px; z-index: 1; }
+  .mini-pill { font-size: 9.5px; font-weight: 650; line-height: 1; padding: 3px 8px; border-radius: 999px; }
+  .pill-todo { background: var(--success-soft); color: var(--success); }
+  .pill-meeting { background: var(--meeting-soft); color: var(--meeting); }
+  .pill-overdue { background: var(--danger-soft); color: var(--danger); }
+  .corner-time { position: absolute; top: 10px; right: 10px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .corner-time.overdue { color: var(--danger); font-weight: 600; }
+  .front-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 9px; align-items: center; }
+  .mini-task-open { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0; border: 0; background: transparent; text-align: left; }
+  .mini-task-open > b { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 1.25; }
+  .front-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; min-height: 15px; }
+  .front-meta .meta-cat { display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; }
+  .front-meta .meta-cat i { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; }
+  .mini-deck-pager { margin-left: auto; display: flex; align-items: center; gap: 2px; color: var(--muted); font-size: 10px; white-space: nowrap; }
+  .mini-deck-pager > span { padding-right: 3px; font-variant-numeric: tabular-nums; }
+  .mini-deck-pager button { width: 18px; height: 18px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; }
+  .mini-deck-pager button:hover { background: var(--subtle); }
+  .caret-svg { display: block; }
+  .caret-svg.up { transform: rotate(180deg); }
+
+  /* ===== 确认方块（方案 A）与待确认态 ===== */
+  .check-a { width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 1.5px solid #b7b0a6; background: transparent; transition: border-color 120ms, background-color 120ms, box-shadow 120ms; }
+  .check-a:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .check-a.armed { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .check-glyph { width: 10px; height: 10px; display: block; border-right: 2px solid var(--white); border-bottom: 2px solid var(--white); transform: rotate(40deg) translate(-1px, -1px); }
+  .confirm-bar { margin-left: auto; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .confirm-bar > small { color: var(--muted); font-size: 10px; }
+  .confirm-btn { display: inline-flex; align-items: center; gap: 4px; min-height: 20px; padding: 2px 10px; font-size: 10.5px; font-weight: 600; border-radius: 999px; background: var(--accent); color: var(--white); border: 1px solid var(--accent); white-space: nowrap; }
+  .confirm-btn:hover { background: var(--accent-hover); }
+  .confirm-cancel { min-height: 20px; padding: 2px 9px; font-size: 10.5px; border-radius: 999px; background: var(--white); color: var(--muted); }
+  .check-glyph-sm { width: 8px; height: 8px; display: block; border-right: 1.6px solid var(--white); border-bottom: 1.6px solid var(--white); transform: rotate(40deg) translate(-.5px, -.5px); }
+
+  /* ===== 流程图 ===== */
+  .flow { max-width: 1200px; margin: 0 auto; display: flex; align-items: stretch; gap: 14px; }
+  .flow-step { flex: 1; background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: 0 7px 20px #17192312; }
+  .flow-step .step-tag { display: inline-flex; align-items: center; font-size: 10px; font-weight: 650; padding: 3px 9px; border-radius: 999px; margin-bottom: 9px; }
+  .flow-step .step-tag.t1 { background: var(--success-soft); color: var(--success); }
+  .flow-step .step-tag.t2 { background: var(--accent-soft); color: var(--accent); }
+  .flow-step .step-tag.t3 { background: var(--meeting-soft); color: var(--meeting); }
+  .flow-step h3 { margin: 0 0 4px; font-size: 13px; font-weight: 650; }
+  .flow-step p { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.7; }
+  .flow-arrow { align-self: center; flex: 0 0 auto; display: grid; place-items: center; color: var(--muted); }
+  .flow-return { max-width: 1200px; margin: 10px auto 0; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
+  .flow-return .dash { flex: 0 0 auto; width: 46px; border-top: 1.5px dashed var(--muted); }
+  .kbd { display: inline-block; padding: 0 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--white); font-size: 10px; }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <h1>折叠卡片 · 完成「二次确认」流程（v5）</h1>
+  <p>替代 2.5 秒停留撤销：第一次点击只是「预备」，底部操作行就地变为 [✓ 确认完成] [取消]；再次点击才真正写入并翻到下一项。防误触从事后撤销挪到事前确认，数据只在确认后落盘，无任何延迟提交的丢失风险。</p>
+  <div class="meta">2026-09-21 · 折叠卡片首页 · 仅待办有完成操作（日程无勾选框，不涉及）· 真实尺寸渲染</div>
+</header>
+
+<h2 class="clip">流程总览</h2>
+<div class="flow">
+  <div class="flow-step">
+    <span class="step-tag t1">① 常态</span>
+    <h3>圆形细边勾选框</h3>
+    <p>底部行显示标签与换页器。点击勾选框 = 进入待确认；点标题任意处 = 展开编辑（不变）。</p>
+  </div>
+  <div class="flow-arrow"><svg width="16" height="12" viewBox="0 0 16 12"><path d="M0 6h12M9 1l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="flow-step">
+    <span class="step-tag t2">② 待确认（未写入）</span>
+    <h3>勾选框填充 + 操作行变确认</h3>
+    <p>勾选框变主色填充带柔光圈，底部换页器位置就地替换为 [✓ 确认完成] [取消]。</p>
+  </div>
+  <div class="flow-arrow"><svg width="16" height="12" viewBox="0 0 16 12"><path d="M0 6h12M9 1l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="flow-step">
+    <span class="step-tag t3">③ 已完成</span>
+    <h3>立即写入并翻到下一项</h3>
+    <p>点 [✓ 确认完成]（或再次点击勾选框、按 <span class="kbd">Enter</span>）→ 落盘、卡片离开叠层显示下一项。无停留、无撤销。</p>
+  </div>
+</div>
+<div class="flow-return"><span class="dash"></span>待确认态下：点 [取消]、按 <span class="kbd">Esc</span>、翻页/滚轮/切换模式，或 4 秒无操作 → 静默回到 ① 常态（未写入，无任何副作用）<span class="dash"></span></div>
+
+<h2 class="clip">三个关键状态 <small>340 窄卡 · 同一条超期待办</small></h2>
+<div class="trio">
+  <div class="stack">
+    <span class="caption">① 常态</span>
+    <div class="mini-window">
+      <div class="mini-task-stack new">
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front new-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span><span class="mini-pill pill-overdue">已超期</span></span>
+          <span class="corner-time overdue">9/20 23:59</span>
+          <div class="front-main">
+            <button class="check-a" tabindex="-1"></button>
+            <button class="mini-task-open" tabindex="-1"><b>完成 TO-DO-LIST 0.5.5 开发</b></button>
+          </div>
+          <div class="front-meta">
+            <span class="meta-cat"><i style="background:#7c5cbf;"></i>个人开发</span>
+            <div class="mini-deck-pager"><span>1 / 2</span><button tabindex="-1"><svg class="caret-svg up" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button tabindex="-1"><svg class="caret-svg" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+  <div class="stack">
+    <span class="caption pick"><b>② 待确认</b>（第一次点击后；数据未写入）</span>
+    <div class="mini-window">
+      <div class="mini-task-stack new">
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front new-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span><span class="mini-pill pill-overdue">已超期</span></span>
+          <span class="corner-time overdue">9/20 23:59</span>
+          <div class="front-main">
+            <button class="check-a armed" tabindex="-1"><span class="check-glyph"></span></button>
+            <button class="mini-task-open" tabindex="-1"><b>完成 TO-DO-LIST 0.5.5 开发</b></button>
+          </div>
+          <div class="front-meta">
+            <span class="meta-cat"><i style="background:#7c5cbf;"></i>个人开发</span>
+            <span class="confirm-bar"><button class="confirm-btn" tabindex="-1"><span class="check-glyph-sm"></span>确认完成</button><button class="confirm-cancel" tabindex="-1">取消</button></span>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+  <div class="stack">
+    <span class="caption">③ 确认后（立即写入，翻到下一项；无撤销停留）</span>
+    <div class="mini-window">
+      <div class="mini-task-stack new">
+        <span class="mini-stack-sheet"></span>
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front new-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span><span class="mini-pill pill-overdue">已超期</span></span>
+          <span class="corner-time overdue">9/21 12:00</span>
+          <div class="front-main">
+            <button class="check-a" tabindex="-1"></button>
+            <button class="mini-task-open" tabindex="-1"><b>给新版本截几张宣传图</b></button>
+          </div>
+          <div class="front-meta">
+            <span class="meta-cat"><i style="background:#7c5cbf;"></i>个人开发</span>
+            <div class="mini-deck-pager"><span>1 / 1</span><button tabindex="-1" disabled><svg class="caret-svg up" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button tabindex="-1" disabled><svg class="caret-svg" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="note">规则细节：待确认态下换页器暂时让位（翻页/滚轮会先取消确认再执行原操作）；4 秒无操作自动解除；<span class="kbd">Esc</span> 取消；勾选框 <span class="kbd">Enter</span> 首次按下进入待确认、再次按下确认。日程卡无勾选框、不参与此流程。原 2.5 秒停留、撤销按钮、DONE_HOLD_MS 相关逻辑全部移除。</p>
+
+</body>
+</html>

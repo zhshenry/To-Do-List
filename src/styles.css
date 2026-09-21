@@ -12,7 +12,7 @@
   color-scheme: light;
   --paper: #faf8f5; --titlebar: #f2eee8; --ink: #171923; --muted: #726d67;
   --accent: #b54f2b; --accent-hover: #963e20; --accent-soft: #f6e2d9; --line: #e4ded6; --subtle: #efebe6;
-  --danger: #a3312d; --white: #ffffff; --completed: #6d675f; --progress-track: #b8babd;
+  --danger: #a3312d; --success: #3e7d44; --success-soft: #e2efe2; --white: #ffffff; --completed: #6d675f; --progress-track: #b8babd;
   --font-body: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
   --radius: 18px; --card-radius: 14px; --control-radius: 10px; --space: 24px;
   --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 80% 45% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
@@ -466,8 +466,8 @@ input[type="range"].progress-range::-webkit-slider-thumb { appearance: none; wid
 .model-list li .icon-button { width: 20px; height: 20px; padding: 2px; }
 .model-list li .icon-button svg { width: 12px; height: 12px; }
 .model-test-button { flex-shrink: 0; width: 30px; min-height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
-.model-test-button.is-ok { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-soft); }
-.model-test-button.is-ok:hover, .model-test-button.is-ok:active { color: var(--accent); background: var(--accent-soft); }
+.model-test-button.is-ok { color: var(--success); background: var(--success-soft); border-color: var(--success-soft); }
+.model-test-button.is-ok:hover, .model-test-button.is-ok:active { color: var(--success); background: var(--success-soft); }
 .model-test-button.is-error { color: var(--danger); background: #fff8f5; border-color: #e1b8ad; }
 .model-test-button.is-error:hover, .model-test-button.is-error:active { color: var(--danger); background: #fff8f5; }
 .model-test-note { flex: 1 0 100%; min-width: 0; margin: 0; color: var(--danger); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }

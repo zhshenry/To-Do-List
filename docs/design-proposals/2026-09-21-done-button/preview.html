@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>设置「完成」按钮 · 尺寸提案</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #faf8f5; --ink: #171923; --muted: #726d67;
+    --accent: #b54f2b; --accent-hover: #963e20; --accent-soft: #f6e2d9; --line: #e4ded6; --subtle: #efebe6;
+    --white: #ffffff;
+    --font-body: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --control-radius: 10px;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 80% 45% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
+    font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: var(--ink);
+    font-synthesis: none; text-rendering: optimizeLegibility;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--mesh); padding: 36px 44px 44px; }
+
+  .sheet-head { max-width: 1200px; margin: 0 auto 26px; }
+  .sheet-head h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+  .sheet-head p { margin: 5px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .sheet-head .meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  h2.clip { max-width: 1200px; margin: 30px auto 10px; font-size: 13px; font-weight: 650; }
+  h2.clip small { font-weight: 400; color: var(--muted); font-size: 11.5px; margin-left: 8px; }
+
+  .duo { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+  .caption { font-size: 11px; color: var(--muted); padding-left: 2px; }
+  .caption b { font-weight: 600; }
+  .caption.now b { color: var(--danger); }
+  .caption.pick b { color: var(--accent); }
+
+  /* ===== 设置弹窗底部（真实结构：white sheet + sticky-actions 行） ===== */
+  .modal-bottom { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 0 16px; box-shadow: 0 7px 20px #17192312; overflow: hidden; }
+  .modal-bottom .card-tail { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--white); margin: 0 -16px; padding: 10px 16px; min-height: 64px; }
+  .modal-bottom .card-tail:last-of-type { border-bottom: 0; }
+  .sticky-actions { display: flex; align-items: center; gap: 9px; margin-top: auto; padding: 12px 0 16px; }
+  .settings-save-state { flex: 1; min-width: 0; margin: 0; font-size: 12px; line-height: 1.7; color: var(--muted); }
+
+  /* ===== 应用真实按钮样式 ===== */
+  button { cursor: pointer; color: inherit; border: 1px solid var(--line); background: var(--white); border-radius: var(--control-radius); padding: 9px 13px; font: inherit; transition: background-color 120ms, color 120ms; }
+  button:hover { background: var(--subtle); }
+  button.primary { background: var(--accent); color: var(--white); border-color: var(--accent); }
+  button.primary:hover { background: var(--accent-hover); }
+
+  /* 现状：无尺寸覆盖 → 全局默认 */
+  .btn-now { }
+
+  /* 方案 A：紧凑主色（与卡片操作按钮同刻度） */
+  .btn-compact-primary { min-height: 24px; padding: 3px 14px; font-size: 11.5px; border-radius: 8px; }
+
+  /* 方案 B：紧凑描边 */
+  .btn-compact-ghost { min-height: 24px; padding: 3px 14px; font-size: 11.5px; border-radius: 8px; background: var(--white); color: var(--ink); }
+  .btn-compact-ghost:hover { background: var(--subtle); }
+
+  /* 方案 C：强调色文字按钮 */
+  .btn-text { min-height: 24px; padding: 3px 8px; font-size: 12px; border: 0; background: transparent; color: var(--accent); border-radius: 8px; }
+  .btn-text:hover { background: var(--accent-soft); color: var(--accent-hover); }
+
+  .note { font-size: 11px; color: var(--muted); line-height: 1.7; margin: 10px 0 0; }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <h1>设置「完成」按钮 · 尺寸提案</h1>
+  <p>设置里其余控件在 0.5.3/0.5.4 已全部紧凑化，唯独「完成」沿用全局默认按钮尺寸（9px/13px 内边距、14px 字号），成为弹窗里最大的一块强调色。提案：对齐任务弹窗已有的底部按钮规范（高 24px、11.5px 字号），保留主色填充以维持「完成」的主动作地位。</p>
+  <div class="meta">2026-09-21 · 设置弹窗底部 · 渲染为真实尺寸与真实令牌</div>
+</header>
+
+<h2 class="clip">现状 vs 推荐 <small>同一底部行，真实比例</small></h2>
+<div class="duo">
+  <div class="stack">
+    <span class="caption now"><b>现状</b> · 全局默认尺寸，视觉重量失衡</span>
+    <div class="modal-bottom">
+      <div class="card-tail"></div>
+      <div class="sticky-actions"><span class="settings-save-state">已有设置自动保存</span><button class="primary btn-now" type="button">完成</button></div>
+    </div>
+  </div>
+  <div class="stack">
+    <span class="caption pick"><b>推荐 · 方案 A</b> · 紧凑主色，与卡片操作按钮同刻度</span>
+    <div class="modal-bottom">
+      <div class="card-tail"></div>
+      <div class="sticky-actions"><span class="settings-save-state">已有设置自动保存</span><button class="primary btn-compact-primary" type="button">完成</button></div>
+    </div>
+  </div>
+</div>
+
+<h2 class="clip">备选方案 <small>同样的底部行，按钮样式不同</small></h2>
+<div class="duo">
+  <div class="stack">
+    <span class="caption"><b>方案 B</b> · 紧凑描边（白底线框，最安静；但会失去主动作的强调色）</span>
+    <div class="modal-bottom">
+      <div class="card-tail"></div>
+      <div class="sticky-actions"><span class="settings-save-state">已有设置自动保存</span><button class="btn-compact-ghost" type="button">完成</button></div>
+    </div>
+    <p class="note">弹窗右上角已有 X 与 Esc 关闭，「完成」承担的是「确认收尾」心理暗示——描边方案把它降成与普通卡片按钮同级的操作，扫视时不易定位。</p>
+  </div>
+  <div class="stack">
+    <span class="caption"><b>方案 C</b> · 强调色文字按钮（最轻量）</span>
+    <div class="modal-bottom">
+      <div class="card-tail"></div>
+      <div class="sticky-actions"><span class="settings-save-state">已有设置自动保存</span><button class="btn-text" type="button">完成</button></div>
+    </div>
+    <p class="note">视觉噪音最小，但「完成」与左侧保存状态文案的对比也最弱，不适合作为弹窗唯一的大动作出口。</p>
+  </div>
+</div>
+
+</body>
+</html>

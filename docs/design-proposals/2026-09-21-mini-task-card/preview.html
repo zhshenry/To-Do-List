@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>折叠卡片任务叠层 · 布局修复与状态徽章（v4）</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #faf8f5; --ink: #171923; --muted: #726d67;
+    --accent: #b54f2b; --accent-soft: #f6e2d9; --line: #e4ded6; --subtle: #efebe6;
+    --danger: #a3312d; --danger-soft: #f9e9e7; --white: #ffffff;
+    --success: #3e7d44; --success-soft: #e2efe2;
+    --meeting: #3f6b8f; --meeting-soft: #e3ecf3;
+    --font-body: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 80% 45% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
+    font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: var(--ink);
+    font-synthesis: none; text-rendering: optimizeLegibility;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--mesh); padding: 36px 44px 44px; }
+  button { cursor: pointer; color: inherit; border: 1px solid var(--line); background: var(--white); border-radius: 10px; padding: 9px 13px; font: inherit; }
+  button:hover { background: var(--subtle); }
+
+  .sheet-head { max-width: 1200px; margin: 0 auto 26px; }
+  .sheet-head h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+  .sheet-head p { margin: 5px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .sheet-head .meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  h2.clip { max-width: 1200px; margin: 30px auto 10px; font-size: 13px; font-weight: 650; }
+  h2.clip small { font-weight: 400; color: var(--muted); font-size: 11.5px; margin-left: 8px; }
+
+  .duo { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+  .trio { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px; align-items: start; }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+  .caption { font-size: 11px; color: var(--muted); padding-left: 2px; }
+  .caption b { font-weight: 600; }
+  .caption.now b { color: var(--danger); }
+  .caption.pick b { color: var(--accent); }
+
+  .mini-window { width: 312px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 14px; box-shadow: 0 7px 20px #17192312; }
+  .mini-window.wide { width: 412px; }
+  .mini-task-stack { position: relative; min-width: 0; height: 104px; }
+
+  /* ===== 现状（0.5.5 原样复刻） ===== */
+  .now .mini-stack-sheet { position: absolute; left: 4px; right: 4px; top: 8px; height: 84px; border: 1px solid var(--line); border-radius: 14px; background: #f8f5f1; }
+  .now .mini-stack-sheet.back { left: 8px; right: 8px; top: 14px; z-index: 0; background: #f3efea; box-shadow: 0 3px 8px #453a2e0b; }
+  .now .mini-task-front { position: absolute; z-index: 2; inset: 0 0 auto; height: 86px; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 10px 10px 9px; border: 1px solid #e1dad1; border-radius: 14px; background: white; box-shadow: 0 5px 14px #4c40310b; }
+  .now .mini-task-open { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0; border: 0; background: transparent; text-align: left; }
+  .now .mini-task-open > small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-size: 10px; font-weight: 650; }
+  .now .mini-task-open > b { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 1.25; }
+  .now .mini-task-open > span { display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; }
+  .now .mini-task-open > span i { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; }
+  .now .mini-deck-pager { align-self: end; display: flex; align-items: center; gap: 2px; margin-bottom: -2px; color: var(--muted); font-size: 10px; white-space: nowrap; }
+  .now .mini-deck-pager > span { padding-right: 3px; font-variant-numeric: tabular-nums; }
+  .now .mini-deck-pager button { width: 18px; height: 18px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; }
+  .now .mini-task-check { width: 22px; height: 22px; display: grid; place-items: center; padding: 0; border-radius: 7px; background: transparent; border: 1.5px solid #827c74; color: transparent; }
+
+  /* ===== 提案 v4 ===== */
+  .new .mini-stack-sheet { position: absolute; left: 4px; right: 4px; top: 8px; height: 90px; border: 1px solid var(--line); border-radius: 14px; background: #f8f5f1; }
+  .new .mini-stack-sheet.back { left: 8px; right: 8px; top: 14px; z-index: 0; background: #f3efea; box-shadow: 0 3px 8px #453a2e0b; }
+  .mini-task-front.new-front { position: absolute; z-index: 2; inset: 0 0 auto; height: 92px; display: flex; flex-direction: column; padding: 26px 10px 8px; border: 1px solid #e1dad1; border-radius: 14px; background: white; box-shadow: 0 5px 14px #4c40310b; }
+  .corner-badges { position: absolute; top: 8px; left: 10px; display: flex; gap: 4px; z-index: 1; }
+  .mini-pill { font-size: 9.5px; font-weight: 650; line-height: 1; padding: 3px 8px; border-radius: 999px; }
+  .pill-todo { background: var(--success-soft); color: var(--success); }
+  .pill-meeting { background: var(--meeting-soft); color: var(--meeting); }
+  .pill-overdue { background: var(--danger-soft); color: var(--danger); }
+  .corner-time { position: absolute; top: 10px; right: 10px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .corner-time.overdue { color: var(--danger); font-weight: 600; }
+  .front-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 9px; align-items: center; }
+  .mini-task-open { min-width: 0; position: relative; display: flex; flex-direction: column; gap: 2px; padding: 0; border: 0; background: transparent; text-align: left; }
+  .mini-task-open > b { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 1.25; }
+  .front-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; min-height: 15px; }
+  .front-meta .meta-cat { display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; }
+  .front-meta .meta-cat i { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; }
+  .mini-deck-pager { margin-left: auto; display: flex; align-items: center; gap: 2px; color: var(--muted); font-size: 10px; white-space: nowrap; }
+  .mini-deck-pager > span { padding-right: 3px; font-variant-numeric: tabular-nums; }
+  .mini-deck-pager button { width: 18px; height: 18px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; }
+  .mini-deck-pager button:hover { background: var(--subtle); }
+  .caret-svg { display: block; }
+  .caret-svg.up { transform: rotate(180deg); }
+
+  /* ===== 确认方块方案 ===== */
+  /* 方案 A（推荐）：圆形细边，完成填主色 */
+  .check-a { width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 1.5px solid #b7b0a6; background: transparent; transition: border-color 120ms, background-color 120ms; }
+  .check-a:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .check-a.done { background: var(--accent); border-color: var(--accent); }
+  /* 方案 B：无框浅底圆片 */
+  .check-b { width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--subtle); }
+  .check-b:hover { background: #e7e1d9; }
+  .check-b.done { background: var(--accent); }
+  /* 方案 C：软化方角 */
+  .check-c { width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border-radius: 6px; border: 1.5px solid #cdc6bb; background: transparent; }
+  .check-c.done { background: var(--accent); border-color: var(--accent); }
+  .check-glyph { width: 10px; height: 10px; display: block; border-right: 2px solid var(--white); border-bottom: 2px solid var(--white); transform: rotate(40deg) translate(-1px, -1px); }
+  .check-glyph.idle-line { border-color: transparent; }
+  .title-tip { position: absolute; left: 0; top: 100%; z-index: 5; margin-top: 3px; width: 250px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); box-shadow: 0 7px 20px #17192326; font-size: 11px; line-height: 1.6; color: var(--ink); text-align: left; }
+  .title-tip small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
+  .cursor-svg { position: absolute; z-index: 6; }
+  .note { max-width: 1200px; margin: 10px auto 0; font-size: 11px; color: var(--muted); line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <h1>折叠卡片任务叠层 · 布局修复与状态徽章（v4）</h1>
+  <p>① 待办徽章改用语义绿（与 0.5.6 测试成功色同源），日程保持蓝灰、已超期保持红——三色一眼可分；② 确认方块重新设计：推荐圆形细边方案 A（悬浮描边转主色，完成后填主色白勾），另附 B/C 备选。</p>
+  <div class="meta">2026-09-21 · 折叠卡片首页 · 窄卡内容宽 312px，真实尺寸渲染</div>
+</header>
+
+<h2 class="clip">现状 vs 提案 <small>340 窄卡 · 同一条超期待办</small></h2>
+<div class="duo">
+  <div class="stack">
+    <span class="caption now"><b>现状</b> · 标题临界换行，标签/换页器压在边框上，超期无感知</span>
+    <div class="mini-window">
+      <div class="mini-task-stack now">
+        <span class="mini-stack-sheet"></span>
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front">
+          <button class="mini-task-check" tabindex="-1"></button>
+          <button class="mini-task-open" tabindex="-1"><small>待办 · 9/20 23:59</small><b>完成 TO-DO-LIST 0.5.5 开发</b><span><i style="background:#7c5cbf;"></i>个人开发</span></button>
+          <div class="mini-deck-pager"><span>1 / 2</span><button tabindex="-1"><svg class="caret-svg" viewBox="0 0 10 6" width="9" height="6"><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button tabindex="-1"><svg class="caret-svg" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+        </article>
+      </div>
+    </div>
+  </div>
+  <div class="stack">
+    <span class="caption pick"><b>提案</b> · 绿色待办徽章，圆形确认方块（方案 A），布局同 v3</span>
+    <div class="mini-window">
+      <div class="mini-task-stack new">
+        <span class="mini-stack-sheet"></span>
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front new-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span><span class="mini-pill pill-overdue">已超期</span></span>
+          <span class="corner-time overdue">9/20 23:59</span>
+          <div class="front-main">
+            <button class="check-a" tabindex="-1"><span class="check-glyph idle-line"></span></button>
+            <button class="mini-task-open" tabindex="-1"><b>完成 TO-DO-LIST 0.5.5 开发</b></button>
+          </div>
+          <div class="front-meta">
+            <span class="meta-cat"><i style="background:#7c5cbf;"></i>个人开发</span>
+            <div class="mini-deck-pager"><span>1 / 2</span><button tabindex="-1"><svg class="caret-svg up" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button tabindex="-1"><svg class="caret-svg" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="clip">三类徽章的颜色区分 <small>待办＝绿 · 日程＝蓝灰 · 已超期＝红（时间同色）</small></h2>
+<div class="trio">
+  <div class="stack">
+    <span class="caption">① 待办 · 未超期（绿）</span>
+    <div class="mini-window">
+      <div class="mini-task-stack new">
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front new-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+          <span class="corner-time">今天 18:00</span>
+          <div class="front-main">
+            <button class="check-a" tabindex="-1"><span class="check-glyph idle-line"></span></button>
+            <button class="mini-task-open" tabindex="-1"><b>回复评审意见</b></button>
+          </div>
+          <div class="front-meta">
+            <span class="meta-cat"><i style="background:#7c5cbf;"></i>个人开发</span>
+            <div class="mini-deck-pager"><span>1 / 3</span><button tabindex="-1"><svg class="caret-svg up" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button tabindex="-1"><svg class="caret-svg" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+  <div class="stack">
+    <span class="caption">② 日程 · 未超期（蓝灰）</span>
+    <div class="mini-window">
+      <div class="mini-task-stack new">
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front new-front">
+          <span class="corner-badges"><span class="mini-pill pill-meeting">日程</span></span>
+          <span class="corner-time">9/21 15:00</span>
+          <div class="front-main">
+            <button class="check-a" tabindex="-1"><span class="check-glyph idle-line"></span></button>
+            <button class="mini-task-open" tabindex="-1"><b>和设计师过一遍设置面板改版</b></button>
+          </div>
+          <div class="front-meta">
+            <span class="meta-cat"><i style="background:#3e7d44;"></i>协作</span>
+            <div class="mini-deck-pager"><span>1 / 1</span><button tabindex="-1" disabled><svg class="caret-svg up" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button tabindex="-1" disabled><svg class="caret-svg" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+  <div class="stack">
+    <span class="caption">③ 待办 · 已超期（类型绿 + 状态红，互不混淆）</span>
+    <div class="mini-window">
+      <div class="mini-task-stack new">
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front new-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span><span class="mini-pill pill-overdue">已超期</span></span>
+          <span class="corner-time overdue">9/20 23:59</span>
+          <div class="front-main">
+            <button class="check-a" tabindex="-1"><span class="check-glyph idle-line"></span></button>
+            <button class="mini-task-open" tabindex="-1"><b>完成 TO-DO-LIST 0.5.5 开发</b></button>
+          </div>
+          <div class="front-meta">
+            <span class="meta-cat"><i style="background:#7c5cbf;"></i>个人开发</span>
+            <div class="mini-deck-pager"><span>1 / 2</span><button tabindex="-1"><svg class="caret-svg up" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button tabindex="-1"><svg class="caret-svg" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="clip">确认方块方案对比 <small>同一待办 · 左推荐右备选；完成态为品牌棕填充 + 白勾</small></h2>
+<div class="trio">
+  <div class="stack">
+    <span class="caption pick"><b>方案 A（推荐）</b> · 圆形细边，悬浮转主色</span>
+    <div class="mini-window">
+      <div class="mini-task-stack new">
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front new-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+          <span class="corner-time">今天 18:00</span>
+          <div class="front-main">
+            <button class="check-a" tabindex="-1" style="border-color: var(--accent); background: var(--accent-soft);"><span class="check-glyph idle-line" style="border-color: transparent;"></span></button>
+            <button class="mini-task-open" tabindex="-1"><b>回复评审意见</b></button>
+          </div>
+          <div class="front-meta">
+            <span class="meta-cat"><i style="background:#7c5cbf;"></i>个人开发</span>
+            <div class="mini-deck-pager"><span>1 / 3</span><button tabindex="-1"><svg class="caret-svg up" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button tabindex="-1"><svg class="caret-svg" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          </div>
+        </article>
+      </div>
+    </div>
+    <p class="note" style="margin: 0;">图中为悬浮态：描边与底色转主色系。圆形更柔和，与圆环品牌标识同语言。</p>
+  </div>
+  <div class="stack">
+    <span class="caption"><b>方案 B</b> · 无框浅底圆片（最轻）</span>
+    <div class="mini-window">
+      <div class="mini-task-stack new">
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front new-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+          <span class="corner-time">今天 18:00</span>
+          <div class="front-main">
+            <button class="check-b" tabindex="-1"></button>
+            <button class="mini-task-open" tabindex="-1"><b>回复评审意见</b></button>
+          </div>
+          <div class="front-meta">
+            <span class="meta-cat"><i style="background:#7c5cbf;"></i>个人开发</span>
+            <div class="mini-deck-pager"><span>1 / 3</span><button tabindex="-1"><svg class="caret-svg up" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button tabindex="-1"><svg class="caret-svg" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          </div>
+        </article>
+      </div>
+    </div>
+    <p class="note" style="margin: 0;">无边框浅底圆片，存在感最低；但「可点击勾选」的暗示最弱。</p>
+  </div>
+  <div class="stack">
+    <span class="caption"><b>方案 C</b> · 软化方角（沿用方角语言）</span>
+    <div class="mini-window">
+      <div class="mini-task-stack new">
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front new-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+          <span class="corner-time">今天 18:00</span>
+          <div class="front-main">
+            <button class="check-c" tabindex="-1"></button>
+            <button class="mini-task-open" tabindex="-1"><b>回复评审意见</b></button>
+          </div>
+          <div class="front-meta">
+            <span class="meta-cat"><i style="background:#7c5cbf;"></i>个人开发</span>
+            <div class="mini-deck-pager"><span>1 / 3</span><button tabindex="-1"><svg class="caret-svg up" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button tabindex="-1"><svg class="caret-svg" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          </div>
+        </article>
+      </div>
+    </div>
+    <p class="note" style="margin: 0;">保留方角但边框转浅棕灰；与主窗列表的方角勾选框延续性最好。</p>
+  </div>
+</div>
+
+<h2 class="clip">完成待撤销 · 截断悬浮 <small>方案 A 的完成态与悬浮气泡</small></h2>
+<div class="duo">
+  <div class="stack">
+    <span class="caption">完成待撤销（勾选后停留 2.5 秒，换页器位置换为撤销按钮）</span>
+    <div class="mini-window">
+      <div class="mini-task-stack new">
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front new-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span><span class="mini-pill pill-overdue">已超期</span></span>
+          <span class="corner-time overdue">9/20 23:59</span>
+          <div class="front-main">
+            <button class="check-a done" tabindex="-1"><span class="check-glyph"></span></button>
+            <button class="mini-task-open" tabindex="-1"><b style="color: #6d675f;">完成 TO-DO-LIST 0.5.5 开发</b></button>
+          </div>
+          <div class="front-meta">
+            <span class="meta-cat"><i style="background:#7c5cbf;"></i>个人开发</span>
+            <div class="mini-deck-pager"><button tabindex="-1" style="width: auto; padding: 1px 8px; font-size: 10px; border: 1px solid var(--line); border-radius: 6px;">撤销</button></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+  <div class="stack">
+    <span class="caption">两行截断 · 悬浮（气泡显示完整标题与展开编辑提示）</span>
+    <div class="mini-window" style="position: relative; z-index: 2;">
+      <div class="mini-task-stack new">
+        <span class="mini-stack-sheet back"></span>
+        <article class="mini-task-front new-front" style="z-index: 3;">
+          <span class="corner-badges"><span class="mini-pill pill-meeting">日程</span></span>
+          <span class="corner-time">9/22 10:00</span>
+          <div class="front-main">
+            <button class="check-a" tabindex="-1"></button>
+            <button class="mini-task-open" tabindex="-1" style="background: var(--subtle); border-radius: 8px;">
+              <b>产品评审会：过一遍设置面板、折叠卡片与 AI 建议流的全部改动并确认发布范围</b>
+              <span class="title-tip">产品评审会：过一遍设置面板、折叠卡片与 AI 建议流的全部改动并确认发布范围<small>点击展开编辑</small></span>
+            </button>
+          </div>
+          <div class="front-meta">
+            <span class="meta-cat"><i style="background:#3e7d44;"></i>协作</span>
+            <div class="mini-deck-pager"><span>2 / 3</span><button tabindex="-1"><svg class="caret-svg up" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button tabindex="-1"><svg class="caret-svg" viewBox="0 0 10 6" width="9" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+          </div>
+        </article>
+      </div>
+      <svg class="cursor-svg" style="left: 172px; top: 118px;" width="14" height="18" viewBox="0 0 14 18"><path d="M1 1l4.2 13.2 2.6-4.6 5.2-.6z" fill="#171923" stroke="#ffffff" stroke-width="1.2"/></svg>
+    </div>
+  </div>
+</div>
+
+<p class="note">实现要点：正面卡改「主区 + 底部 meta 行」两层结构，卡片 86px → 92px（垫片同步 +6px，AI 建议共存变体 66px → 72px）；徽章绝对定位左上角（待办=success 绿、日程=蓝灰、已超期=danger 红）、时间绝对定位右上角；确认方块 22px 方角灰边 → 20px 圆形细边（悬浮描边转主色 + accent-soft 底，完成填主色白勾）。悬浮气泡默认沿用现有 title 属性（原生工具提示）；超期判定 = 待办取截止时间、日程取发生时间。</p>
+
+</body>
+</html>

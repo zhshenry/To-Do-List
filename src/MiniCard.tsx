@@ -21,7 +21,7 @@ const PANEL_HEIGHT: Record<AddSelector, number> = { datetime: 526, priority: 376
 const PANEL_ARROW: Record<AddSelector, number> = { datetime: 22, priority: 49, tag: 76, more: 103 };
 const SETTINGS_PANEL_HEIGHT = 318;
 const SETTINGS_MODEL_EXTRA = 128;
-const DONE_HOLD_MS = 2500;
+const ARM_RESET_MS = 4000;
 
 function shiftDay(day: string, amount: number) {
   const date = new Date(`${day}T12:00:00`);
@@ -322,34 +322,41 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
   const [contentMotion, setContentMotion] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsModelOpen, setSettingsModelOpen] = useState(false);
-  const [heldDone, setHeldDone] = useState<{ id: string; index: number; previous: 'todo' | 'doing' } | null>(null);
+  const [armedId, setArmedId] = useState<string | null>(null);
   const titleInput = useRef<HTMLInputElement>(null);
+  const armTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectorTriggers = useRef<Partial<Record<AddSelector, HTMLButtonElement | null>>>({});
   const settingsTrigger = useRef<HTMLButtonElement>(null);
   const settingsWasOpen = useRef(false);
   const previousMode = useRef(mode);
-  const remaining = useMemo(() => {
-    const open = activeToday(data.tasks, today).filter(task => task.status !== 'done');
-    if (!heldDone) return open;
-    const held = data.tasks.find(task => task.id === heldDone.id);
-    if (!held || held.deletedAt) return open;
-    const next = open.filter(task => task.id !== held.id);
-    next.splice(Math.min(heldDone.index, next.length), 0, held);
-    return next;
-  }, [data.tasks, today, heldDone]);
+  const remaining = useMemo(() => activeToday(data.tasks, today).filter(task => task.status !== 'done'), [data.tasks, today]);
   const current = remaining[index % Math.max(remaining.length, 1)];
-  const holding = Boolean(current && heldDone?.id === current.id);
+  const armed = Boolean(current && armedId === current.id);
+  const currentOverdue = Boolean(current && (current.dueAt ? new Date(current.dueAt).getTime() : new Date(`${current.plannedDate}T23:59:59`).getTime()) < Date.now());
   const category = current?.categoryId ? data.categories.find(item => item.id === current.categoryId) : null;
   const aiAvailable = data.settings.aiEnabled && !!data.settings.activeModelId;
   const suggestion = !suggestionIgnored && aiAvailable ? insightFor(current, remaining.length, new Date()) : null;
   const showInsight = !aiAvailable || !!suggestion;
 
+  function disarmArm() {
+    if (armTimer.current) { clearTimeout(armTimer.current); armTimer.current = null; }
+    setArmedId(null);
+  }
+  function armComplete() {
+    if (!current || current.kind !== 'task' || mutating) return;
+    setArmedId(current.id);
+    if (armTimer.current) clearTimeout(armTimer.current);
+    armTimer.current = setTimeout(() => setArmedId(null), ARM_RESET_MS);
+  }
+  function confirmComplete() {
+    if (!current || current.kind !== 'task' || mutating) return;
+    disarmArm();
+    const stamp = current.updatedAt;
+    const id = current.id;
+    void mutate(async () => api.update(id, { status: 'done' }, stamp));
+  }
   useEffect(() => { if (index >= remaining.length) setIndex(0); }, [index, remaining.length]);
-  useEffect(() => {
-    if (!heldDone) return;
-    const timer = setTimeout(() => setHeldDone(null), DONE_HOLD_MS);
-    return () => clearTimeout(timer);
-  }, [heldDone]);
+  useEffect(() => disarmArm(), [mode]);
   useEffect(() => {
     if (previousMode.current === mode) return;
     const before = previousMode.current; previousMode.current = mode;
@@ -419,22 +426,8 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
     });
   }
   function completeCurrent() {
-    if (!current || current.kind !== 'task' || mutating || holding) return;
-    const previous = current.status === 'doing' ? 'doing' as const : 'todo' as const;
-    const id = current.id;
-    const stamp = current.updatedAt;
-    setHeldDone({ id, index, previous });
-    void mutate(async () => {
-      try { return await api.update(id, { status: 'done' }, stamp); }
-      catch (error) { setHeldDone(null); throw error; }
-    });
-  }
-  function undoDone() {
-    if (!heldDone) return;
-    const task = data.tasks.find(item => item.id === heldDone.id);
-    const previous = heldDone.previous;
-    setHeldDone(null);
-    if (task) void mutate(() => api.update(task.id, { status: previous }, task.updatedAt));
+    if (armed) { confirmComplete(); return; }
+    armComplete();
   }
   const dueLabel = current ? scheduleStamp(current) : '';
   const titlebar = <>
@@ -448,7 +441,7 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
     </div></header>
   </>;
 
-  return <main className={`mini-root${motion === 'expanding' ? ' is-expanding' : motion === 'entering' ? ' is-entering' : ''}`} aria-label="待办小卡片" onKeyDown={event => { if (event.key === 'Escape' && !event.nativeEvent.isComposing) { if (settingsModelOpen) setSettingsModelOpen(false); else if (settingsOpen) closeSettings(); else if (selector) closeSelector(); else if (mode !== 'home') setMode('home'); } }}>
+  return <main className={`mini-root${motion === 'expanding' ? ' is-expanding' : motion === 'entering' ? ' is-entering' : ''}`} aria-label="待办小卡片" onKeyDown={event => { if (event.key === 'Escape' && !event.nativeEvent.isComposing) { if (armed) disarmArm(); else if (settingsModelOpen) setSettingsModelOpen(false); else if (settingsOpen) closeSettings(); else if (selector) closeSelector(); else if (mode !== 'home') setMode('home'); } }}>
     <section className="mini-window">
       {titlebar}
       <div className={`mini-content motion-${contentMotion || 'idle'}${mode === 'ai' ? ' is-ai' : ''}`}>
@@ -458,12 +451,19 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
         </> : <div className={showInsight ? 'mini-home-with-insight' : 'mini-home'}>
           {!aiAvailable ? !!data.settings.endpoint.trim() && !!data.settings.model.trim() ? <button type="button" className="mini-insight" aria-label="AI建议：AI 未启用" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: true, autoStart: data.settings.autoStart }))}><span>AI建议：</span><b>AI 未启用</b><em>启用</em></button> : <button type="button" className="mini-insight" aria-label="AI建议：请先配置AI大模型" onClick={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))}><span>AI建议：</span><b>请先配置AI大模型</b><em>配置</em></button> : suggestion ? <button type="button" className="mini-insight" aria-expanded="false" onClick={() => setSuggestionOpen(true)}><span>AI 建议</span><b>{suggestion.title}</b><small>{suggestion.context}</small><em>查看</em></button> : null}
           <div className="mini-home-main">
-            <div className="mini-task-stack" onWheel={event => { if (remaining.length < 2 || holding) return; event.preventDefault(); setIndex(value => (value + (event.deltaY > 0 ? 1 : remaining.length - 1)) % remaining.length); }}>
-              {remaining.length ? <><button type="button" className="mini-stack-sheet back" aria-label="查看下一项" disabled={remaining.length < 2 || holding} onClick={() => setIndex(value => (value + 1) % remaining.length)} /><span className="mini-stack-sheet middle" />
-                <article className={`mini-task-front${holding ? ' is-done' : ''}`}>
-                  {current.kind === 'meeting' ? <button type="button" className="mini-kind-button" aria-label={`打开日程 ${current.title}`} onClick={() => edit(current)}><VideoCamera size={14} /></button> : <button type="button" className={`mini-task-check${holding ? ' is-done' : ''}`} aria-label={holding ? `已完成 ${current.title}` : `完成 ${current.title}`} aria-pressed={holding} disabled={mutating || holding} onClick={() => completeCurrent()}><Check size={12} /></button>}
-                  <button type="button" className="mini-task-open" title={`展开编辑：${current.title}`} onClick={() => edit(current)}><small>{current.kind === 'meeting' ? '日程' : '待办'} · {dueLabel}</small><b>{current.title}</b><span>{category ? <><i style={{ backgroundColor: category.color }} />{category.name}</> : current.kind === 'meeting' ? '日程安排' : `优先级 · ${priorityName(current.priority)}`}</span></button>
-                  {holding ? <button type="button" className="mini-undo-done" disabled={mutating} onClick={() => undoDone()}>撤销</button> : <div className="mini-deck-pager"><span>{index + 1} / {remaining.length}</span><button type="button" aria-label="上一项" disabled={remaining.length < 2} onClick={() => setIndex(value => (value + remaining.length - 1) % remaining.length)}><CaretDown size={10} className="is-up" /></button><button type="button" aria-label="下一项" disabled={remaining.length < 2} onClick={() => setIndex(value => (value + 1) % remaining.length)}><CaretDown size={10} /></button></div>}
+            <div className="mini-task-stack" onWheel={event => { if (remaining.length < 2) return; if (armed) disarmArm(); event.preventDefault(); setIndex(value => (value + (event.deltaY > 0 ? 1 : remaining.length - 1)) % remaining.length); }}>
+              {remaining.length ? <><button type="button" className="mini-stack-sheet back" aria-label="查看下一项" disabled={remaining.length < 2} onClick={() => { disarmArm(); setIndex(value => (value + 1) % remaining.length); }} /><span className="mini-stack-sheet middle" />
+                <article className="mini-task-front">
+                  <span className="corner-badges">{current.kind === 'meeting' ? <span className="mini-pill pill-meeting">日程</span> : <span className="mini-pill pill-todo">待办</span>}{currentOverdue ? <span className="mini-pill pill-overdue">已超期</span> : null}</span>
+                  <span className={`corner-time${currentOverdue ? ' overdue' : ''}`}>{dueLabel}</span>
+                  <div className="front-main">
+                    {current.kind === 'meeting' ? <button type="button" className="mini-kind-button" aria-label={`打开日程 ${current.title}`} onClick={() => edit(current)}><VideoCamera size={14} /></button> : <button type="button" className={`mini-task-check${armed ? ' armed' : ''}`} aria-label={armed ? `确认完成 ${current.title}` : `完成 ${current.title}`} aria-pressed={armed} disabled={mutating} onClick={completeCurrent}><Check size={12} /></button>}
+                    <button type="button" className="mini-task-open" title={`展开编辑：${current.title}`} onClick={() => edit(current)}><b>{current.title}</b></button>
+                  </div>
+                  <div className="front-meta">
+                    <span className="meta-cat">{category ? <><i style={{ backgroundColor: category.color }} />{category.name}</> : current.kind === 'meeting' ? '日程安排' : `优先级 · ${priorityName(current.priority)}`}</span>
+                    {armed ? <span className="confirm-bar"><button type="button" className="confirm-btn" disabled={mutating} onClick={confirmComplete}><Check size={10} weight="bold" />确认完成</button><button type="button" className="confirm-cancel" disabled={mutating} onClick={disarmArm}>取消</button></span> : <div className="mini-deck-pager"><span>{index + 1} / {remaining.length}</span><button type="button" aria-label="上一项" disabled={remaining.length < 2} onClick={() => { disarmArm(); setIndex(value => (value + remaining.length - 1) % remaining.length); }}><CaretDown size={10} className="is-up" /></button><button type="button" aria-label="下一项" disabled={remaining.length < 2} onClick={() => { disarmArm(); setIndex(value => (value + 1) % remaining.length); }}><CaretDown size={10} /></button></div>}
+                  </div>
                 </article></> : <article className="mini-task-front is-empty"><span><Plus size={18} /></span><button type="button" onClick={() => setMode('add')}><b>今天还没有安排</b><small>新增一项待办或日程</small></button></article>}
             </div>
             <nav className="mini-quick-actions" aria-label="快捷操作"><button type="button" onClick={() => setMode('add')}><Plus size={18} /><span>新增事项</span></button><button type="button" onClick={() => setMode('ai')}><Sparkle size={18} /><span>AI 助手</span></button></nav>
