@@ -161,6 +161,16 @@ try {
   await todayRow.getByText('工作', { exact: true }).waitFor();
   await page.getByRole('region', { name: '待办' }).getByText('下周产品评审', { exact: true }).waitFor();
   await screenshot('main-rows');
+  // v2 双步确认：主界面勾选 → armed 确认条 → 确认完成 → 离卡（openToday 过滤）
+  await page.evaluate(async input => { await window.desktop.create(input); }, task('冒烟双步确认', { plannedDate: day(0) }));
+  const smokeRow = page.locator('.plan-item').filter({ hasText: '冒烟双步确认' });
+  await smokeRow.getByRole('button', { name: `完成 冒烟双步确认`, exact: true }).click();
+  await smokeRow.getByRole('button', { name: `取消完成 冒烟双步确认`, exact: true }).waitFor(); // armed：再点圆框=取消
+  await screenshot('board-armed');
+  await smokeRow.locator('.confirm-bar .confirm-btn').click(); // 写入仅经「确认完成」按钮
+  await poll(async () => (await page.evaluate(() => window.desktop.state())).tasks.find(item => item.title === '冒烟双步确认')?.status === 'done', 'board two-step completion');
+  await poll(async () => await page.getByRole('region', { name: '待办' }).getByText('冒烟双步确认').count().then(n => n === 0), 'completed row leaves the board');
+  checks.push('board checkbox two-step confirm with armed bar and completion leaving the card');
   await page.evaluate(async input => { await window.desktop.create(input); }, meeting('明日准备材料', { plannedDate: day(1) }));
   await page.locator('.plan-folder-tab').filter({ hasText: '明天' }).click();
   await page.locator('#plan-folder-tomorrow').getByText('明日准备材料', { exact: true }).waitFor();
@@ -173,7 +183,7 @@ try {
   await page.locator('.plan-folder-tab').filter({ hasText: '近期' }).click();
   assert.equal(await page.locator('#plan-folder-tomorrow').count(), 0);
   assert.deepEqual(await page.locator('#plan-folder-soon .plan-task-copy b').allTextContents(), ['后天检查材料']);
-  assert.deepEqual(await page.locator('#plan-folder-soon time[datetime]').evaluateAll(nodes => nodes.map(node => node.getAttribute('datetime'))), [day(2)]);
+  assert.deepEqual(await page.locator('#plan-folder-soon time[datetime]').evaluateAll(nodes => nodes.map(node => node.getAttribute('datetime'))), [`${day(2)}T10:00:00+08:00`]); // v2: 右栏统一 scheduleStamp（含日期），分类行仅逾期挂日期
   await screenshot('upcoming-week');
   await page.locator('.plan-folder-tab').filter({ hasText: '更晚' }).click();
   assert.deepEqual(await page.locator('#plan-folder-later .plan-task-copy b').allTextContents(), ['下周整理文档', '明年长期规划']);

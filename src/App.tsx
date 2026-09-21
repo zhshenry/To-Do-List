@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PushPin, Minus, Plus, GearSix, Sparkle, Note, Check, Clock, X, ArrowsOut, ArrowsInLineVertical, List, SquaresFour, CaretDown, Archive, DotsThree, Circle } from '@phosphor-icons/react';
 import { DOCK_FEATURE_ENABLED, activeToday, localDay, openToday, taskTime, type State, type Task } from '../shared/contracts';
-import { BrandMark, IconButton, Modal, errorText, timeText } from './ui';
+import { BrandMark, IconButton, Modal, errorText, scheduleStamp } from './ui';
 import { TaskEditor } from './TaskEditor';
 import { SettingsPanel, type SettingsTab } from './SettingsPanel';
 import { TaskLibrary } from './TaskLibrary';
@@ -179,6 +179,26 @@ function TodayBoard({ tasks, today, categoryById, planView, mutating, api, mutat
   setEditor: (task: Task | 'new') => void;
 }) {
   const [openFolder, setOpenFolder] = useState<string | null>(null);
+  const [armedId, setArmedId] = useState<string | null>(null);
+  const armTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function disarmArm() {
+    if (armTimer.current) { clearTimeout(armTimer.current); armTimer.current = null; }
+    setArmedId(null);
+  }
+  function armTask(task: Task) {
+    setArmedId(task.id);
+    if (armTimer.current) clearTimeout(armTimer.current);
+    armTimer.current = setTimeout(() => setArmedId(null), 4000);
+  }
+  function onRowCheck(task: Task) {
+    if (task.status === 'done') { void mutate(() => api.update(task.id, { status: 'todo' }, task.updatedAt)); return; }
+    if (armedId === task.id) { disarmArm(); return; } // 再次点击圆框 = 取消
+    armTask(task);
+  }
+  function confirmRow(task: Task) {
+    disarmArm();
+    void mutate(() => api.update(task.id, { status: 'done' }, task.updatedAt));
+  }
   const openItems = openToday(tasks, today);
   const todos = openItems.filter(task => task.kind === 'task');
   const meetings = openItems.filter(task => task.kind === 'meeting');
@@ -197,11 +217,11 @@ function TodayBoard({ tasks, today, categoryById, planView, mutating, api, mutat
   return <div className="today-board">
     <section className={`plan-card plan-today${todos.length ? '' : ' is-empty'}`} aria-label="待办">
       <header className="plan-card-heading"><h2>待办</h2></header>
-      {todos.length ? <ul className={planView === 'tiles' ? 'plan-tiles' : 'plan-list'}>{todos.map(task => <PlanRow key={task.id} task={task} tiles={planView === 'tiles'} category={task.categoryId ? categoryById.get(task.categoryId) : undefined} current={task.id === currentId} today={today} mutating={mutating} api={api} mutate={mutate} setEditor={setEditor} />)}</ul> : <div className="plan-empty">点击 + 添加，或让 AI 帮你安排。</div>}
+      {todos.length ? <ul className={planView === 'tiles' ? 'plan-tiles' : 'plan-list'}>{todos.map(task => <PlanRow key={task.id} task={task} tiles={planView === 'tiles'} category={task.categoryId ? categoryById.get(task.categoryId) : undefined} current={task.id === currentId} today={today} mutating={mutating} api={api} mutate={mutate} setEditor={setEditor} armed={armedId === task.id} onCheck={() => onRowCheck(task)} onConfirm={() => confirmRow(task)} onDisarm={disarmArm} />)}</ul> : <div className="plan-empty">点击 + 添加，或让 AI 帮你安排。</div>}
     </section>
     <section className="plan-schedule" aria-label="日程">
       <header className="plan-card-heading"><h2>日程</h2></header>
-      {meetings.length ? <ul className="plan-list">{meetings.map(task => <PlanRow key={task.id} task={task} tiles={false} category={task.categoryId ? categoryById.get(task.categoryId) : undefined} current={task.id === currentId} today={today} mutating={mutating} api={api} mutate={mutate} setEditor={setEditor} />)}</ul> : <div className="plan-empty">今天没有日程。</div>}
+      {meetings.length ? <ul className="plan-list">{meetings.map(task => <PlanRow key={task.id} task={task} tiles={false} category={task.categoryId ? categoryById.get(task.categoryId) : undefined} current={task.id === currentId} today={today} mutating={mutating} api={api} mutate={mutate} setEditor={setEditor} armed={armedId === task.id} onCheck={() => onRowCheck(task)} onConfirm={() => confirmRow(task)} onDisarm={disarmArm} />)}</ul> : <div className="plan-empty">今天没有日程。</div>}
       <div className="plan-schedule-upcoming">
       {folders.map(folder => {
         const open = openFolder === folder.id;
@@ -212,7 +232,7 @@ function TodayBoard({ tasks, today, categoryById, planView, mutating, api, mutat
             <CaretDown className="plan-folder-caret" size={12} weight="bold" />
           </button>
           {open ? <div id={`plan-folder-${folder.id}`} className="plan-folder-body">
-            {folder.items.length ? <ul className="plan-list">{folder.items.map(task => <PlanRow key={task.id} task={task} tiles={false} category={task.categoryId ? categoryById.get(task.categoryId) : undefined} current={false} today={today} mutating={mutating} api={api} mutate={mutate} setEditor={setEditor} />)}</ul> : <div className="plan-empty">{folder.empty}</div>}
+            {folder.items.length ? <ul className="plan-list">{folder.items.map(task => <PlanRow key={task.id} task={task} tiles={false} category={task.categoryId ? categoryById.get(task.categoryId) : undefined} current={false} today={today} mutating={mutating} api={api} mutate={mutate} setEditor={setEditor} armed={armedId === task.id} onCheck={() => onRowCheck(task)} onConfirm={() => confirmRow(task)} onDisarm={disarmArm} />)}</ul> : <div className="plan-empty">{folder.empty}</div>}
           </div> : null}
         </section>;
       })}
@@ -221,19 +241,22 @@ function TodayBoard({ tasks, today, categoryById, planView, mutating, api, mutat
   </div>;
 }
 
-function PlanRow({ task, tiles, category, current, today, mutating, api, mutate, setEditor }: {
+function PlanRow({ task, tiles, category, current, today, mutating, api, mutate, setEditor, armed, onCheck, onConfirm, onDisarm }: {
   task: Task; tiles: boolean; category?: { name: string; color: string }; current: boolean; today: string; mutating: boolean;
   api: NonNullable<typeof window.desktop>; mutate: (action: () => Promise<State>, message?: string) => Promise<void> | void;
-  setEditor: (task: Task | 'new') => void;
+  setEditor: (task: Task | 'new') => void; armed: boolean; onCheck: () => void; onConfirm: () => void; onDisarm: () => void;
 }) {
   const overdue = task.status !== 'done' && task.plannedDate < today;
-  return <li className={`plan-item${tiles ? ' is-tile' : ''}${task.status === 'done' ? ' is-done' : ''}${current ? ' is-current' : ''}`}>
-    <button type="button" className="task-check" aria-label={`${task.status === 'done' ? '恢复待办' : '完成'} ${task.title}`} aria-pressed={task.status === 'done'} disabled={mutating} onClick={() => void mutate(() => api.update(task.id, { status: task.status === 'done' ? 'todo' : 'done' }, task.updatedAt))}>{task.status === 'done' ? <Check size={14} weight="bold" /> : null}</button>
+  const checkActive = task.status === 'done' || armed;
+  return <li className={`plan-item${tiles ? ' is-tile' : ''}${task.status === 'done' ? ' is-done' : ''}${current ? ' is-current' : ''}${armed ? ' is-armed' : ''}`}>
+    <button type="button" className={`task-check${checkActive ? ' is-active' : ''}`} aria-label={`${task.status === 'done' ? '恢复待办' : armed ? `取消完成 ${task.title}` : `完成 ${task.title}`}`} aria-pressed={task.status === 'done'} disabled={mutating} onClick={onCheck}>{checkActive ? <Check size={14} weight="bold" /> : null}</button>
     <button type="button" className="plan-main" onClick={() => setEditor(task)} aria-label={`编辑 ${task.title}`}>
-      <span className="plan-task-copy"><b title={task.title}>{task.title}</b><span className="plan-category"><i className="plan-dot" aria-hidden="true" style={{ backgroundColor: category?.color ?? 'var(--muted)' }} />{category?.name ?? '无标签'}{overdue || task.plannedDate > today ? <> · <time dateTime={task.plannedDate}>{task.plannedDate}</time></> : null}</span></span>
+      <span className="plan-task-copy"><b title={task.title}>{task.title}</b><span className="plan-category"><i className="plan-dot" aria-hidden="true" style={{ backgroundColor: category?.color ?? 'var(--muted)' }} />{category?.name ?? '无标签'}{overdue ? <> · <time dateTime={task.plannedDate}>{task.plannedDate}</time></> : null}</span></span>
       {task.progress !== null ? <span className="plan-progress" role="progressbar" aria-label={`${task.title}进度`} aria-valuenow={task.progress} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${task.progress}%` }} /></span> : null}
+      {task.progress !== null ? <span className="plan-progress-num">{task.progress}%</span> : null}
       {current && overdue ? <span className="plan-pill">待处理</span> : task.status === 'doing' ? <span className="plan-pill">进行中</span> : null}
-      <time>{timeText(task.dueAt)}</time>
+      <time className={overdue ? 'is-overdue' : undefined} dateTime={task.dueAt ?? undefined}>{scheduleStamp(task)}</time>
     </button>
+    {armed ? <span className="confirm-bar"><button type="button" className="confirm-btn" disabled={mutating} onClick={onConfirm}>确认完成</button><button type="button" className="confirm-cancel" onClick={onDisarm}>取消</button></span> : null}
   </li>;
 }
