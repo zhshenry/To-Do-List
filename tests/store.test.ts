@@ -5,7 +5,20 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Store } from '../electron/store';
-import { activeToday, newTask, taskInputSchema, taskPatchSchema } from '../shared/contracts';
+import { activeToday, newTask, openToday, taskInputSchema, taskPatchSchema } from '../shared/contracts';
+
+test('openToday excludes completed tasks and meetings while activeToday keeps them', () => {
+  const day = '2026-09-21';
+  const mk = (title: string, extra: Partial<ReturnType<typeof newTask>> = {}) => ({ ...newTask(title), id: title, createdAt: '2026-09-21T00:00:00.000Z', updatedAt: '2026-09-21T00:00:00.000Z', completedAt: null, notifiedFor: null, deletedAt: null, ...extra });
+  const items = [
+    mk('没做完', { plannedDate: day, dueAt: `${day}T09:00:00+08:00` }),
+    mk('做完了', { plannedDate: day, dueAt: `${day}T10:00:00+08:00`, status: 'done', completedAt: `${day}T04:00:00.000Z` }),
+    mk('开完的会', { plannedDate: day, kind: 'meeting', dueAt: `${day}T10:00:00+08:00`, status: 'done', completedAt: `${day}T04:30:00.000Z` }),
+    mk('要开的会', { plannedDate: day, kind: 'meeting', dueAt: `${day}T11:00:00+08:00` }),
+  ];
+  assert.deepEqual(openToday(items, day).map(task => task.id), ['没做完', '要开的会']);
+  assert.ok(activeToday(items, day).some(task => task.status === 'done'), 'activeToday 仍含已完成（事项库视图依赖）');
+});
 
 test('partial task updates preserve omitted category and progress while explicit null clears them', () => {
   assert.deepEqual(taskPatchSchema.parse({ status: 'done' }), { status: 'done' });

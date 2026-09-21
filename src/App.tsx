@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { PushPin, Minus, Plus, GearSix, Sparkle, Note, Check, Clock, X, ArrowsOut, ArrowsInLineVertical, List, SquaresFour, CaretDown, Archive, DotsThree, Circle } from '@phosphor-icons/react';
-import { DOCK_FEATURE_ENABLED, activeToday, localDay, taskTime, type State, type Task } from '../shared/contracts';
+import { DOCK_FEATURE_ENABLED, activeToday, localDay, openToday, taskTime, type State, type Task } from '../shared/contracts';
 import { BrandMark, IconButton, Modal, errorText, timeText } from './ui';
 import { TaskEditor } from './TaskEditor';
 import { SettingsPanel, type SettingsTab } from './SettingsPanel';
@@ -179,10 +179,10 @@ function TodayBoard({ tasks, today, categoryById, planView, mutating, api, mutat
   setEditor: (task: Task | 'new') => void;
 }) {
   const [openFolder, setOpenFolder] = useState<string | null>(null);
-  const todayItems = activeToday(tasks, today);
-  const todos = todayItems.filter(task => task.kind === 'task');
-  const meetings = todayItems.filter(task => task.kind === 'meeting');
-  const currentId = todayItems.find(task => task.status !== 'done')?.id;
+  const openItems = openToday(tasks, today);
+  const todos = openItems.filter(task => task.kind === 'task');
+  const meetings = openItems.filter(task => task.kind === 'meeting');
+  const currentId = openItems[0]?.id;
   const tomorrow = shiftDay(today, 1);
   const dayAfter = shiftDay(today, 2);
   const weekEnd = shiftDay(today, 7);
