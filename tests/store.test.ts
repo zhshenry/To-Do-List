@@ -5,11 +5,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Store } from '../electron/store';
-import { activeToday, newTask, openToday, taskInputSchema, taskPatchSchema } from '../shared/contracts';
+import { activeToday, newTask, openToday, taskInputSchema, taskPatchSchema, type Task } from '../shared/contracts';
 
 test('openToday excludes completed tasks and meetings while activeToday keeps them', () => {
   const day = '2026-09-21';
-  const mk = (title: string, extra: Partial<ReturnType<typeof newTask>> = {}) => ({ ...newTask(title), id: title, createdAt: '2026-09-21T00:00:00.000Z', updatedAt: '2026-09-21T00:00:00.000Z', completedAt: null, notifiedFor: null, deletedAt: null, ...extra });
+  const mk = (title: string, extra: Partial<Task> = {}): Task => ({ ...newTask(title), id: title, createdAt: '2026-09-21T00:00:00.000Z', updatedAt: '2026-09-21T00:00:00.000Z', completedAt: null, notifiedFor: null, deletedAt: null, ...extra });
   const items = [
     mk('没做完', { plannedDate: day, dueAt: `${day}T09:00:00+08:00` }),
     mk('做完了', { plannedDate: day, dueAt: `${day}T10:00:00+08:00`, status: 'done', completedAt: `${day}T04:00:00.000Z` }),
