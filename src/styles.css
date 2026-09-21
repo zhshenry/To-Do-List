@@ -101,12 +101,21 @@ h3 { font-size: 15px; font-weight: 650; }
 .plan-list, .plan-tiles { list-style: none; margin: 0; padding: 0; }
 .plan-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-bottom: 6px; }
 .plan-item { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.plan-item.is-armed .plan-main time { display: none; }
 .plan-item.is-tile { min-height: 96px; flex-direction: column; align-items: stretch; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--white); }
 .plan-item.is-current { background: #fbf4f0; border-radius: 10px; }
 .plan-item.is-tile.is-current { border-color: #ead5cc; }
 .plan-item.is-done b { text-decoration: line-through; color: var(--completed); }
-.plan-item .task-check { width: 28px; height: 28px; margin: 0; padding: 0; border: 1.5px solid var(--muted); border-radius: 7px; background: transparent; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.plan-item .task-check { width: 28px; height: 28px; margin: 0; padding: 0; border: 1.5px solid #b7b0a6; border-radius: 50%; background: transparent; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--white); transition: border-color 120ms, background-color 120ms; }
+.plan-item .task-check:not(:disabled):hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.plan-item.is-armed .task-check { background: var(--accent); border-color: var(--accent); color: var(--white); box-shadow: 0 0 0 3px var(--accent-soft); }
 .plan-item.is-done .task-check { color: var(--white); background: var(--completed); border-color: var(--completed); }
+.plan-main time.is-overdue { color: var(--danger); font-weight: 600; }
+.plan-progress-num { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.confirm-bar { display: flex; align-items: center; gap: 6px; flex-shrink: 0; background: var(--paper); border-radius: 999px; padding: 2px 4px; box-shadow: 0 2px 8px #4c40311a; }
+.confirm-btn { display: inline-flex; align-items: center; gap: 4px; min-height: 22px; padding: 2px 10px; font-size: 11px; font-weight: 600; border-radius: 999px; background: var(--accent); color: var(--white); border: 1px solid var(--accent); white-space: nowrap; }
+.confirm-btn:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+.confirm-cancel { min-height: 22px; padding: 2px 9px; font-size: 11px; border-radius: 999px; background: var(--white); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
 .plan-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 6px 4px; text-align: left; border-radius: 8px; }
 .plan-main:hover { background: transparent; }
 .plan-main:disabled { opacity: 1; }
