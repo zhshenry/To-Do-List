@@ -171,3 +171,6 @@ export function activeToday(tasks: Task[], today = localDay()): Task[] {
   return tasks.filter(t => visibleToday(t, today))
     .sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done') || taskTime(a) - taskTime(b) || a.createdAt.localeCompare(b.createdAt));
 }
+export function openToday(tasks: Task[], today = localDay()): Task[] {
+  return activeToday(tasks, today).filter(t => t.status !== 'done');
+}

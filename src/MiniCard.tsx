@@ -4,7 +4,7 @@ import {
   DotsThree, Flag, GearSix, Minus, Plus, PushPin, Sparkle, Tag, X,
 } from '@phosphor-icons/react';
 import {
-  DOCK_FEATURE_ENABLED, activeToday, localDay, newTask,
+  DOCK_FEATURE_ENABLED, localDay, newTask, openToday,
   type Category, type DesktopAPI, type MainWindowWidth, type State, type Task, type TaskInput, type UpdaterStatus,
 } from '../shared/contracts';
 import { AssistantApp } from './AssistantApp';
@@ -332,7 +332,7 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
   const settingsTrigger = useRef<HTMLButtonElement>(null);
   const settingsWasOpen = useRef(false);
   const previousMode = useRef(mode);
-  const remaining = useMemo(() => activeToday(data.tasks, today).filter(task => task.status !== 'done'), [data.tasks, today]);
+  const remaining = useMemo(() => openToday(data.tasks, today), [data.tasks, today]);
   const current = remaining[index % Math.max(remaining.length, 1)];
   const armed = Boolean(current && armedId === current.id);
   const aiAvailable = data.settings.aiEnabled && !!data.settings.activeModelId;
