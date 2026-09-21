@@ -46,7 +46,7 @@ export function TaskLibrary({ tasks, categories, api, changed, edit, close }: {
     finally { setBusy(false); }
   }
   return <section className="task-library" aria-label="事项库">
-    <header className="library-heading"><button type="button" className="text-button" disabled={busy} onClick={close}><ArrowLeft size={16} />今日计划</button><h2>事项库</h2></header>
+    <header className="library-heading"><button type="button" className="text-button" disabled={busy} onClick={close}><ArrowLeft size={16} />返回</button><h2>事项库</h2></header>
     <div className="library-search"><MagnifyingGlass size={17} aria-hidden /><input ref={search} aria-label="搜索事项" placeholder="搜索标题、备注或日期" value={query} onChange={e => { setQuery(e.target.value); setSelected([]); }} />{query ? <button type="button" aria-label="清除搜索" onClick={() => { setQuery(''); search.current?.focus(); }}><X size={16} /></button> : null}</div>
     <div className="library-filters" role="group" aria-label="事项状态">
       {FILTERS.map(item => <button key={item.id} type="button" aria-pressed={filter === item.id} disabled={busy} onClick={() => { setFilter(item.id); setSelected([]); setNotice(''); setError(''); }}>{item.label}<span>{tasks.filter(task => matchesStatus(task, item.id)).length}</span></button>)}

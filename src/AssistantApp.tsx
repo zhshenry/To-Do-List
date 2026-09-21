@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { ArrowClockwise, ArrowsOutSimple, CaretLeft, LockSimple, PaperPlaneTilt, Sparkle, Stop, X } from '@phosphor-icons/react';
 import { createPortal } from 'react-dom';
-import type { AIAction, AIProposalSelection, AssistantAnchor, ChatSession, ChatSummary, State, Task } from '../shared/contracts';
+import type { AIAction, AIProposalSelection, AssistantAnchor, ChatSession, ChatSummary, State } from '../shared/contracts';
 import { AIConversation, type ConversationEntry } from './AIConversation';
-import { IconButton, Modal, Select, errorText, timeText } from './ui';
+import { IconButton, Modal, Select, errorText } from './ui';
 import './assistant-updates.css';
 
 function AssistantShell({ children }: { children: ReactNode }) {
@@ -12,8 +12,8 @@ function AssistantShell({ children }: { children: ReactNode }) {
   return <div className="assistant-shell" data-tail={anchor.side} style={{ '--tail-along': `${Math.round(anchor.along * 10000) / 100}%` } as CSSProperties}><span className="assistant-tail" aria-hidden="true" />{children}</div>;
 }
 
-export function AssistantApp({ compact = false, back, expand, contextTask = null, initialPrompt = null, consumedPrompt }: {
-  compact?: boolean; back?: () => void; expand?: () => void; contextTask?: Task | null;
+export function AssistantApp({ compact = false, back, expand, initialPrompt = null, consumedPrompt }: {
+  compact?: boolean; back?: () => void; expand?: () => void;
   initialPrompt?: { id: number; text: string } | null; consumedPrompt?: () => void;
 } = {}) {
   const api = window.desktop;
@@ -197,12 +197,9 @@ export function AssistantApp({ compact = false, back, expand, contextTask = null
     const tools = latestAssistant?.tools ?? [];
     const completedTools = tools.filter(tool => tool.status === 'complete').length;
     const currentTool = tools.find(tool => tool.status === 'running') ?? [...tools].reverse().find(tool => tool.status !== 'complete');
-    const commands = contextTask?.kind === 'meeting' ? ['会前准备', '改期建议', '会后跟进'] : contextTask ? ['拆成步骤', '安排专注', '调整截止'] : [];
-    const contextTitle = contextTask ? `针对：${contextTask.title}` : '从今天开始规划';
-    const contextMeta = contextTask ? `${contextTask.kind === 'meeting' ? '日程' : '待办'} · ${contextTask.dueAt ? timeText(contextTask.dueAt) : '未设时间'}` : '还没有待办或日程';
     const activeModel = data?.settings.models.find(model => model.id === data.settings.activeModelId);
     const modelLabel = activeModel?.name ?? '选择模型';
-    const compactHeader = <div className="mini-ai-context"><span className="mini-ai-mark"><Sparkle size={11} weight="fill" /></span><span><b>{contextTitle}</b><small>{contextMeta}</small></span><IconButton label="展开 AI 对话" onClick={expand}><ArrowsOutSimple size={12} /></IconButton><button type="button" className="mini-ai-back" onClick={() => { setModelOpen(false); back?.(); }}><CaretLeft size={10} />返回</button></div>;
+    const compactHeader = <div className="mini-ai-context"><span className="mini-ai-mark"><Sparkle size={11} weight="fill" /></span><span><b>AI 助手</b></span><IconButton label="展开 AI 对话" onClick={expand}><ArrowsOutSimple size={12} /></IconButton><button type="button" className="mini-ai-back" onClick={() => { setModelOpen(false); back?.(); }}><CaretLeft size={10} />返回</button></div>;
     const modelControl = data?.settings.models.length ? <button ref={modelToggleRef} type="button" className="mini-ai-model-toggle" aria-label={`切换模型，当前为 ${modelLabel}`} aria-haspopup="menu" aria-expanded={modelOpen} disabled={busy} onKeyDown={event => { if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setModelOpen(true); } else if (event.key === 'Escape' && modelOpen) { event.preventDefault(); closeModelMenu(); } }} onClick={() => modelOpen ? closeModelMenu() : setModelOpen(true)}><span>{modelLabel}</span><CaretLeft size={9} /></button> : null;
     const modelMenu = modelOpen && data ? createPortal(<div ref={modelMenuRef} className="mini-ai-model-menu" role="menu" aria-label="按供应商选择模型" onKeyDown={handleModelMenuKeys}>
       {data.settings.providers.map(provider => {
@@ -231,7 +228,7 @@ export function AssistantApp({ compact = false, back, expand, contextTask = null
     return <section className="mini-ai-surface">
       {compactHeader}
       <form className="mini-ai-compose" onSubmit={send}><textarea ref={inputRef} aria-label="AI 对话输入" rows={1} value={input} maxLength={10000} onChange={event => saveDraft(event.target.value)} placeholder="一句话告诉 AI 你想怎么处理" onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !(event.nativeEvent.isComposing || event.keyCode === 229)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} /><button type="submit" aria-label="发送给 AI" disabled={!input.trim() || mutating}><PaperPlaneTilt size={13} /></button></form>
-      <div className="mini-ai-quick" aria-label={gate || !contextTask ? undefined : '针对当前事项的快捷指令'}>{gate ? <><span className="mini-ai-gate-label">{gate.label}</span><button type="button" className="mini-ai-gate-button" ref={gateButtonRef} onClick={gate.onAction}>{gate.action}</button></> : contextTask ? <><span>快捷指令</span>{commands.map(command => <button key={command} type="button" onClick={() => void askAI(`针对“${contextTask.title}”，${command}。如需改动事项，请只生成等待我确认的建议。`)}>{command}</button>)}</> : null}{modelControl}</div>{modelMenu}
+      <div className="mini-ai-quick">{gate ? <><span className="mini-ai-gate-label">{gate.label}</span><button type="button" className="mini-ai-gate-button" ref={gateButtonRef} onClick={gate.onAction}>{gate.action}</button></> : null}{modelControl}</div>{modelMenu}
     </section>;
   }
   if (!data || !chat) return <AssistantShell><main className="assistant-widget"><header className="assistant-titlebar"><span className="assistant-identity"><span className="assistant-header-avatar" aria-hidden="true"><Sparkle size={20} weight="fill" /></span><span className="assistant-identity-text"><b>AI 助手</b><small>{loadError ? '读取失败' : '正在读取本地对话…'}</small></span></span><span className="assistant-header-controls"><IconButton label="关闭 AI 助手" onClick={() => void api.assistant({ action: 'hide', animate: !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false) })}><X size={18} /></IconButton></span></header><div className={`assistant-loading${loadError ? ' is-error' : ''}`} role={loadError ? 'alert' : 'status'}><span>{loadError || '正在准备你的本地工作区…'}</span>{loadError ? <div className="assistant-loading-actions"><button type="button" onClick={() => { setLoadError(''); setLoadAttempt(attempt => attempt + 1); }}><ArrowClockwise size={15} />重试</button><button type="button" onClick={() => void api.assistant({ action: 'hide', animate: false })}>关闭</button></div> : null}</div></main></AssistantShell>;
@@ -258,6 +255,15 @@ export function AssistantApp({ compact = false, back, expand, contextTask = null
         {busy ? <button type="button" className="assistant-stop" aria-label="停止并取消 AI 请求" onClick={() => void api.cancelAI()}><Stop size={13} weight="fill" /><span>停止</span></button> : <button className="send-button" type="submit" aria-label="发送给 AI" disabled={!input.trim() || mutating}><PaperPlaneTilt size={16} weight="fill" /></button>}
       </span>
     </form></footer>
-    {confirmNew ? <Modal title="开始新对话？" close={() => setConfirmNew(false)}><p>当前对话和草稿会保留在历史对话中。{hasPendingAction ? '未应用的建议将被放弃，不会修改事项。' : ''}</p><div className="assistant-confirm-actions"><button type="button" disabled={mutating} onClick={() => setConfirmNew(false)}>继续当前对话</button><button type="button" className="primary" disabled={mutating} onClick={() => void newConversation()}>开始新对话</button></div></Modal> : null}
+    {confirmNew ? <Modal className="assistant-confirm" title="开始新对话？" close={() => setConfirmNew(false)}>
+      <div className="confirm-copy">
+        <p>当前对话和草稿会留在历史里。</p>
+        {hasPendingAction ? <p>未应用的建议会放弃，不会改动事项。</p> : null}
+      </div>
+      <div className="assistant-confirm-actions">
+        <button type="button" disabled={mutating} onClick={() => setConfirmNew(false)}>继续当前对话</button>
+        <button type="button" className="primary" disabled={mutating} onClick={() => void newConversation()}>开始新对话</button>
+      </div>
+    </Modal> : null}
   </main></AssistantShell>;
 }

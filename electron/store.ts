@@ -247,7 +247,7 @@ export class Store {
   review(today = localDay()): string {
     const tasks = this.all();
     const completed = tasks.filter(t => t.completedAt && localDay(new Date(t.completedAt)) === today);
-    const pending = tasks.filter(t => t.status !== 'done' && t.plannedDate <= today);
+    const pending = tasks.filter(t => !t.deletedAt && t.status !== 'done' && (t.kind === 'task' || t.plannedDate <= today));
     return `# ${today} 每日复盘\n\n## 已完成 · ${completed.length} 项\n${completed.map(t => `- ${t.title}${t.note ? `\n  ${t.note}` : ''}`).join('\n') || '今天还没有完成的事项。'}\n\n## 待继续 · ${pending.length} 项\n${pending.map(t => `- ${t.title}${t.dueAt ? `（${new Date(t.dueAt).toLocaleString('zh-CN')}）` : ''}`).join('\n') || '今天的事项都已处理。'}`;
   }
   close(): void { this.db.close(); }

@@ -161,7 +161,12 @@ export function newTask(title = ''): TaskInput {
   return { title, kind: 'task', status: 'todo', priority: 'medium', plannedDate: localDay(), dueAt: null, remindAt: null, categoryId: null, progress: null, note: '' };
 }
 export function taskTime(task: Task): number { return task.dueAt ? Date.parse(task.dueAt) : Number.MAX_SAFE_INTEGER; }
+function visibleToday(task: Task, today: string): boolean {
+  if (task.deletedAt) return false;
+  if (task.status === 'done') return Boolean(task.completedAt && localDay(new Date(task.completedAt)) === today);
+  return task.kind === 'task' || task.plannedDate <= today;
+}
 export function activeToday(tasks: Task[], today = localDay()): Task[] {
-  return tasks.filter(t => !t.deletedAt && (t.status === 'done' ? t.completedAt && localDay(new Date(t.completedAt)) === today : t.plannedDate <= today))
+  return tasks.filter(t => visibleToday(t, today))
     .sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done') || taskTime(a) - taskTime(b) || a.createdAt.localeCompare(b.createdAt));
 }

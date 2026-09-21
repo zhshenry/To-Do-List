@@ -24,6 +24,10 @@ const day = offset => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 const task = (title, extra = {}) => ({ title, kind: 'task', status: 'todo', priority: 'medium', plannedDate: day(0), dueAt: null, remindAt: null, note: '', categoryId: null, progress: null, ...extra });
+const meeting = (title, extra = {}) => {
+  const plannedDate = extra.plannedDate ?? day(0);
+  return { title, kind: 'meeting', status: 'todo', priority: 'medium', plannedDate, dueAt: `${plannedDate}T10:00:00+08:00`, remindAt: null, note: '', categoryId: null, progress: null, ...extra, kind: 'meeting', plannedDate };
+};
 async function poll(check, message) {
   for (let i = 0; i < 100; i++) { if (await check()) return; await wait(100); }
   throw new Error(`Timed out: ${message}`);
@@ -108,13 +112,13 @@ try {
   await checkLauncherInsets();
   assert.equal(await page.getByRole('button', { name: '收起窗口', exact: true }).count(), 0);
   assert.ok(await page.locator('.plan-today').evaluate(element => element.getBoundingClientRect().height <= 120), 'empty today card stays compact');
-  assert.equal(await page.getByRole('region', { name: '后续事项', exact: true }).count(), 1);
-  await page.getByLabel('今日计划更多操作', { exact: true }).click();
+  assert.equal(await page.getByRole('region', { name: '日程', exact: true }).count(), 1);
+  await page.getByLabel('更多操作', { exact: true }).click();
   await screenshot('review-menu');
   await page.getByRole('button', { name: '今日复盘', exact: true }).click();
   await page.getByRole('dialog', { name: '今日复盘', exact: true }).waitFor();
   await page.keyboard.press('Escape');
-  await poll(async () => await page.getByLabel('今日计划更多操作', { exact: true }).evaluate(element => element === document.activeElement), 'review restores focus to its trigger');
+  await poll(async () => await page.getByLabel('更多操作', { exact: true }).evaluate(element => element === document.activeElement), 'review restores focus to its trigger');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('.plan-more').getAttribute('open'), null);
@@ -123,7 +127,7 @@ try {
   await checkLauncherInsets();
   assert.ok(await page.locator('.plan-today').evaluate(element => element.getBoundingClientRect().height <= 120));
   await resize(440, 700);
-  checks.push('compact empty state, unified upcoming card and relocated keyboard-accessible review');
+  checks.push('compact empty state, unified schedule card and relocated keyboard-accessible review');
   await openAssistant();
   await assistant.getByText('未启用', { exact: true }).waitFor();
   await assistant.getByText('请先配置 AI 大模型', { exact: true }).waitFor();
@@ -155,20 +159,21 @@ try {
   testCategoryId = fixture.categoryId;
   const todayRow = page.locator('.plan-item').filter({ hasText: '完成项目报告' });
   await todayRow.getByText('工作', { exact: true }).waitFor();
+  await page.getByRole('region', { name: '待办' }).getByText('下周产品评审', { exact: true }).waitFor();
   await screenshot('main-rows');
-  await page.evaluate(async input => { await window.desktop.create(input); }, task('明日准备材料', { plannedDate: day(1) }));
+  await page.evaluate(async input => { await window.desktop.create(input); }, meeting('明日准备材料', { plannedDate: day(1) }));
   await page.locator('.plan-folder-tab').filter({ hasText: '明天' }).click();
   await page.locator('#plan-folder-tomorrow').getByText('明日准备材料', { exact: true }).waitFor();
   await screenshot('upcoming-open');
   await page.evaluate(async inputs => { for (const input of inputs) await window.desktop.create(input); }, [
-    task('后天检查材料', { plannedDate: day(2) }),
-    task('下周整理文档', { plannedDate: day(8) }),
-    task('明年长期规划', { plannedDate: day(400) }),
+    meeting('后天检查材料', { plannedDate: day(2) }),
+    meeting('下周整理文档', { plannedDate: day(8) }),
+    meeting('明年长期规划', { plannedDate: day(400) }),
   ]);
   await page.locator('.plan-folder-tab').filter({ hasText: '近期' }).click();
   assert.equal(await page.locator('#plan-folder-tomorrow').count(), 0);
-  assert.deepEqual(await page.locator('#plan-folder-soon .plan-task-copy b').allTextContents(), ['后天检查材料', '下周产品评审']);
-  assert.deepEqual(await page.locator('#plan-folder-soon time[datetime]').evaluateAll(nodes => nodes.map(node => node.getAttribute('datetime'))), [day(2), day(7)]);
+  assert.deepEqual(await page.locator('#plan-folder-soon .plan-task-copy b').allTextContents(), ['后天检查材料']);
+  assert.deepEqual(await page.locator('#plan-folder-soon time[datetime]').evaluateAll(nodes => nodes.map(node => node.getAttribute('datetime'))), [day(2)]);
   await screenshot('upcoming-week');
   await page.locator('.plan-folder-tab').filter({ hasText: '更晚' }).click();
   assert.deepEqual(await page.locator('#plan-folder-later .plan-task-copy b').allTextContents(), ['下周整理文档', '明年长期规划']);
@@ -225,7 +230,7 @@ try {
   assert.equal(await kindSwitch.evaluate(element => getComputedStyle(element, '::after').width), '1px', 'type switch keeps the center divider');
   assert.equal(await page.locator('.task-create-compose').count(), 1, 'expanded create uses the compact composer layout');
   assert.equal(await page.locator('.task-create-tools > button').count(), 4, 'expanded create exposes four optional setting tools');
-  assert.equal(await page.getByLabel('日期', { exact: true }).count(), 0, 'optional fields stay collapsed until requested');
+  assert.equal(await page.getByLabel('完成期限', { exact: true }).count(), 0, 'optional fields stay collapsed until requested');
   await screenshot('editor-kind-switch');
   const createDialog = page.getByRole('dialog', { name: '新增事项', exact: true });
   const createLayout = await createDialog.boundingBox();
@@ -239,7 +244,7 @@ try {
   }
   const timeTool = page.getByRole('button', { name: /^时间安排：/ });
   await timeTool.click();
-  await page.getByLabel('日期', { exact: true }).waitFor();
+  await page.getByLabel('完成期限', { exact: true }).waitFor();
   await assertCreateSize('time settings open');
   await screenshot('editor-time-settings');
   await page.getByRole('combobox', { name: '时间', exact: true }).click();
@@ -254,7 +259,7 @@ try {
   await halfHourOptions.getByRole('option', { name: '12:30', exact: true }).click();
   await assertCreateSize('half-hour selected');
   await timeTool.click();
-  assert.equal(await page.getByLabel('日期', { exact: true }).count(), 0);
+  assert.equal(await page.getByLabel('完成期限', { exact: true }).count(), 0);
   await assertCreateSize('time settings closed');
   const priorityTool = page.getByRole('button', { name: /^优先级：/ });
   await priorityTool.click();
@@ -354,7 +359,7 @@ try {
   await choose('服务协议', 'OpenAI Chat Completions');
   await page.getByLabel('模型名称 / ID', { exact: true }).fill('test-model');
   await page.getByRole('button', { name: '测试连接', exact: true }).click();
-  await page.getByText('模型 test-model 连接成功', { exact: true }).waitFor();
+  await page.getByRole('button', { name: '模型 test-model 连接成功', exact: true }).waitFor();
   assert.equal((await page.evaluate(() => window.desktop.state())).settings.providers.length, 0, 'connection testing must not silently save a draft');
   await page.getByRole('button', { name: '添加并使用', exact: true }).click();
   await poll(async () => (await page.evaluate(() => window.desktop.state())).settings.models.length === 1, 'add provider and active model');

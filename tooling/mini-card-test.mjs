@@ -154,6 +154,13 @@ try {
   const compactHome = await main.locator('.mini-home-main').boundingBox();
   assert.ok(emptyTask && compactHome && emptyTask.y + emptyTask.height <= compactHome.y + compactHome.height, 'unconfigured AI prompt keeps the empty task card inside the compact home');
   await capture('home-ai-unconfigured');
+  await main.getByRole('button', { name: '设置', exact: true }).click();
+  const unconfiguredQuick = main.getByRole('region', { name: '快捷设置' });
+  await unconfiguredQuick.waitFor();
+  await unconfiguredQuick.getByRole('button', { name: '去配置', exact: true }).waitFor();
+  assert.match(await unconfiguredQuick.locator('.mini-settings-row.is-update small').textContent(), /v\d|正在读取版本/);
+  await unconfiguredQuick.getByRole('button', { name: '关闭快捷设置' }).click();
+  await unconfiguredQuick.waitFor({ state: 'detached' });
   await configureAI.click();
   const settingsDialog = main.getByRole('dialog', { name: '设置' });
   await settingsDialog.waitFor();
@@ -188,6 +195,22 @@ try {
   assert.deepEqual(await main.getByRole('img', { name: 'To Do List' }).boundingBox(), expandedLogo, 'brand logo stays fixed when the standard-width window collapses');
   assert.equal((await windows()).dock, undefined, 'collapsed mode does not revive the offline Dock');
   await capture('home');
+  const timedLine = await main.locator('.mini-task-open small').textContent();
+  assert.match(timedLine, /^日程 · /);
+  const timedClock = timedLine.match(/(\d{1,2}:\d{2})$/)?.[1];
+  assert.ok(timedClock, 'timed stack line includes a clock');
+  assert.ok(timedLine.length > `日程 · ${timedClock}`.length, 'timed stack line includes a date besides the clock');
+  await main.getByRole('button', { name: '下一项' }).click();
+  const dateLine = await main.locator('.mini-task-open small').textContent();
+  assert.match(dateLine, /^待办 · /);
+  assert.doesNotMatch(dateLine, /未设时间|已结转|\d{1,2}:\d{2}/);
+  await main.getByRole('button', { name: '完成 完成项目报告', exact: true }).click();
+  await main.getByRole('button', { name: '撤销', exact: true }).waitFor();
+  assert.equal((await main.evaluate(() => window.desktop.state())).tasks.find(task => task.title === '完成项目报告').status, 'done');
+  await main.getByRole('button', { name: '撤销', exact: true }).click();
+  await main.getByRole('button', { name: '完成 完成项目报告', exact: true }).waitFor();
+  assert.equal((await main.evaluate(() => window.desktop.state())).tasks.find(task => task.title === '完成项目报告').status, 'todo');
+  await main.getByRole('button', { name: '上一项' }).click();
   assert.equal(await main.getByRole('button', { name: '新增事项', exact: true }).count(), 1);
   assert.equal(await main.getByRole('button', { name: 'AI 助手', exact: true }).count(), 1);
   assert.equal(await main.locator('.mini-insight').count(), 1, 'home shows one actionable AI suggestion');
@@ -196,6 +219,40 @@ try {
   await capture('suggestion-open');
   assert.equal((await windows()).main.bounds.height, 176, 'suggestion reveal stays in the compact card');
   await main.locator('.mini-insight').click();
+  await main.getByRole('button', { name: '设置', exact: true }).click();
+  const quickSettings = main.getByRole('region', { name: '快捷设置' });
+  await quickSettings.waitFor();
+  await capture('quick-settings');
+  assert.ok((await windows()).main.bounds.height >= 300, 'quick settings extends the compact window');
+  assert.equal(await quickSettings.getByRole('switch', { name: '启用 AI' }).getAttribute('aria-checked'), 'true');
+  assert.equal(await quickSettings.getByRole('radiogroup', { name: '窗口宽度' }).getByRole('radio', { name: '标准', exact: true }).getAttribute('aria-checked'), 'true');
+  const quickLayout = await quickSettings.evaluate(panel => ({
+    update: panel.querySelector('.mini-settings-row.is-update').getBoundingClientRect().toJSON(),
+    footer: panel.querySelector('.mini-selector-footer').getBoundingClientRect().toJSON(),
+  }));
+  assert.ok(quickLayout.update.bottom + 4 <= quickLayout.footer.top, `update row stays clear of the footer: ${JSON.stringify(quickLayout)}`);
+  await quickSettings.getByRole('button', { name: /^切换模型，当前为 / }).click();
+  await quickSettings.getByRole('option', { name: /^快速模型/ }).waitFor();
+  assert.ok((await windows()).main.bounds.height >= 400, 'model list grows the compact window');
+  await capture('quick-settings-models');
+  await quickSettings.getByRole('option', { name: /^快速模型/ }).click();
+  await poll(async () => {
+    const state = await main.evaluate(() => window.desktop.state());
+    return state.settings.models.find(model => model.id === state.settings.activeModelId)?.name === '快速模型';
+  }, 'quick settings switches the active model');
+  await quickSettings.getByRole('button', { name: /^切换模型，当前为 / }).click();
+  await quickSettings.getByRole('option', { name: /^工作模型/ }).click();
+  await poll(async () => {
+    const state = await main.evaluate(() => window.desktop.state());
+    return state.settings.models.find(model => model.id === state.settings.activeModelId)?.name === '工作模型';
+  }, 'quick settings restores the working model');
+  await quickSettings.getByRole('radio', { name: '窄版', exact: true }).click();
+  await poll(async () => (await windows()).main.bounds.width === 340 && await quickSettings.getByRole('radio', { name: '窄版', exact: true }).getAttribute('aria-checked') === 'true', 'quick settings applies narrow width');
+  await quickSettings.getByRole('radio', { name: '标准', exact: true }).click();
+  await poll(async () => (await windows()).main.bounds.width === 440 && await quickSettings.getByRole('radio', { name: '标准', exact: true }).getAttribute('aria-checked') === 'true', 'quick settings restores standard width');
+  await quickSettings.getByRole('button', { name: '关闭快捷设置' }).click();
+  await quickSettings.waitFor({ state: 'detached' });
+  assert.equal((await windows()).main.bounds.height, 176, 'closing quick settings restores compact height');
   checks.push('fixed titlebar collapse, time-ordered stack, two primary actions, downward AI suggestion reveal and no Dock window');
 
   await openAdd();
@@ -303,6 +360,11 @@ try {
 
   await main.getByRole('button', { name: 'AI 助手', exact: true }).click();
   await main.getByLabel('AI 对话输入', { exact: true }).waitFor();
+  assert.equal(await main.locator('.mini-ai-context b').textContent(), 'AI 助手');
+  assert.equal(await main.getByText(/^针对：/).count(), 0);
+  for (const name of ['拆成步骤', '安排专注', '调整截止', '会前准备', '改期建议', '会后跟进']) {
+    assert.equal(await main.getByRole('button', { name, exact: true }).count(), 0, `${name} shortcut is removed from compact AI`);
+  }
   await main.emulateMedia({ reducedMotion: 'no-preference' });
   const aiSurface = main.locator('.mini-ai-surface');
   const glowStyle = await aiSurface.evaluate(element => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { PushPin, Minus, Plus, GearSix, Sparkle, Note, Check, Clock, X, ArrowsOut, ArrowsInLineVertical, List, SquaresFour, FolderSimple, CaretDown, Archive, DotsThree, Circle } from '@phosphor-icons/react';
+import { PushPin, Minus, Plus, GearSix, Sparkle, Note, Check, Clock, X, ArrowsOut, ArrowsInLineVertical, List, SquaresFour, CaretDown, Archive, DotsThree, Circle } from '@phosphor-icons/react';
 import { DOCK_FEATURE_ENABLED, activeToday, localDay, taskTime, type State, type Task } from '../shared/contracts';
 import { BrandMark, IconButton, Modal, errorText, timeText } from './ui';
 import { TaskEditor } from './TaskEditor';
@@ -144,9 +144,9 @@ export function App() {
       </div>
       <section className="agenda">
         {libraryOpen ? <TaskLibrary tasks={data.tasks} categories={data.categories} api={api} changed={accept} edit={setEditor} close={() => setLibraryOpen(false)} /> : <>
-          <div className="plan-view-toolbar"><span>今日计划</span><button type="button" aria-label={planView === 'rows' ? '切换到方块视图' : '切换到列表视图'} onClick={() => setPlanView(planView === 'rows' ? 'tiles' : 'rows')}>{planView === 'rows' ? <SquaresFour size={15} /> : <List size={15} />}{planView === 'rows' ? '方块视图' : '列表视图'}</button>
+          <div className="plan-view-toolbar"><button type="button" aria-label={planView === 'rows' ? '切换到方块视图' : '切换到列表视图'} onClick={() => setPlanView(planView === 'rows' ? 'tiles' : 'rows')}>{planView === 'rows' ? <SquaresFour size={15} /> : <List size={15} />}{planView === 'rows' ? '方块视图' : '列表视图'}</button>
             <details className="plan-more" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) event.currentTarget.open = false; }} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
-              <summary aria-label="今日计划更多操作" title="今日计划更多操作"><DotsThree size={20} weight="bold" /></summary>
+              <summary aria-label="更多操作" title="更多操作"><DotsThree size={20} weight="bold" /></summary>
               <button type="button" onClick={async event => { const menu = event.currentTarget.closest('details'); if (menu) { menu.open = false; menu.querySelector('summary')?.focus(); } try { setReview(await api.review()); } catch (e) { setError(errorText(e)); } }}><Note size={17} />今日复盘</button>
             </details>
           </div>
@@ -180,6 +180,8 @@ function TodayBoard({ tasks, today, categoryById, planView, mutating, api, mutat
 }) {
   const [openFolder, setOpenFolder] = useState<string | null>(null);
   const todayItems = activeToday(tasks, today);
+  const todos = todayItems.filter(task => task.kind === 'task');
+  const meetings = todayItems.filter(task => task.kind === 'meeting');
   const currentId = todayItems.find(task => task.status !== 'done')?.id;
   const tomorrow = shiftDay(today, 1);
   const dayAfter = shiftDay(today, 2);
@@ -187,17 +189,20 @@ function TodayBoard({ tasks, today, categoryById, planView, mutating, api, mutat
   const laterStart = shiftDay(today, 8);
   const shortDate = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8))}`;
   const folders = [
-    { id: 'tomorrow', label: '明天', range: shortDate(tomorrow), empty: '明天还没有事项。', from: tomorrow, through: tomorrow },
-    { id: 'soon', label: '近期', range: `${shortDate(dayAfter)} – ${shortDate(weekEnd)}`, empty: '未来一周暂无其他事项。', from: dayAfter, through: weekEnd },
-    { id: 'later', label: '更晚', range: `${shortDate(laterStart)} 起`, empty: '还没有更远的安排。', from: laterStart, through: null },
-  ].map(folder => ({ ...folder, items: tasks.filter(task => !task.deletedAt && task.plannedDate >= folder.from && (!folder.through || task.plannedDate <= folder.through))
+    { id: 'tomorrow', label: '明天', range: shortDate(tomorrow), empty: '明天还没有日程。', from: tomorrow, through: tomorrow },
+    { id: 'soon', label: '近期', range: `${shortDate(dayAfter)} – ${shortDate(weekEnd)}`, empty: '未来一周暂无其他日程。', from: dayAfter, through: weekEnd },
+    { id: 'later', label: '更晚', range: `${shortDate(laterStart)} 起`, empty: '还没有更远的日程。', from: laterStart, through: null },
+  ].map(folder => ({ ...folder, items: tasks.filter(task => !task.deletedAt && task.kind === 'meeting' && task.plannedDate >= folder.from && (!folder.through || task.plannedDate <= folder.through))
     .sort((a, b) => a.plannedDate.localeCompare(b.plannedDate) || taskTime(a) - taskTime(b) || a.createdAt.localeCompare(b.createdAt)) }));
   return <div className="today-board">
-    <section className={`plan-card plan-today${todayItems.length ? '' : ' is-empty'}`} aria-label="今日计划">
-      {todayItems.length ? <ul className={planView === 'tiles' ? 'plan-tiles' : 'plan-list'}>{todayItems.map(task => <PlanRow key={task.id} task={task} tiles={planView === 'tiles'} category={task.categoryId ? categoryById.get(task.categoryId) : undefined} current={task.id === currentId} today={today} mutating={mutating} api={api} mutate={mutate} setEditor={setEditor} />)}</ul> : <div className="plan-empty">点击 + 添加，或让 AI 帮你安排。</div>}
+    <section className={`plan-card plan-today${todos.length ? '' : ' is-empty'}`} aria-label="待办">
+      <header className="plan-card-heading"><h2>待办</h2></header>
+      {todos.length ? <ul className={planView === 'tiles' ? 'plan-tiles' : 'plan-list'}>{todos.map(task => <PlanRow key={task.id} task={task} tiles={planView === 'tiles'} category={task.categoryId ? categoryById.get(task.categoryId) : undefined} current={task.id === currentId} today={today} mutating={mutating} api={api} mutate={mutate} setEditor={setEditor} />)}</ul> : <div className="plan-empty">点击 + 添加，或让 AI 帮你安排。</div>}
     </section>
-    <section className="plan-folders" aria-label="后续事项">
-      <header className="upcoming-heading"><FolderSimple size={16} /><h2>后续事项</h2></header>
+    <section className="plan-schedule" aria-label="日程">
+      <header className="plan-card-heading"><h2>日程</h2></header>
+      {meetings.length ? <ul className="plan-list">{meetings.map(task => <PlanRow key={task.id} task={task} tiles={false} category={task.categoryId ? categoryById.get(task.categoryId) : undefined} current={task.id === currentId} today={today} mutating={mutating} api={api} mutate={mutate} setEditor={setEditor} />)}</ul> : <div className="plan-empty">今天没有日程。</div>}
+      <div className="plan-schedule-upcoming">
       {folders.map(folder => {
         const open = openFolder === folder.id;
         return <section key={folder.id} className={`plan-folder${open ? ' is-open' : ''}`}>
@@ -211,6 +216,7 @@ function TodayBoard({ tasks, today, categoryById, planView, mutating, api, mutat
           </div> : null}
         </section>;
       })}
+      </div>
     </section>
   </div>;
 }

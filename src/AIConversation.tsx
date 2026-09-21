@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ArrowClockwise, ArrowRight, ListChecks, Sparkle } from '@phosphor-icons/react';
-import type { AIAction, AIPlan, AIProposalSelection, Category, ChatEntry, Task } from '../shared/contracts';
+import { newTask, type AIAction, type AIPlan, type AIProposalSelection, type Category, type ChatEntry, type Task } from '../shared/contracts';
 import { dateTimeText } from './ui';
 import { StandaloneAIConversation } from './StandaloneAIConversation';
 
@@ -11,7 +11,7 @@ const proposalTaskLabels: Record<string, string> = {
   dueAt: '时间', remindAt: '提醒', categoryId: '标签', progress: '进度', note: '备注'
 };
 const proposalTaskWords: Record<string, string> = {
-  task: '待办', meeting: '日程', todo: '待办', doing: '进行中', done: '已完成', low: '低', medium: '中', high: '高'
+  task: '待办', meeting: '日程', todo: '未开始', doing: '进行中', done: '已完成', low: '低', medium: '中', high: '高'
 };
 const proposalCreateFields = ['kind', 'status', 'priority', 'plannedDate', 'categoryId', 'dueAt', 'remindAt', 'progress', 'note'] as const;
 
@@ -22,6 +22,60 @@ function proposalTaskValue(key: string, value: unknown, categories: Category[], 
   if (key === 'note') return value ? String(value) : '无备注';
   if (value === null || value === undefined || value === '') return '未设置';
   return ['kind', 'status', 'priority'].includes(key) ? proposalTaskWords[String(value)] ?? String(value) : String(value);
+}
+function proposalFieldLabel(key: string, kind?: Task['kind']): string {
+  if (key === 'plannedDate') return kind === 'meeting' ? '日期' : '完成期限';
+  if (key === 'name') return '名称';
+  if (key === 'color') return '颜色';
+  return proposalTaskLabels[key] ?? key;
+}
+export type MiniProposalRow = { label: string; from?: string; to: string };
+function proposalObjectWord(action: AIAction, current?: Task | Category): string {
+  if (action.type === 'create_category' || action.type === 'update_category' || action.type === 'remove_category') return '标签';
+  const kind = action.type === 'create' ? action.task.kind : current && 'kind' in current ? current.kind : undefined;
+  if (kind === 'meeting') return '日程';
+  if (kind === 'task') return '待办';
+  return '事项';
+}
+function proposalVerb(action: AIAction, current?: Task | Category): string {
+  const act = action.type.startsWith('create') ? '新增' : action.type.startsWith('remove') ? '删除' : '修改';
+  return `${act}${proposalObjectWord(action, current)}`;
+}
+export function miniProposalView(action: AIAction, tasks: Task[], categories: Category[], proposedNames = new Map<string, string>()): { verb: string; title: string; danger: boolean; missing: boolean; rows: MiniProposalRow[] } {
+  const current = action.type === 'update' || action.type === 'remove' ? tasks.find(task => task.id === action.id)
+    : action.type === 'update_category' || action.type === 'remove_category' ? categories.find(category => category.id === action.id)
+    : undefined;
+  const title = action.type === 'create' ? action.task.title
+    : action.type === 'create_category' ? action.category.name
+    : current ? 'title' in current ? current.title : current.name
+    : '对象已变化';
+  const verb = proposalVerb(action, current);
+  const value = (key: string, item: unknown) => proposalTaskValue(key, item, categories, proposedNames);
+  if (action.type === 'remove' || action.type === 'remove_category') {
+    return { verb, title, danger: true, missing: !current, rows: current ? [{ label: action.type === 'remove' ? '事项' : '标签', to: action.type === 'remove' ? '确认后软删除' : '关联事项改为无标签' }] : [] };
+  }
+  if (action.type === 'create') {
+    const defaults = newTask();
+    const kind = action.task.kind;
+    const rows = proposalCreateFields.filter(key => JSON.stringify(action.task[key]) !== JSON.stringify(defaults[key])).map(key => ({ label: proposalFieldLabel(key, kind), to: value(key, action.task[key]) }));
+    return { verb, title, danger: false, missing: false, rows };
+  }
+  if (action.type === 'create_category') {
+    return { verb, title, danger: false, missing: false, rows: [{ label: '颜色', to: action.category.color }] };
+  }
+  if (!current) return { verb, title, danger: false, missing: true, rows: [] };
+  if (action.type === 'update') {
+    if (!('title' in current)) return { verb, title, danger: false, missing: true, rows: [] };
+    const kind = action.patch.kind ?? current.kind;
+    const rows = Object.entries(action.patch)
+      .filter(([key, next]) => JSON.stringify(next) !== JSON.stringify((current as unknown as Record<string, unknown>)[key]))
+      .map(([key, next]) => ({ label: proposalFieldLabel(key, kind), from: value(key, (current as unknown as Record<string, unknown>)[key]), to: value(key, next) }));
+    return { verb, title: action.patch.title ?? current.title, danger: false, missing: false, rows };
+  }
+  const rows = Object.entries(action.patch)
+    .filter(([key, next]) => JSON.stringify(next) !== JSON.stringify((current as unknown as Record<string, unknown>)[key]))
+    .map(([key, next]) => ({ label: proposalFieldLabel(key), from: value(key, (current as unknown as Record<string, unknown>)[key]), to: value(key, next) }));
+  return { verb, title, danger: false, missing: false, rows };
 }
 
 export interface AIConversationProps {
@@ -158,25 +212,9 @@ function CompactAIConversation({ entries, pendingText, busy, error, actionError,
 }
 
 function MiniProposal({ action, tasks, categories, proposedNames }: { action: AIPlan['actions'][number]; tasks: Task[]; categories: Category[]; proposedNames: Map<string, string> }) {
-  const labels: Record<string, string> = { title: '标题', kind: '类型', status: '状态', priority: '优先级', plannedDate: '计划', dueAt: '时间', remindAt: '提醒', categoryId: '标签', progress: '进度', note: '备注', name: '名称', color: '颜色' };
-  const words: Record<string, string> = { task: '待办', meeting: '日程', todo: '待办', doing: '进行中', done: '已完成', low: '低', medium: '中', high: '高' };
-  function value(key: string, item: unknown): string {
-    if (key === 'categoryId') return categories.find(category => category.id === item)?.name ?? proposedNames.get(String(item)) ?? '无标签';
-    if (item === null || item === undefined || item === '') return '未设置';
-    if (key === 'dueAt' || key === 'remindAt') return dateTimeText(String(item));
-    if (key === 'progress') return `${item}%`;
-    return ['kind', 'status', 'priority'].includes(key) ? words[String(item)] ?? String(item) : String(item);
-  }
-  const current = action.type === 'update' || action.type === 'remove' ? tasks.find(task => task.id === action.id) : action.type === 'update_category' || action.type === 'remove_category' ? categories.find(category => category.id === action.id) : undefined;
-  const fields = action.type === 'create' ? action.task : action.type === 'create_category' ? action.category : action.type === 'remove' || action.type === 'remove_category' ? {} : action.patch;
-  const title = action.type === 'create' ? action.task.title : action.type === 'create_category' ? action.category.name : current ? 'title' in current ? current.title : current.name : '对象已变化，请重新生成';
-  const task = action.type === 'create' ? action.task : action.type === 'update' && current && 'title' in current ? { ...current, ...action.patch } : null;
-  if (action.type === 'create' || action.type === 'update') return <section className="proposal-action mini-proposal">
-    <h3>{action.type === 'create' ? '新增' : '修改'} · {title}</h3>
-    {task ? <><p className="mini-proposal-key">{words[task.kind]} · {task.plannedDate} · {value('dueAt', task.dueAt)}</p><p>提醒：{value('remindAt', task.remindAt)} · 标签：{value('categoryId', task.categoryId)}</p></> : <p>对象已变化，请展开对话并重新生成。</p>}
-  </section>;
-  return <section className={`proposal-action mini-proposal${action.type === 'remove' ? ' is-danger' : ''}`}>
-    <h3>{action.type.startsWith('create') ? '新增' : action.type.startsWith('remove') ? '删除' : '修改'} · {title}</h3>
-    {action.type === 'remove_category' ? <p>关联事项改为无标签，保留事项。</p> : action.type === 'remove' ? <p>确认应用后才会删除。</p> : Object.entries(fields).filter(([key]) => key !== 'id').map(([key, next]) => <p key={key}>{labels[key] ?? key}：{current ? <><span className="mini-before">{value(key, (current as unknown as Record<string, unknown>)[key])}</span> → </> : null}{value(key, next)}</p>)}
+  const view = miniProposalView(action, tasks, categories, proposedNames);
+  return <section className={`proposal-action mini-proposal${view.danger ? ' is-danger' : ''}`}>
+    <h3><span className="mini-proposal-verb">{view.verb}</span><span className="mini-proposal-title">{view.title}</span></h3>
+    {view.missing ? <p>对象已变化，请展开对话并重新生成。</p> : view.rows.map(row => <p key={row.label}>{row.label}：{row.from ? <><span className="mini-before">{row.from}</span> → </> : null}<strong>{row.to}</strong></p>)}
   </section>;
 }

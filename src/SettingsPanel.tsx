@@ -1,6 +1,6 @@
 import { DockIcon, DOCK_ICONS } from './DockIcon';
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { CaretDown, Eye, EyeSlash, Lightning, PencilSimple, Plus, Trash, X } from '@phosphor-icons/react';
+import { CaretDown, Check, Eye, EyeSlash, Lightning, PencilSimple, Plus, Trash, X } from '@phosphor-icons/react';
 import type { AIModel, AIProtocol, AIProvider, AIProviderKind, DesktopAPI, MainWindowWidth, Settings, State, UpdaterStatus } from '../shared/contracts';
 import { AI_PROVIDER_PRESETS, DOCK_FEATURE_ENABLED } from '../shared/contracts';
 import { Modal, IconButton, Segmented, Select, HelpTip, errorText } from './ui';
@@ -19,10 +19,20 @@ function updaterText(updater: UpdaterStatus): string {
   if (updater.state === 'ready') return `新版本 v${updater.readyVersion} 已下载，重启后即可完成安装。`;
   if (updater.state === 'latest') return `已是最新版本 v${updater.version}。`;
   if (updater.state === 'error') return `检查更新失败：${updater.message}`;
-  return `当前版本 v${updater.version}。启动后会自动检查更新，也可手动检查。`;
+  return `当前版本 v${updater.version}。`;
 }
 
 type RegisterFlush = (id: string, flush: (() => Promise<void>) | null) => void;
+type ModelTestStatus = 'idle' | 'ok' | 'error';
+
+function ModelTestButton({ label, status, detail, disabled, onClick }: {
+  label: string; status: ModelTestStatus; detail: string; disabled: boolean; onClick(): void;
+}) {
+  const name = status === 'ok' ? detail || label : label;
+  return <button type="button" className={`model-test-button${status === 'idle' ? '' : ` is-${status}`}`} disabled={disabled} aria-label={name} title={status === 'idle' ? undefined : detail || name} onClick={onClick}>
+    {status === 'ok' ? <Check size={12} weight="bold" /> : status === 'error' ? <X size={12} weight="bold" /> : <Lightning size={12} />}
+  </button>;
+}
 
 const PROVIDER_KIND_OPTIONS = [
   { value: 'openai', label: 'OpenAI' },
@@ -63,7 +73,9 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
   const [modelName, setModelName] = useState('');
   const [editingModel, setEditingModel] = useState<string | null>(null);
   const [modelDraft, setModelDraft] = useState('');
-  const [testNote, setTestNote] = useState('');
+  const [testKey, setTestKey] = useState<string | null>(null);
+  const [testStatus, setTestStatus] = useState<ModelTestStatus>('idle');
+  const [testMessage, setTestMessage] = useState('');
   const draftRef = useRef(draft); draftRef.current = draft;
   const modelRef = useRef(modelName); modelRef.current = modelName;
   const modelEditRef = useRef({ id: editingModel, name: modelDraft }); modelEditRef.current = { id: editingModel, name: modelDraft };
@@ -86,7 +98,7 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
     return { stored, state };
   }
   async function run(action: () => Promise<void>) {
-    if (busy) return; setBusy(true); fail(''); setTestNote('');
+    if (busy) return; setBusy(true); fail(''); setTestKey(null); setTestStatus('idle'); setTestMessage('');
     try { await action(); } catch (e) { fail(errorText(e)); } finally { setBusy(false); }
   }
   async function finishNew(state: State) {
@@ -129,19 +141,29 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
     return () => registerFlush(id, null);
   }, [provider?.id, registerFlush]);
   function saveOnBlur() { if (saved) void flushProvider().catch(e => fail(errorText(e))); }
-  async function probe(name: string) {
-    await run(async () => {
+  function testFor(key: string): ModelTestStatus {
+    return testKey === key ? testStatus : 'idle';
+  }
+  async function probe(name: string, key: string) {
+    if (busy) return;
+    setBusy(true); fail(''); setTestKey(key); setTestStatus('idle'); setTestMessage('');
+    try {
       const model = name.trim();
       if (!model) throw new Error('请先填写模型名称或 ID');
       const next = draftRef.current;
-      setTestNote(await api.testConnection({
+      const note = await api.testConnection({
         providerId: saved?.id,
         endpoint: next.endpoint.trim() || undefined,
         protocol: next.protocol,
         apiKey: next.apiKey || undefined,
         model,
-      }));
-    });
+      });
+      setTestStatus('ok');
+      setTestMessage(note);
+    } catch (e) {
+      setTestStatus('error');
+      setTestMessage(errorText(e));
+    } finally { setBusy(false); }
   }
   async function renameModel(model: AIModel) {
     const name = modelEditRef.current.name.trim();
@@ -200,13 +222,14 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
     {modelsOpen ? <div className="model-box" id={saved ? `models-${saved.id}` : 'models-new'}>
       {models.length ? <ul className="model-list" aria-label={`${saved?.name || draft.name || '新供应商'} 的模型`}>{models.map(model => <li key={model.id}>
         {editingModel === model.id ? <input aria-label={`编辑模型 ${model.name}`} value={modelDraft} maxLength={200} autoFocus onChange={e => { modelEditRef.current.name = e.target.value; setModelDraft(e.target.value); onPending(e.target.value !== model.name); }} onBlur={() => void renameModel(model).catch(e => fail(errorText(e)))} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void renameModel(model).catch(cause => fail(errorText(cause))); } }} /> : <span className="category-name">{model.name}</span>}
-        <button type="button" className="model-test-button" disabled={busy || !(saved || draft.endpoint.trim())} aria-label={`测试连接 ${model.name}`} onClick={() => void probe(model.name)}><Lightning size={13} /></button>
-        {editingModel === model.id ? null : <IconButton label={`重命名 ${model.name}`} onClick={() => { modelEditRef.current = { id: model.id, name: model.name }; setEditingModel(model.id); setModelDraft(model.name); }}><PencilSimple size={15} /></IconButton>}
+        <ModelTestButton label={`测试连接 ${model.name}`} status={testFor(model.id)} detail={testFor(model.id) === 'idle' ? '' : testMessage} disabled={busy || !(saved || draft.endpoint.trim())} onClick={() => void probe(model.name, model.id)} />
+        {editingModel === model.id ? <IconButton label={`保存 ${model.name}`} onMouseDown={e => e.preventDefault()} onClick={() => void renameModel(model).catch(cause => fail(errorText(cause)))}><Check size={15} /></IconButton> : <IconButton label={`重命名 ${model.name}`} onClick={() => { modelEditRef.current = { id: model.id, name: model.name }; setEditingModel(model.id); setModelDraft(model.name); }}><PencilSimple size={15} /></IconButton>}
         <IconButton className="text-danger" label={`删除 ${model.name}`} onClick={() => void run(async () => { changed(await api.removeModel(model.id)); })}><Trash size={15} /></IconButton>
+        {testKey === model.id && testStatus === 'error' ? <p className="model-test-note" role="alert">{testMessage}</p> : null}
       </li>)}</ul> : <p className="field-help">还没有模型。同一供应商可添加多个模型名称或 ID，每个都能单独测试。</p>}
-      {adding ? <div className="model-create"><input id={saved ? `ai-model-${saved.id}` : 'ai-model'} aria-label="模型名称 / ID" value={modelName} maxLength={200} placeholder="填写服务提供的模型名称" autoComplete="off" onChange={e => { modelRef.current = e.target.value; setModelName(e.target.value); onDirty(Boolean(e.target.value)); }} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void addModel(); } }} /><button type="button" disabled={busy || !modelName.trim() || !draft.endpoint.trim()} onClick={() => void addModel()}>{saved ? '添加模型' : '添加并使用'}</button><button type="button" className="model-test-button" disabled={busy || !modelName.trim() || !(saved || draft.endpoint.trim())} aria-label="测试连接" onClick={() => void probe(modelName)}><Lightning size={13} /></button></div> : models.length < 8 ? <button type="button" className="model-add-button" onClick={() => setAdding(true)}><Plus size={14} weight="bold" /> 添加模型</button> : null}
+      {adding ? <div className="model-create"><input id={saved ? `ai-model-${saved.id}` : 'ai-model'} aria-label="模型名称 / ID" value={modelName} maxLength={200} placeholder="填写服务提供的模型名称" autoComplete="off" onChange={e => { modelRef.current = e.target.value; setModelName(e.target.value); onDirty(Boolean(e.target.value)); }} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void addModel(); } }} /><button type="button" disabled={busy || !modelName.trim() || !draft.endpoint.trim()} onClick={() => void addModel()}>{saved ? '添加模型' : '添加并使用'}</button><ModelTestButton label="测试连接" status={testFor('new')} detail={testFor('new') === 'idle' ? '' : testMessage} disabled={busy || !modelName.trim() || !(saved || draft.endpoint.trim())} onClick={() => void probe(modelName, 'new')} /></div> : models.length < 8 ? <button type="button" className="model-add-button" onClick={() => setAdding(true)}><Plus size={14} weight="bold" /> 添加模型</button> : null}
       {adding ? <p className="field-help">新模型填写后请点击“{saved ? '添加模型' : '添加并使用'}”。测试连接不会保存草稿。</p> : null}
-      {testNote ? <p className="field-help" role="status">{testNote}</p> : null}
+      {testKey === 'new' && testStatus === 'error' ? <p className="model-test-note" role="alert">{testMessage}</p> : null}
     </div> : null}
     {!saved && canCancel ? <button type="button" onClick={onClose}>取消添加</button> : null}
   </article>;
@@ -345,10 +368,10 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
           <button type="button" onClick={() => void api.dockIcon('choose').then(changed).catch(cause => setError(errorText(cause)))}>上传图标</button>
         </section> : null}
         <section className="sheet-card">
-          <h3>版本与更新</h3>
+          <h3 className="label-with-help">版本与更新 <HelpTip label="更新说明">启动后会自动检查更新，也可手动检查。</HelpTip></h3>
           {updater ? <div className="actions">
             <span aria-live="polite" className="field-help">{updaterText(updater)}</span>
-            {updater.active && updater.state !== 'ready' ? <button type="button" disabled={updater.state === 'checking' || updater.state === 'downloading'} onClick={() => void api.updaterCheck()}>检查更新</button> : null}
+            {updater.active && updater.state !== 'ready' ? <button type="button" disabled={updater.state === 'checking' || updater.state === 'downloading'} onClick={() => void api.updaterCheck()}>{updater.state === 'checking' ? '正在检查更新…' : '检查更新'}</button> : null}
             {updater.state === 'ready' && updater.readyVersion ? <button type="button" className="primary" onClick={() => void api.updaterInstall()}>重启并安装 v{updater.readyVersion}</button> : null}
           </div> : null}
           {updater?.releaseNotes ? <div className="release-notes">{updater.releaseNotes}</div> : null}

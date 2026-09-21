@@ -4,7 +4,7 @@
 .settings-modal .sticky-actions .field-help { font-size: 12px; }
 .settings-modal .provider-card .field-help, .settings-modal .provider-card .warning { font-size: 12px; }
 .settings-modal .provider-card .icon-button { min-width: 32px; min-height: 32px; }
-.settings-modal .model-list li .icon-button { min-width: 24px; min-height: 24px; }
+.settings-modal .model-list li .icon-button { min-width: 20px; min-height: 20px; }
 .settings-modal .model-create { grid-template-columns: 1fr auto; margin-top: 8px; }
 .settings-modal .model-create > input { grid-column: 1 / -1; }
 .modal.settings-modal .settings-pane[hidden] { display: none; }

@@ -112,7 +112,7 @@ export function TaskEditor({ task, initialTitle, categories, api, close, saved, 
         {createSection === 'datetime' ? <section className="task-create-detail" id="task-create-datetime" aria-label="时间安排设置">
           <header><h3><CalendarBlank size={16} />时间安排</h3><button type="button" className="text-button" onClick={() => setCreateSection(null)}>收起</button></header>
           <div className="form-grid">
-            <div><label htmlFor="task-date">日期</label><DatePicker id="task-date" value={draft.plannedDate} onChange={changeDate} aria-invalid={invalid === 'plannedDate'} aria-describedby={error ? 'task-error' : undefined} /></div>
+            <div><label htmlFor="task-date">{isMeeting ? '日期' : '完成期限'}</label><DatePicker id="task-date" value={draft.plannedDate} onChange={changeDate} aria-invalid={invalid === 'plannedDate'} aria-describedby={error ? 'task-error' : undefined} /></div>
             <div><label htmlFor="task-time">时间{isMeeting ? null : <> <span className="muted">可不填</span></>}</label><Select id="task-time" aria-label="时间" value={localTime(draft.dueAt)} onChange={value => change('dueAt', dueAtFrom(draft.plannedDate, value))} options={[{ value: '', label: isMeeting ? '选择时间' : '不设时间' }, ...HALF_HOUR_OPTIONS]} aria-invalid={invalid === 'dueAt'} aria-describedby={error ? 'task-error' : undefined} /></div>
           </div>
           <div className="toggle-row"><button type="button" className="toggle" role="switch" aria-checked={remindOn} aria-label="提醒" onClick={toggleRemind} /><span>提醒</span></div>
@@ -157,7 +157,7 @@ export function TaskEditor({ task, initialTitle, categories, api, close, saved, 
         </div> : null}
         <div className="form-grid">
           <div>
-            <label htmlFor="task-date">日期</label>
+            <label htmlFor="task-date">{isMeeting ? '日期' : '完成期限'}</label>
             <DatePicker id="task-date" value={draft.plannedDate} onChange={changeDate} aria-invalid={invalid === 'plannedDate'} aria-describedby={error ? 'task-error' : undefined} />
           </div>
           <div>
@@ -175,12 +175,12 @@ export function TaskEditor({ task, initialTitle, categories, api, close, saved, 
           <div className="reminder-presets"><button type="button" disabled={!draft.dueAt} onClick={() => change('remindAt', draft.dueAt)}>准时</button><button type="button" disabled={!draft.dueAt} onClick={() => change('remindAt', new Date(Date.parse(draft.dueAt!) - 600000).toISOString())}>提前10分钟</button></div>
         </> : null}
         <p className="field-help">{remindOn ? '时间按此电脑时区保存。退出应用后停止提醒。' : '时间按此电脑时区保存。'}</p>
-        {task ? <><label htmlFor="task-status">状态</label><Select id="task-status" value={draft.status} onChange={value => change('status', value as TaskInput['status'])} options={[{ value: 'todo', label: '待办' }, { value: 'doing', label: '进行中' }, { value: 'done', label: '已完成' }]} /></> : null}
+        {task ? <><label htmlFor="task-status">状态</label><Select id="task-status" value={draft.status} onChange={value => change('status', value as TaskInput['status'])} options={[{ value: 'todo', label: '未开始' }, { value: 'doing', label: '进行中' }, { value: 'done', label: '已完成' }]} /></> : null}
         <div className="toggle-row">
           <button type="button" className="toggle" role="switch" aria-checked={draft.progress !== null} aria-label="进度" onClick={() => change('progress', draft.progress === null ? 0 : null)} />
           <span>维护进度</span>
         </div>
-        {draft.progress !== null ? <div className="progress-field"><input id="task-progress" type="range" min={0} max={100} value={draft.progress} onChange={e => change('progress', Number(e.target.value))} /><output htmlFor="task-progress">{draft.progress}%</output></div> : null}
+        {draft.progress !== null ? <div className="progress-field"><input id="task-progress" className="progress-range" aria-label="事项进度" type="range" min={0} max={100} value={draft.progress} style={{ '--progress-value': `${draft.progress}%` } as CSSProperties} onChange={e => change('progress', Number(e.target.value))} /><output htmlFor="task-progress">{draft.progress}%</output></div> : null}
         <label htmlFor="task-note">备注 / 进展</label><textarea id="task-note" rows={2} className="resize-none" value={draft.note} maxLength={5000} onChange={e => change('note', e.target.value)} placeholder={isMeeting ? '地点、参会人或议程' : '补充信息或记录进展'} />
         {task?.updatedAt ? <p className="field-help">最近更新：{dateTimeText(task.updatedAt)}</p> : null}
       </div>

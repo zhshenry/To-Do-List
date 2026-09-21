@@ -4,11 +4,12 @@ import {
   DotsThree, Flag, GearSix, Minus, Plus, PushPin, Sparkle, Tag, VideoCamera, X,
 } from '@phosphor-icons/react';
 import {
-  DOCK_FEATURE_ENABLED, activeToday, localDay, newTask, type Category, type DesktopAPI, type State, type Task, type TaskInput,
+  DOCK_FEATURE_ENABLED, activeToday, localDay, newTask,
+  type Category, type DesktopAPI, type MainWindowWidth, type State, type Task, type TaskInput, type UpdaterStatus,
 } from '../shared/contracts';
 import { AssistantApp } from './AssistantApp';
 import { DEFAULT_TAG_COLOR, TagColorPresets } from './TagColorPresets';
-import { BrandMark, HALF_HOUR_TIMES, IconButton, Segmented, timeText } from './ui';
+import { BrandMark, HALF_HOUR_TIMES, IconButton, Segmented, errorText, scheduleStamp } from './ui';
 import './mini-card.css';
 
 export type MiniMode = 'home' | 'add' | 'ai';
@@ -18,7 +19,9 @@ type ReminderChoice = 'none' | 'ontime' | 'ten' | 'custom';
 
 const PANEL_HEIGHT: Record<AddSelector, number> = { datetime: 526, priority: 376, tag: 390, more: 438 };
 const PANEL_ARROW: Record<AddSelector, number> = { datetime: 22, priority: 49, tag: 76, more: 103 };
-const SETTINGS_PANEL_HEIGHT = 226;
+const SETTINGS_PANEL_HEIGHT = 318;
+const SETTINGS_MODEL_EXTRA = 128;
+const DONE_HOLD_MS = 2500;
 
 function shiftDay(day: string, amount: number) {
   const date = new Date(`${day}T12:00:00`);
@@ -231,6 +234,67 @@ function TagPanel({ value, categories, close, confirm, create }: { value: string
   </SelectorShell>;
 }
 
+function updaterSummary(updater: UpdaterStatus | null, error: string) {
+  if (error) return error;
+  if (!updater) return '正在读取版本…';
+  if (!updater.active) return `v${updater.version} · 仅安装版可检查`;
+  if (updater.state === 'checking') return '正在检查更新…';
+  if (updater.state === 'downloading') return updater.progress > 0 ? `正在下载 ${updater.progress}%` : '正在下载…';
+  if (updater.state === 'ready') return `v${updater.readyVersion} 已下载`;
+  if (updater.state === 'latest') return `已是最新 v${updater.version}`;
+  if (updater.state === 'error') return updater.message || '检查更新失败';
+  return `当前 v${updater.version}`;
+}
+
+function SettingsQuickPanel({ data, api, mutating, mutate, close, modelOpen, setModelOpen }: {
+  data: State; api: DesktopAPI; mutating: boolean; close(): void; modelOpen: boolean;
+  mutate(action: () => Promise<State>): Promise<void>; setModelOpen(open: boolean): void;
+}) {
+  const [updater, setUpdater] = useState<UpdaterStatus | null>(null);
+  const [updateError, setUpdateError] = useState('');
+  const animate = !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+  const activeModel = data.settings.models.find(model => model.id === data.settings.activeModelId);
+  const modelLabel = activeModel?.name ?? (data.settings.models.length ? '选择模型' : '尚未配置');
+  const modelGroups = data.settings.providers.map(provider => ({
+    provider,
+    models: data.settings.models.filter(model => model.providerId === provider.id),
+  })).filter(group => group.models.length);
+  useEffect(() => {
+    let alive = true;
+    void api.updaterStatus().then(status => { if (alive) { setUpdater(status); setUpdateError(''); } }).catch(cause => { if (alive) setUpdateError(errorText(cause)); });
+    const off = api.onUpdater(status => { setUpdater(status); setUpdateError(''); });
+    return () => { alive = false; off(); };
+  }, [api]);
+  const busyUpdate = updater?.state === 'checking' || updater?.state === 'downloading';
+  const installReady = updater?.active && updater.state === 'ready' && !!updater.readyVersion;
+  return <section className="mini-selector is-settings" aria-label="快捷设置">
+    <header className="mini-selector-head"><span><GearSix size={14} /></span><b>快捷设置</b><IconButton label="关闭快捷设置" onClick={close}><X size={13} /></IconButton></header>
+    <div className="mini-settings-row"><span>启用 AI</span><button type="button" className="toggle" role="switch" aria-checked={data.settings.aiEnabled} aria-label="启用 AI" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: !data.settings.aiEnabled, autoStart: data.settings.autoStart }))} /></div>
+    <div className="mini-settings-row"><span>登录 Windows 后自动启动</span><button type="button" className="toggle" role="switch" aria-checked={data.settings.autoStart} aria-label="登录 Windows 后自动启动" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: data.settings.aiEnabled, autoStart: !data.settings.autoStart }))} /></div>
+    <div className="mini-settings-row"><span>窗口宽度</span><Segmented aria-label="窗口宽度" value={data.settings.mainWindowWidth} onChange={value => void api.windowWidth(value as MainWindowWidth, animate)} options={[{ value: 'standard', label: '标准' }, { value: 'narrow', label: '窄版' }]} /></div>
+    <div className="mini-settings-row">
+      <span>当前模型</span>
+      {data.settings.models.length
+        ? <button type="button" className="mini-settings-model" aria-label={`切换模型，当前为 ${modelLabel}`} aria-haspopup="listbox" aria-expanded={modelOpen} disabled={mutating} onClick={() => setModelOpen(!modelOpen)}><span>{modelLabel}</span><CaretDown size={10} /></button>
+        : <button type="button" className="mini-settings-action" onClick={() => void api.openSettings(animate)}>去配置</button>}
+    </div>
+    {modelOpen && data.settings.models.length ? <div className="mini-settings-models" role="listbox" aria-label="按供应商选择模型">
+      {modelGroups.map(group => <section key={group.provider.id} role="group" aria-label={group.provider.name}>
+        <b>{group.provider.name}</b>
+        {group.models.map(model => <button key={model.id} type="button" role="option" aria-selected={model.id === data.settings.activeModelId} className={model.id === data.settings.activeModelId ? 'is-selected' : ''} disabled={mutating} onClick={() => { if (model.id !== data.settings.activeModelId) void mutate(() => api.activateProfile(model.id)); setModelOpen(false); }}><span>{model.name}</span><small>{model.id === data.settings.activeModelId ? '当前' : ''}</small></button>)}
+      </section>)}
+    </div> : null}
+    <div className="mini-settings-row is-update">
+      <span>应用更新<small>{updaterSummary(updater, updateError)}</small></span>
+      {updater?.active ? <button type="button" className={`mini-settings-action${installReady ? ' is-accent' : ''}`} disabled={mutating || busyUpdate} onClick={() => {
+        setUpdateError('');
+        void (installReady ? api.updaterInstall() : api.updaterCheck()).catch(cause => setUpdateError(errorText(cause)));
+      }}>{installReady ? '重启安装' : busyUpdate ? '请稍候' : '检查更新'}</button> : null}
+    </div>
+    <footer className="mini-selector-footer"><button type="button" onClick={() => void api.openSettings(animate)}>打开全部设置</button></footer>
+  </section>;
+}
+
 function MorePanel({ value, close, confirm }: { value: TaskInput; close(): void; confirm(value: Pick<TaskInput, 'progress' | 'note'>): void }) {
   const [maintain, setMaintain] = useState(value.progress !== null);
   const [progress, setProgress] = useState(value.progress ?? 0);
@@ -257,19 +321,35 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
   const [aiSeed, setAiSeed] = useState<{ id: number; text: string } | null>(null);
   const [contentMotion, setContentMotion] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsModelOpen, setSettingsModelOpen] = useState(false);
+  const [heldDone, setHeldDone] = useState<{ id: string; index: number; previous: 'todo' | 'doing' } | null>(null);
   const titleInput = useRef<HTMLInputElement>(null);
   const selectorTriggers = useRef<Partial<Record<AddSelector, HTMLButtonElement | null>>>({});
   const settingsTrigger = useRef<HTMLButtonElement>(null);
   const settingsWasOpen = useRef(false);
   const previousMode = useRef(mode);
-  const remaining = useMemo(() => activeToday(data.tasks, today).filter(task => task.status !== 'done'), [data.tasks, today]);
+  const remaining = useMemo(() => {
+    const open = activeToday(data.tasks, today).filter(task => task.status !== 'done');
+    if (!heldDone) return open;
+    const held = data.tasks.find(task => task.id === heldDone.id);
+    if (!held || held.deletedAt) return open;
+    const next = open.filter(task => task.id !== held.id);
+    next.splice(Math.min(heldDone.index, next.length), 0, held);
+    return next;
+  }, [data.tasks, today, heldDone]);
   const current = remaining[index % Math.max(remaining.length, 1)];
+  const holding = Boolean(current && heldDone?.id === current.id);
   const category = current?.categoryId ? data.categories.find(item => item.id === current.categoryId) : null;
   const aiAvailable = data.settings.aiEnabled && !!data.settings.activeModelId;
   const suggestion = !suggestionIgnored && aiAvailable ? insightFor(current, remaining.length, new Date()) : null;
   const showInsight = !aiAvailable || !!suggestion;
 
   useEffect(() => { if (index >= remaining.length) setIndex(0); }, [index, remaining.length]);
+  useEffect(() => {
+    if (!heldDone) return;
+    const timer = setTimeout(() => setHeldDone(null), DONE_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [heldDone]);
   useEffect(() => {
     if (previousMode.current === mode) return;
     const before = previousMode.current; previousMode.current = mode;
@@ -279,17 +359,18 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
     if (mode !== 'add') setSelector(null);
     if (mode !== 'home') setSuggestionOpen(false);
     setSettingsOpen(false);
+    setSettingsModelOpen(false);
     return () => clearTimeout(timer);
   }, [mode]);
   useEffect(() => { if (mode === 'add') titleInput.current?.focus({ preventScroll: true }); }, [mode]);
   useEffect(() => {
-    if (settingsOpen) { void api.compactHeight(SETTINGS_PANEL_HEIGHT); return; }
+    if (settingsOpen) { void api.compactHeight(settingsModelOpen ? SETTINGS_PANEL_HEIGHT + SETTINGS_MODEL_EXTRA : SETTINGS_PANEL_HEIGHT); return; }
     if (mode === 'add' && selector) { void api.compactHeight(PANEL_HEIGHT[selector]); return; }
     if (mode !== 'ai') { void api.compactHeight(null); return; }
     // Leaving the settings panel on the AI surface must undo its height bump;
     // otherwise the AI surface manages its own height.
     if (settingsWasOpen.current) void api.compactHeight(null);
-  }, [api, mode, selector, settingsOpen]);
+  }, [api, mode, selector, settingsOpen, settingsModelOpen]);
   useEffect(() => { settingsWasOpen.current = settingsOpen; }, [settingsOpen]);
   useEffect(() => () => { void api.compactHeight(null); }, [api]);
 
@@ -301,12 +382,16 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
     setSelector(null);
     if (current) requestAnimationFrame(() => selectorTriggers.current[current]?.focus());
   }
-  function toggleSelector(next: AddSelector) { setAddError(''); setSettingsOpen(false); setSelector(current => current === next ? null : next); }
+  function toggleSelector(next: AddSelector) { setAddError(''); setSettingsOpen(false); setSettingsModelOpen(false); setSelector(current => current === next ? null : next); }
   function toggleSettingsPanel() {
     setSelector(null);
-    setSettingsOpen(open => !open);
+    setSettingsOpen(open => {
+      if (open) setSettingsModelOpen(false);
+      return !open;
+    });
   }
   function closeSettings() {
+    setSettingsModelOpen(false);
     setSettingsOpen(false);
     requestAnimationFrame(() => settingsTrigger.current?.focus());
   }
@@ -333,7 +418,25 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
       resetAdd(); setMode('home'); return next;
     });
   }
-  const dueLabel = current?.dueAt ? timeText(current.dueAt) : current?.plannedDate < today ? '已结转' : '未设时间';
+  function completeCurrent() {
+    if (!current || current.kind !== 'task' || mutating || holding) return;
+    const previous = current.status === 'doing' ? 'doing' as const : 'todo' as const;
+    const id = current.id;
+    const stamp = current.updatedAt;
+    setHeldDone({ id, index, previous });
+    void mutate(async () => {
+      try { return await api.update(id, { status: 'done' }, stamp); }
+      catch (error) { setHeldDone(null); throw error; }
+    });
+  }
+  function undoDone() {
+    if (!heldDone) return;
+    const task = data.tasks.find(item => item.id === heldDone.id);
+    const previous = heldDone.previous;
+    setHeldDone(null);
+    if (task) void mutate(() => api.update(task.id, { status: previous }, task.updatedAt));
+  }
+  const dueLabel = current ? scheduleStamp(current) : '';
   const titlebar = <>
     <span className="mini-brand-logo" role="img" aria-label="To Do List"><BrandMark /></span>
     <header className="mini-titlebar"><span className="mini-logo-slot" aria-hidden="true" /><span className="mini-app-title">To Do List</span><div className="mini-window-actions">
@@ -345,7 +448,7 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
     </div></header>
   </>;
 
-  return <main className={`mini-root${motion === 'expanding' ? ' is-expanding' : motion === 'entering' ? ' is-entering' : ''}`} aria-label="待办小卡片" onKeyDown={event => { if (event.key === 'Escape' && !event.nativeEvent.isComposing) { if (settingsOpen) closeSettings(); else if (selector) closeSelector(); else if (mode !== 'home') setMode('home'); } }}>
+  return <main className={`mini-root${motion === 'expanding' ? ' is-expanding' : motion === 'entering' ? ' is-entering' : ''}`} aria-label="待办小卡片" onKeyDown={event => { if (event.key === 'Escape' && !event.nativeEvent.isComposing) { if (settingsModelOpen) setSettingsModelOpen(false); else if (settingsOpen) closeSettings(); else if (selector) closeSelector(); else if (mode !== 'home') setMode('home'); } }}>
     <section className="mini-window">
       {titlebar}
       <div className={`mini-content motion-${contentMotion || 'idle'}${mode === 'ai' ? ' is-ai' : ''}`}>
@@ -355,12 +458,12 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
         </> : <div className={showInsight ? 'mini-home-with-insight' : 'mini-home'}>
           {!aiAvailable ? !!data.settings.endpoint.trim() && !!data.settings.model.trim() ? <button type="button" className="mini-insight" aria-label="AI建议：AI 未启用" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: true, autoStart: data.settings.autoStart }))}><span>AI建议：</span><b>AI 未启用</b><em>启用</em></button> : <button type="button" className="mini-insight" aria-label="AI建议：请先配置AI大模型" onClick={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))}><span>AI建议：</span><b>请先配置AI大模型</b><em>配置</em></button> : suggestion ? <button type="button" className="mini-insight" aria-expanded="false" onClick={() => setSuggestionOpen(true)}><span>AI 建议</span><b>{suggestion.title}</b><small>{suggestion.context}</small><em>查看</em></button> : null}
           <div className="mini-home-main">
-            <div className="mini-task-stack" onWheel={event => { if (remaining.length < 2) return; event.preventDefault(); setIndex(value => (value + (event.deltaY > 0 ? 1 : remaining.length - 1)) % remaining.length); }}>
-              {remaining.length ? <><button type="button" className="mini-stack-sheet back" aria-label="查看下一项" disabled={remaining.length < 2} onClick={() => setIndex(value => (value + 1) % remaining.length)} /><span className="mini-stack-sheet middle" />
-                <article className="mini-task-front">
-                  {current.kind === 'meeting' ? <button type="button" className="mini-kind-button" aria-label={`打开日程 ${current.title}`} onClick={() => edit(current)}><VideoCamera size={14} /></button> : <button type="button" className="mini-task-check" aria-label={`完成 ${current.title}`} disabled={mutating} onClick={() => void mutate(() => api.update(current.id, { status: 'done' }, current.updatedAt))}><Check size={12} /></button>}
-                  <button type="button" className="mini-task-open" title={`展开编辑：${current.title}`} onClick={() => edit(current)}><small>{current.kind === 'meeting' ? `日程 · ${dueLabel}` : `待办 · ${current.dueAt ? `截止 ${dueLabel}` : dueLabel}`}</small><b>{current.title}</b><span>{category ? <><i style={{ backgroundColor: category.color }} />{category.name}</> : current.kind === 'meeting' ? '日程安排' : `优先级 · ${priorityName(current.priority)}`}</span></button>
-                  <div className="mini-deck-pager"><span>{index + 1} / {remaining.length}</span><button type="button" aria-label="上一项" disabled={remaining.length < 2} onClick={() => setIndex(value => (value + remaining.length - 1) % remaining.length)}><CaretDown size={10} className="is-up" /></button><button type="button" aria-label="下一项" disabled={remaining.length < 2} onClick={() => setIndex(value => (value + 1) % remaining.length)}><CaretDown size={10} /></button></div>
+            <div className="mini-task-stack" onWheel={event => { if (remaining.length < 2 || holding) return; event.preventDefault(); setIndex(value => (value + (event.deltaY > 0 ? 1 : remaining.length - 1)) % remaining.length); }}>
+              {remaining.length ? <><button type="button" className="mini-stack-sheet back" aria-label="查看下一项" disabled={remaining.length < 2 || holding} onClick={() => setIndex(value => (value + 1) % remaining.length)} /><span className="mini-stack-sheet middle" />
+                <article className={`mini-task-front${holding ? ' is-done' : ''}`}>
+                  {current.kind === 'meeting' ? <button type="button" className="mini-kind-button" aria-label={`打开日程 ${current.title}`} onClick={() => edit(current)}><VideoCamera size={14} /></button> : <button type="button" className={`mini-task-check${holding ? ' is-done' : ''}`} aria-label={holding ? `已完成 ${current.title}` : `完成 ${current.title}`} aria-pressed={holding} disabled={mutating || holding} onClick={() => completeCurrent()}><Check size={12} /></button>}
+                  <button type="button" className="mini-task-open" title={`展开编辑：${current.title}`} onClick={() => edit(current)}><small>{current.kind === 'meeting' ? '日程' : '待办'} · {dueLabel}</small><b>{current.title}</b><span>{category ? <><i style={{ backgroundColor: category.color }} />{category.name}</> : current.kind === 'meeting' ? '日程安排' : `优先级 · ${priorityName(current.priority)}`}</span></button>
+                  {holding ? <button type="button" className="mini-undo-done" disabled={mutating} onClick={() => undoDone()}>撤销</button> : <div className="mini-deck-pager"><span>{index + 1} / {remaining.length}</span><button type="button" aria-label="上一项" disabled={remaining.length < 2} onClick={() => setIndex(value => (value + remaining.length - 1) % remaining.length)}><CaretDown size={10} className="is-up" /></button><button type="button" aria-label="下一项" disabled={remaining.length < 2} onClick={() => setIndex(value => (value + 1) % remaining.length)}><CaretDown size={10} /></button></div>}
                 </article></> : <article className="mini-task-front is-empty"><span><Plus size={18} /></span><button type="button" onClick={() => setMode('add')}><b>今天还没有安排</b><small>新增一项待办或日程</small></button></article>}
             </div>
             <nav className="mini-quick-actions" aria-label="快捷操作"><button type="button" onClick={() => setMode('add')}><Plus size={18} /><span>新增事项</span></button><button type="button" onClick={() => setMode('ai')}><Sparkle size={18} /><span>AI 助手</span></button></nav>
@@ -375,7 +478,7 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
             <button ref={element => { selectorTriggers.current.more = element; }} type="button" className={`${selector === 'more' ? 'is-open ' : ''}${addItem.progress !== null || addItem.note ? 'is-configured' : ''}`} aria-label={`更多设置：${addItem.progress !== null ? `进度 ${addItem.progress}%` : addItem.note ? '已有备注' : '未设置'}`} aria-expanded={selector === 'more'} onClick={() => toggleSelector('more')}><DotsThree size={15} /></button>
             {addError ? <span className="mini-add-error" role="alert">{addError}</span> : null}
           </div>
-        </form> : <AssistantApp compact back={() => setMode('home')} expand={() => expand(true)} contextTask={current ?? null} initialPrompt={aiSeed} consumedPrompt={() => setAiSeed(null)} />}
+        </form> : <AssistantApp compact back={() => setMode('home')} expand={() => expand(true)} initialPrompt={aiSeed} consumedPrompt={() => setAiSeed(null)} />}
       </div>
       {error ? <div className="mini-error" role="alert"><span>{error}</span><IconButton label="关闭提示" onClick={clearError}><X size={13} /></IconButton></div> : null}
     </section>
@@ -383,11 +486,6 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
     {mode === 'add' && selector === 'priority' ? <PriorityPanel value={addItem.priority} close={closeSelector} confirm={value => { setAddItem(item => ({ ...item, priority: value })); setConfirmed(state => ({ ...state, priority: true })); closeSelector(); }} /> : null}
     {mode === 'add' && selector === 'tag' ? <TagPanel value={addItem.categoryId} categories={data.categories} close={closeSelector} create={createTag} confirm={value => { setAddItem(item => ({ ...item, categoryId: value })); setConfirmed(state => ({ ...state, tag: true })); closeSelector(); }} /> : null}
     {mode === 'add' && selector === 'more' ? <MorePanel value={addItem} close={closeSelector} confirm={value => { setAddItem(item => ({ ...item, ...value })); closeSelector(); }} /> : null}
-    {settingsOpen ? <section className="mini-selector is-settings" aria-label="快捷设置">
-      <header className="mini-selector-head"><span><GearSix size={14} /></span><b>快捷设置</b><IconButton label="关闭快捷设置" onClick={closeSettings}><X size={13} /></IconButton></header>
-      <div className="mini-settings-row"><span>启用 AI</span><button type="button" className="toggle" role="switch" aria-checked={data.settings.aiEnabled} aria-label="启用 AI" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: !data.settings.aiEnabled, autoStart: data.settings.autoStart }))} /></div>
-      <div className="mini-settings-row"><span>登录 Windows 后自动启动</span><button type="button" className="toggle" role="switch" aria-checked={data.settings.autoStart} aria-label="登录 Windows 后自动启动" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: data.settings.aiEnabled, autoStart: !data.settings.autoStart }))} /></div>
-      <footer className="mini-selector-footer"><button type="button" onClick={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))}>打开全部设置</button></footer>
-    </section> : null}
+    {settingsOpen ? <SettingsQuickPanel data={data} api={api} mutating={mutating} mutate={mutate} close={closeSettings} modelOpen={settingsModelOpen} setModelOpen={setSettingsModelOpen} /> : null}
   </main>;
 }

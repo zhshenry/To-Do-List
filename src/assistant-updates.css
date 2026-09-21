@@ -491,8 +491,8 @@
 }
 
 .proposal-apply-bar strong { margin-right: auto; font-size: 11.5px; white-space: nowrap; }
-.proposal-apply-bar button { min-height: 31px; padding: 5px 8px; border: 0; background: transparent; font-size: 10px; white-space: nowrap; }
-.proposal-apply-bar button.primary { min-width: 112px; background: var(--accent); color: var(--white); }
+.proposal-apply-bar button { min-height: 31px; padding: 5px 9px; font-size: 10px; white-space: nowrap; }
+.proposal-apply-bar button.primary { min-width: 88px; background: var(--accent); color: var(--white); }
 .proposal-apply-bar button.primary:hover { background: var(--accent-hover); }
 .proposal-discard { color: var(--muted); }
 
@@ -571,7 +571,14 @@
 .assistant-loading.is-error { color: var(--danger); }
 .assistant-loading-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .assistant-loading-actions button { min-height: 34px; display: inline-flex; align-items: center; gap: 5px; }
-.assistant-confirm-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.modal.assistant-confirm { width: calc(100% - 36px); max-width: 300px; }
+.modal.assistant-confirm .modal-heading { padding: 14px 16px 0; }
+.modal.assistant-confirm .modal-heading-row { padding-bottom: 8px; }
+.modal.assistant-confirm .modal-heading h2 { font-size: 15px; }
+.modal.assistant-confirm .confirm-copy { display: flex; flex-direction: column; gap: 6px; padding: 0 16px; }
+.modal.assistant-confirm .confirm-copy p { color: var(--muted); font-size: 13px; line-height: 1.65; }
+.assistant-confirm-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin: 0; padding: 14px 16px 16px; }
+.assistant-confirm-actions button { min-height: 30px; padding: 5px 12px; font-size: 12px; white-space: nowrap; }
 
 @keyframes assistant-stream-caret { 0%, 52% { opacity: 1; } 53%, 100% { opacity: .18; } }
 @keyframes assistant-dot { 0%, 70%, 100% { transform: translateY(0); opacity: .38; } 35% { transform: translateY(-3px); opacity: 1; } }
@@ -603,13 +610,19 @@
   .proposal-editor.is-category { grid-template-columns: minmax(0, 1fr); }
   .proposal-editor.is-category .proposal-editor-footer { grid-column: auto; }
   .proposal-editor-footer { align-items: flex-end; flex-direction: column; }
-  .proposal-apply-bar { flex-wrap: wrap; }
-  .proposal-apply-bar strong { flex: 1 0 42%; }
-  .proposal-apply-bar button.primary { flex: 1 0 100%; }
   .assistant-widget .chat-error { margin-left: 30px; }
   .assistant-footer { padding: 7px 9px 10px; }
   .assistant-compose { min-height: 86px; padding-left: 10px; }
   .assistant-compose-options > small { display: none; }
+}
+
+/* The apply bar needs ~375px of window width to stay on one row once the chat
+   scrollbar appears; below that the primary button wraps onto its own line
+   instead of poking past the bar's rounded edge. */
+@media (max-width: 430px) {
+  .proposal-apply-bar { flex-wrap: wrap; }
+  .proposal-apply-bar strong { flex: 1 0 42%; }
+  .proposal-apply-bar button.primary { flex: 1 0 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -8,7 +8,7 @@ const taskLabels: Record<string, string> = {
   dueAt: '时间', remindAt: '提醒', categoryId: '标签', progress: '进度', note: '备注',
 };
 const taskWords: Record<string, string> = {
-  task: '待办', meeting: '日程', todo: '待办', doing: '进行中', done: '已完成', low: '低', medium: '中', high: '高',
+  task: '待办', meeting: '日程', todo: '未开始', doing: '进行中', done: '已完成', low: '低', medium: '中', high: '高',
 };
 const taskKeys = ['title', 'kind', 'status', 'priority', 'plannedDate', 'dueAt', 'remindAt', 'categoryId', 'progress', 'note'] as const;
 const timeOptions = [{ value: '', label: '不设时间' }, ...HALF_HOUR_TIMES.map(value => ({ value, label: value }))];
@@ -93,7 +93,7 @@ function TaskActionEditor({ action, tasks, categories, actions, saving, cancel, 
   return <div className="proposal-editor" aria-label={`编辑建议 ${draft.title}`}>
     <label className="proposal-editor-title"><span>{draft.kind === 'meeting' ? '日程标题' : '待办标题'}</span><input value={draft.title} maxLength={200} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} /></label>
     <div className="proposal-editor-grid">
-      <label><span>日期</span><DatePicker value={draft.plannedDate} onChange={value => { const next = value || draft.plannedDate; setDraft(current => ({ ...current, plannedDate: next })); setDue(dueAtFrom(next, localTime(draft.dueAt))); }} /></label>
+      <label><span>{draft.kind === 'meeting' ? '日期' : '完成期限'}</span><DatePicker value={draft.plannedDate} onChange={value => { const next = value || draft.plannedDate; setDraft(current => ({ ...current, plannedDate: next })); setDue(dueAtFrom(next, localTime(draft.dueAt))); }} /></label>
       <label><span>时间</span><Select aria-label="建议时间" value={localTime(draft.dueAt)} onChange={value => setDue(dueAtFrom(draft.plannedDate, value))} options={draft.kind === 'meeting' ? timeOptions.map((option, index) => index ? option : { ...option, label: '选择时间' }) : timeOptions} /></label>
       {draft.kind === 'task' ? <label><span>优先级</span><Segmented aria-label="建议优先级" value={draft.priority} onChange={value => setDraft(current => ({ ...current, priority: value as TaskInput['priority'] }))} options={[{ value: 'low', label: '低' }, { value: 'medium', label: '中' }, { value: 'high', label: '高' }]} /></label> : null}
       <label><span>标签</span><Select aria-label="建议标签" value={draft.categoryId ?? ''} onChange={value => setDraft(current => ({ ...current, categoryId: value || null }))} options={categoryOptions} /></label>

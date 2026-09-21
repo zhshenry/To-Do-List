@@ -187,7 +187,7 @@ try {
   await page.getByText(/当前使用 HTTP：API Key/).waitFor();
   await page.getByLabel('模型名称 / ID', { exact: true }).fill('test-model');
   await page.getByRole('button', { name: '测试连接', exact: true }).click();
-  await page.getByText('模型 test-model 连接成功', { exact: true }).waitFor();
+  await page.getByRole('button', { name: '模型 test-model 连接成功', exact: true }).waitFor();
   await page.getByRole('button', { name: '添加并使用', exact: true }).click();
   await page.getByLabel('启用 AI', { exact: true }).click();
   await page.getByRole('button', { name: '完成', exact: true }).last().click();

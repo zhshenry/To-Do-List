@@ -448,9 +448,4 @@ export function Modal({ title, children, close, dirty = false, subhead, headingE
 export function errorText(error: unknown): string {
   return (error instanceof Error ? error.message : '操作未完成，请重试').replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '');
 }
-export function timeText(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }) : '待定';
-}
-export function dateTimeText(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '未设置';
-}
+export { timeText, dateText, dateTimeText, scheduleStamp } from '../shared/format';
