@@ -9,7 +9,7 @@ import {
 } from '../shared/contracts';
 import { AssistantApp } from './AssistantApp';
 import { DEFAULT_TAG_COLOR, TagColorPresets } from './TagColorPresets';
-import { BrandMark, HALF_HOUR_TIMES, IconButton, Segmented, errorText, scheduleStamp } from './ui';
+import { BrandMark, HALF_HOUR_TIMES, IconButton, Segmented, errorText, scheduleStamp, stampLabel } from './ui';
 import './mini-card.css';
 
 export type MiniMode = 'home' | 'add' | 'ai';
@@ -455,7 +455,7 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
               {remaining.length ? <><button type="button" className="mini-stack-sheet back" aria-label="查看下一项" disabled={remaining.length < 2} onClick={() => { disarmArm(); setIndex(value => (value + 1) % remaining.length); }} /><span className="mini-stack-sheet middle" />
                 <article className="mini-task-front">
                   <span className="corner-badges">{current.kind === 'meeting' ? <span className="mini-pill pill-meeting">日程</span> : <span className="mini-pill pill-todo">待办</span>}{currentOverdue ? <span className="mini-pill pill-overdue">已超期</span> : null}</span>
-                  <span className={`corner-time${currentOverdue ? ' overdue' : ''}`}>{dueLabel}</span>
+                  <span className={`corner-time${currentOverdue ? ' overdue' : ''}`}><span className="time-label">{stampLabel(current.kind)}</span>{dueLabel}</span>
                   <div className="front-main">
                     {current.kind === 'meeting' ? <button type="button" className="mini-kind-button" aria-label={`打开日程 ${current.title}`} onClick={() => edit(current)}><VideoCamera size={14} /></button> : <button type="button" className={`mini-task-check${armed ? ' armed' : ''}`} aria-label={armed ? `确认完成 ${current.title}` : `完成 ${current.title}`} aria-pressed={armed} disabled={mutating} onClick={completeCurrent}><Check size={12} /></button>}
                     <button type="button" className="mini-task-open" title={`展开编辑：${current.title}`} onClick={() => edit(current)}><b>{current.title}</b></button>

@@ -45,6 +45,7 @@
 .mini-pill.pill-meeting { background: #e3ecf3; color: #3f6b8f; }
 .mini-pill.pill-overdue { background: #f9e9e7; color: var(--danger); }
 .corner-time { position: absolute; top: 10px; right: 10px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.corner-time .time-label { margin-right: 3px; font-weight: 600; }
 .corner-time.overdue { color: var(--danger); font-weight: 600; }
 .mini-home-with-insight .corner-time { top: 6px; right: 9px; font-size: 9px; }
 .mini-task-check, .mini-kind-button { display: grid; place-items: center; padding: 0; background: transparent; }

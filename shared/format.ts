@@ -10,3 +10,6 @@ export function dateTimeText(iso: string | null): string {
 export function scheduleStamp(task: { dueAt: string | null; plannedDate: string }): string {
   return task.dueAt ? dateTimeText(task.dueAt) : dateText(task.plannedDate);
 }
+export function stampLabel(kind: 'task' | 'meeting'): string {
+  return kind === 'meeting' ? '开始时间' : '完成时间';
+}
