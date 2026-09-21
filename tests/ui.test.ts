@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dateText, dateTimeText, scheduleStamp } from '../shared/format';
+import { dateText, dateTimeText, scheduleStamp, stampLabel } from '../shared/format';
 import { newTask, type Category, type Task } from '../shared/contracts';
 import { miniProposalView } from '../src/AIConversation';
 
@@ -13,6 +13,11 @@ test('schedule stamp shows date with time, and date only when time is empty', ()
   assert.equal(dateOnly, dateText('2026-09-20'));
   assert.match(dateOnly, /20/);
   assert.doesNotMatch(dateOnly, /\d{1,2}:\d{2}/);
+});
+
+test('corner time label names completion for tasks and start for meetings', () => {
+  assert.equal(stampLabel('task'), '完成时间');
+  assert.equal(stampLabel('meeting'), '开始时间');
 });
 
 function sampleTask(title: string, extra: Partial<Task> = {}): Task {

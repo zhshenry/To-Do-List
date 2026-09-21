@@ -372,12 +372,12 @@ try {
     return { buttons, nameNowrap: nameStyle?.whiteSpace === 'nowrap', nameEllipsis: nameStyle?.textOverflow === 'ellipsis' };
   });
   assert.ok(modelRowMetrics, 'the created model renders a list row');
-  assert.ok(modelRowMetrics.buttons.every(([w, h]) => w === 24 && h === 24), `model row action buttons stay 24x24: ${JSON.stringify(modelRowMetrics.buttons)}`);
+  assert.ok(modelRowMetrics.buttons.every(([w, h]) => w === 20 && h === 20), `model row action buttons stay 20x20 (compacted in 0.5.5): ${JSON.stringify(modelRowMetrics.buttons)}`);
   assert.ok(modelRowMetrics.nameNowrap && modelRowMetrics.nameEllipsis, 'model names stay on one line with an ellipsis');
   await page.getByRole('switch', { name: '启用 AI', exact: true }).click();
   await poll(async () => (await page.evaluate(() => window.desktop.state())).settings.aiEnabled, 'AI switch immediate save');
   await screenshot('settings-ai');
-  await page.getByRole('button', { name: '完成', exact: true }).last().click();
+  await page.getByRole('button', { name: '保存', exact: true }).last().click();
   checks.push('fixed-size two-tab settings, persisted standard/narrow width presets, immediate persistence, advanced disclosure, local connection test and missing-model validation');
 
   await openAssistant();

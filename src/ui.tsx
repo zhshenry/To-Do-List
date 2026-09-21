@@ -448,4 +448,4 @@ export function Modal({ title, children, close, dirty = false, subhead, headingE
 export function errorText(error: unknown): string {
   return (error instanceof Error ? error.message : '操作未完成，请重试').replace(/^Error invoking remote method '[^']+': (?:Error: )?/, '');
 }
-export { timeText, dateText, dateTimeText, scheduleStamp } from '../shared/format';
+export { timeText, dateText, dateTimeText, scheduleStamp, stampLabel } from '../shared/format';

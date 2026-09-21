@@ -36,6 +36,7 @@
 .mini-task-front { position: absolute; z-index: 2; inset: 0 0 auto; height: 92px; display: flex; flex-direction: column; padding: 26px 10px 8px; border: 1px solid #e1dad1; border-radius: 14px; background: white; box-shadow: 0 5px 14px #4c40310b; }
 .mini-home-with-insight .mini-task-front { height: 70px; padding: 20px 9px 5px; }
 .front-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 9px; align-items: center; }
+.front-main.is-meeting { grid-template-columns: minmax(0, 1fr); }
 .mini-home-with-insight .front-main { gap: 7px; }
 .corner-badges { position: absolute; top: 8px; left: 10px; display: flex; gap: 4px; z-index: 1; }
 .mini-home-with-insight .corner-badges { top: 4px; left: 9px; }
@@ -45,15 +46,14 @@
 .mini-pill.pill-meeting { background: #e3ecf3; color: #3f6b8f; }
 .mini-pill.pill-overdue { background: #f9e9e7; color: var(--danger); }
 .corner-time { position: absolute; top: 10px; right: 10px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.corner-time .time-label { margin-right: 3px; font-weight: 600; }
 .corner-time.overdue { color: var(--danger); font-weight: 600; }
 .mini-home-with-insight .corner-time { top: 6px; right: 9px; font-size: 9px; }
-.mini-task-check, .mini-kind-button { display: grid; place-items: center; padding: 0; background: transparent; }
+.mini-task-check { display: grid; place-items: center; padding: 0; background: transparent; }
 .mini-task-check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #b7b0a6; color: transparent; transition: border-color 120ms, background-color 120ms; }
 .mini-home-with-insight .mini-task-check { width: 18px; height: 18px; }
 .mini-task-check:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .mini-task-check.armed { background: var(--accent); border-color: var(--accent); color: var(--white); box-shadow: 0 0 0 3px var(--accent-soft); }
-.mini-kind-button { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #d9c5ba; background: #faf1ec; color: var(--accent); }
-.mini-home-with-insight .mini-kind-button { width: 18px; height: 18px; }
 .mini-task-open { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0; border: 0; background: transparent; text-align: left; }
 .mini-task-open:hover { background: transparent; }
 .mini-task-open > b { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 1.25; }
