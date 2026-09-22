@@ -13,3 +13,8 @@ export function scheduleStamp(task: { dueAt: string | null; plannedDate: string 
 export function stampLabel(kind: 'task' | 'meeting'): string {
   return kind === 'meeting' ? '开始时间' : '完成时间';
 }
+export function isOverdue(task: { status: string; dueAt: string | null; plannedDate: string }, now = Date.now()): boolean {
+  if (task.status === 'done') return false;
+  const deadline = task.dueAt ? new Date(task.dueAt).getTime() : new Date(`${task.plannedDate}T23:59:59`).getTime();
+  return deadline < now;
+}

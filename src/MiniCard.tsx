@@ -9,7 +9,7 @@ import {
 } from '../shared/contracts';
 import { AssistantApp } from './AssistantApp';
 import { DEFAULT_TAG_COLOR, TagColorPresets } from './TagColorPresets';
-import { BrandMark, HALF_HOUR_TIMES, IconButton, Segmented, errorText, scheduleStamp, stampLabel } from './ui';
+import { BrandMark, HALF_HOUR_TIMES, IconButton, Segmented, errorText, isOverdue, scheduleStamp, stampLabel } from './ui';
 import './mini-card.css';
 
 export type MiniMode = 'home' | 'add' | 'ai';
@@ -444,22 +444,25 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
     });
   }
   function completeCurrent() {
-    if (armed) { confirmComplete(); return; }
+    if (armed) { disarmArm(); return; }
     armComplete();
   }
   function deckCard(task: Task, counter: string) {
-    const taskOverdue = Boolean((task.dueAt ? new Date(task.dueAt).getTime() : new Date(`${task.plannedDate}T23:59:59`).getTime()) < Date.now());
+    const taskOverdue = isOverdue(task);
     const taskCategory = task.categoryId ? data.categories.find(item => item.id === task.categoryId) : null;
     const isArmed = task.id === armedId;
     return <article className="mini-task-front">
       <span className="corner-badges">{task.kind === 'meeting' ? <span className="mini-pill pill-meeting">日程</span> : <span className="mini-pill pill-todo">待办</span>}{taskOverdue ? <span className="mini-pill pill-overdue">已超期</span> : null}</span>
       <span className={`corner-time${taskOverdue ? ' overdue' : ''}`}><span className="time-label">{stampLabel(task.kind)}</span>{scheduleStamp(task)}</span>
       <div className={`front-main${task.kind === 'meeting' ? ' is-meeting' : ''}`}>
-        {task.kind === 'task' ? <button type="button" className={`mini-task-check${isArmed ? ' armed' : ''}`} aria-label={isArmed ? `确认完成 ${task.title}` : `完成 ${task.title}`} aria-pressed={isArmed} disabled={mutating} onClick={completeCurrent}><Check size={12} /></button> : null}
+        {task.kind === 'task' ? <button type="button" className={`mini-task-check${isArmed ? ' armed' : ''}`} aria-label={isArmed ? `取消完成 ${task.title}` : `完成 ${task.title}`} aria-pressed={isArmed} disabled={mutating} onClick={completeCurrent}><Check size={12} /></button> : null}
         <button type="button" className="mini-task-open" title={`展开编辑：${task.title}`} onClick={() => edit(task)}><b>{task.title}</b></button>
       </div>
       <div className="front-meta">
-        <span className="meta-cat">{taskCategory ? <><i style={{ backgroundColor: taskCategory.color }} />{taskCategory.name}</> : task.kind === 'meeting' ? '日程安排' : `优先级 · ${priorityName(task.priority)}`}</span>
+        <span className="meta-id">
+          <span className="meta-cat">{taskCategory ? <><i style={{ backgroundColor: taskCategory.color }} /><span>{taskCategory.name}</span></> : <span>{task.kind === 'meeting' ? '日程安排' : `优先级 · ${priorityName(task.priority)}`}</span>}</span>
+          {task.progress !== null ? <span className="meta-progress">{task.progress}%</span> : null}
+        </span>
         {isArmed ? <span className="confirm-bar"><button type="button" className="confirm-btn" disabled={mutating} onClick={confirmComplete}><Check size={10} weight="bold" />确认完成</button><button type="button" className="confirm-cancel" disabled={mutating} onClick={disarmArm}>取消</button></span> : <div className="mini-deck-pager"><span>{counter}</span><button type="button" aria-label="上一项" disabled={remaining.length < 2} onClick={() => page(-1)}><CaretDown size={9} className="is-up" /></button><button type="button" aria-label="下一项" disabled={remaining.length < 2} onClick={() => page(1)}><CaretDown size={9} /></button></div>}
       </div>
     </article>;
@@ -485,8 +488,8 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
         </> : <div className={showInsight ? 'mini-home-with-insight' : 'mini-home'}>
           {!aiAvailable ? !!data.settings.endpoint.trim() && !!data.settings.model.trim() ? <button type="button" className="mini-insight" aria-label="AI建议：AI 未启用" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: true, autoStart: data.settings.autoStart }))}><span>AI建议：</span><b>AI 未启用</b><em>启用</em></button> : <button type="button" className="mini-insight" aria-label="AI建议：请先配置AI大模型" onClick={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))}><span>AI建议：</span><b>请先配置AI大模型</b><em>配置</em></button> : suggestion ? <button type="button" className="mini-insight" aria-expanded="false" onClick={() => setSuggestionOpen(true)}><span>AI 建议</span><b>{suggestion.title}</b><small>{suggestion.context}</small><em>查看</em></button> : null}
           <div className="mini-home-main">
-            <div className={`mini-task-stack${deck ? ` is-rolling stack-${deck.dir}` : ''}`} onWheel={event => { event.preventDefault(); page(event.deltaY > 0 ? 1 : -1); }}>
-              {remaining.length ? <><button type="button" className="mini-stack-sheet back" aria-label="查看下一项" disabled={remaining.length < 2} onClick={() => page(1)} /><span className="mini-stack-sheet middle" />
+            <div className={`mini-task-stack${remaining.length === 2 ? ' is-pair' : ''}${deck ? ` is-rolling stack-${deck.dir}` : ''}`} onWheel={event => { event.preventDefault(); page(event.deltaY > 0 ? 1 : -1); }}>
+              {remaining.length ? <><button type="button" className="mini-stack-sheet back" aria-label="查看下一项" disabled={remaining.length < 2} onClick={() => page(1)} />{remaining.length > 2 ? <span className="mini-stack-sheet middle" /> : null}
                 {deck ? <><div className="deck-layer is-incoming">{deckCard(current, `${index + 1} / ${remaining.length}`)}</div><div className="deck-layer is-outgoing">{deckCard(deck.outgoing, `${deck.from + 1} / ${deck.fromLen}`)}</div></> : deckCard(current, `${index + 1} / ${remaining.length}`)}
               </> : <article className="mini-task-front is-empty"><span><Plus size={18} /></span><button type="button" onClick={() => setMode('add')}><b>今天还没有安排</b><small>新增一项待办或日程</small></button></article>}
             </div>

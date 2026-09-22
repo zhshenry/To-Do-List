@@ -1,6 +1,6 @@
 {
   "name": "to-do-list",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "private": true,
   "type": "module",
   "description": "Windows 悬浮待办与 AI 日程助手",

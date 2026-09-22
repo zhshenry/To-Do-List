@@ -158,6 +158,10 @@ try {
   await todayRow.locator('.time-label', { hasText: '完成时间' }).waitFor();
   assert.equal(await todayRow.locator('.plan-progress-num').textContent(), '40%');
   assert.equal(await todayRow.locator('.plan-progress').count(), 0);
+  await page.evaluate(async input => { await window.desktop.create(input); }, task('进度为零', { progress: 0, status: 'doing' }));
+  const zeroRow = page.locator('.plan-item').filter({ hasText: '进度为零' });
+  assert.equal(await zeroRow.locator('.plan-progress-num').textContent(), '0%');
+  assert.equal(await zeroRow.getByText('进行中', { exact: true }).count(), 0, 'list does not show a doing status pill');
   await page.getByRole('region', { name: '待办' }).getByText('下周产品评审', { exact: true }).waitFor();
   await screenshot('main-rows');
   // v2 双步确认：主界面勾选 → armed 确认条 → 确认完成 → 离卡（openToday 过滤）
@@ -173,16 +177,32 @@ try {
   // v2 方块视图：徽章 + 右上时间 + 底行百分比
   await page.getByRole('button', { name: '切换到方块视图', exact: true }).click();
   await page.locator('.plan-tiles').waitFor();
-  assert.ok(await page.locator('.plan-tiles .tile-pill.pill-todo').first().isVisible(), 'tiles show type badge');
+  assert.equal(await page.locator('.plan-tiles .tile-pill.pill-todo').count(), 0, 'tiles omit the todo type badge');
   assert.ok(await page.locator('.plan-tiles .tile-top time[datetime]').first().isVisible(), 'tiles show schedule stamp');
   assert.equal((await page.locator('.plan-tiles .plan-progress-num').allTextContents())[0], '40%', 'tiles show progress percentage');
+  assert.equal(await page.locator('.plan-tiles .plan-progress').count(), 0, 'tiles do not draw a progress bar');
+  const zeroTile = page.locator('.plan-tiles .plan-item').filter({ hasText: '进度为零' });
+  assert.equal(await zeroTile.locator('.plan-progress-num').textContent(), '0%');
+  assert.equal(await zeroTile.locator('.tile-pill').count(), 0, 'a tile that is not overdue has no status capsule');
+  assert.equal(await zeroTile.getByText('进行中', { exact: true }).count(), 0, 'tiles omit doing status');
   await screenshot('board-tiles');
   await page.getByRole('button', { name: '切换到列表视图', exact: true }).click();
   await page.locator('.plan-list').first().waitFor();
   checks.push('tiles view redesigned with badge, stamp and percentage');
+  assert.equal((await page.getByRole('region', { name: '日程' }).locator('.plan-empty').textContent()), '没有日程。');
   await page.evaluate(async input => { await window.desktop.create(input); }, meeting('明日准备材料', { plannedDate: day(1) }));
+  await page.evaluate(async input => { await window.desktop.create(input); }, meeting('今日例会', { plannedDate: day(0) }));
+  await page.locator('.plan-folder-tab').filter({ hasText: '今天' }).click();
+  await page.getByRole('region', { name: '日程' }).getByText('今日例会', { exact: true }).waitFor();
+  assert.equal(await page.locator('#plan-folder-today .task-check').count(), 0, 'today meetings have no complete circle');
+  assert.equal(await page.locator('.plan-folder-tab').filter({ hasText: '近期' }).count(), 0, 'an empty soon group stays hidden');
   await page.locator('.plan-folder-tab').filter({ hasText: '明天' }).click();
   await page.locator('#plan-folder-tomorrow').getByText('明日准备材料', { exact: true }).waitFor();
+  assert.equal(await page.locator('#plan-folder-tomorrow .task-check').count(), 0, 'upcoming meetings have no complete circle');
+  await page.evaluate(async input => { await window.desktop.create(input); }, meeting('已完成的明日会', { plannedDate: day(1), status: 'done' }));
+  await poll(async () => (await page.evaluate(() => window.desktop.state())).tasks.some(item => item.title === '已完成的明日会' && item.status === 'done'), 'completed meeting is stored');
+  assert.equal(await page.locator('#plan-folder-tomorrow').getByText('已完成的明日会').count(), 0, 'completed meeting stays out of tomorrow');
+  assert.equal(await page.locator('.plan-folder-tab').filter({ hasText: '明天' }).locator('.plan-folder-count').textContent(), '1');
   await screenshot('upcoming-open');
   await page.evaluate(async inputs => { for (const input of inputs) await window.desktop.create(input); }, [
     meeting('后天检查材料', { plannedDate: day(2) }),
@@ -512,6 +532,18 @@ try {
     return { overlayTop: overlay?.top, overlayHeight: overlay?.height, overlayBottom: overlay?.bottom, todoTop: todo?.top, inner: innerHeight };
   });
   assert.ok(overlayFit.overlayHeight <= 520 && overlayFit.overlayBottom <= overlayFit.inner + 1 && overlayFit.todoTop < overlayFit.overlayTop, JSON.stringify(overlayFit));
+  const overlayChrome = await page.locator('.assistant-overlay').evaluate(element => {
+    const head = element.querySelector('.assistant-overlay-head');
+    const date = document.querySelector('.date-heading h1');
+    return {
+      scan: getComputedStyle(element, '::after').content,
+      borderBottom: head ? getComputedStyle(head).borderBottomWidth : '0px',
+      dateTransform: date ? getComputedStyle(date).transform : 'none',
+    };
+  });
+  assert.equal(overlayChrome.scan, 'none', 'opening the assistant does not sweep a light across the panel');
+  assert.notEqual(overlayChrome.borderBottom, '0px', 'assistant title is separated from the conversation');
+  assert.equal(overlayChrome.dateTransform, 'none', 'opening the assistant does not move the page behind it');
   assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some(item => item.webContents.getURL().includes('window=assistant'))), false, 'main assistant stays inside the todo window');
   await screenshot('assistant-narrow');
   await page.getByRole('button', { name: '关闭 AI 助手', exact: true }).click();

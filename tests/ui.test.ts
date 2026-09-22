@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dateText, dateTimeText, scheduleStamp, stampLabel } from '../shared/format';
+import { dateText, dateTimeText, isOverdue, scheduleStamp, stampLabel } from '../shared/format';
 import { newTask, type Category, type Task } from '../shared/contracts';
 import { miniProposalView } from '../src/AIConversation';
 
@@ -13,6 +13,15 @@ test('schedule stamp shows date with time, and date only when time is empty', ()
   assert.equal(dateOnly, dateText('2026-09-20'));
   assert.match(dateOnly, /20/);
   assert.doesNotMatch(dateOnly, /\d{1,2}:\d{2}/);
+});
+
+test('overdue follows the completion instant shared by the list and the collapsed card', () => {
+  const now = Date.parse('2026-09-22T08:00:00+08:00');
+  assert.equal(isOverdue({ status: 'todo', plannedDate: '2026-09-20', dueAt: '2026-09-22T15:59:00.000Z' }, now), false);
+  assert.equal(isOverdue({ status: 'todo', plannedDate: '2026-09-20', dueAt: '2026-09-21T23:00:00.000Z' }, now), true);
+  assert.equal(isOverdue({ status: 'todo', plannedDate: '2020-01-01', dueAt: null }, now), true);
+  assert.equal(isOverdue({ status: 'todo', plannedDate: '2099-01-01', dueAt: null }, now), false);
+  assert.equal(isOverdue({ status: 'done', plannedDate: '2020-01-01', dueAt: '2020-01-01T00:00:00.000Z' }, now), false);
 });
 
 test('corner time label names completion for tasks and start for meetings', () => {
