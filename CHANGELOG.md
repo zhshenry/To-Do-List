@@ -2,6 +2,10 @@
 
 本项目的所有显著变更都记录在此文件中。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。下载各版本安装包与免安装包见 [GitHub Releases](https://github.com/zhshenry/To-Do-List/releases)。
 
+## [未发布]
+
+- **收起卡标题字号**：事项名称 14px→12.5px（行高 1.25→1.3），同样两行位置约多容纳 4 字，长标题截断减少；带 AI 建议的紧凑变体 12px 不变。
+
 ## [0.5.9] - 2026-09-22
 
 - **超期判断对齐**：展开列表和收起卡共用同一套规则，得到达完成时间才显示已超期，不再把还没到的完成时间按计划日标红。
