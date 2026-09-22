@@ -248,8 +248,27 @@ function PlanRow({ task, tiles, category, current, today, mutating, api, mutate,
 }) {
   const overdue = task.status !== 'done' && task.plannedDate < today;
   const checkActive = task.status === 'done' || armed;
-  return <li className={`plan-item${tiles ? ' is-tile' : ''}${task.status === 'done' ? ' is-done' : ''}${current ? ' is-current' : ''}${armed ? ' is-armed' : ''}`}>
-    <button type="button" className={`task-check${checkActive ? ' is-active' : ''}`} aria-label={`${task.status === 'done' ? '恢复待办' : armed ? `取消完成 ${task.title}` : `完成 ${task.title}`}`} aria-pressed={task.status === 'done'} disabled={mutating} onClick={onCheck}>{checkActive ? <Check size={14} weight="bold" /> : null}</button>
+  const checkSize = tiles ? 11 : 14;
+  if (tiles) return <li className={`plan-item is-tile${task.status === 'done' ? ' is-done' : ''}${current ? ' is-current' : ''}${armed ? ' is-armed' : ''}`}>
+    <span className="tile-top">
+      {task.status === 'doing' ? <span className="tile-pill pill-doing">进行中</span> : <span className="tile-pill pill-todo">待办</span>}
+      {overdue ? <span className="tile-pill pill-overdue">已超期</span> : null}
+      <time className={overdue ? 'is-overdue' : undefined} dateTime={task.dueAt ?? task.plannedDate}>{scheduleStamp(task)}</time>
+    </span>
+    <span className="tile-body">
+      <button type="button" className={`task-check${checkActive ? ' is-active' : ''}`} aria-label={`${task.status === 'done' ? '恢复待办' : armed ? `取消完成 ${task.title}` : `完成 ${task.title}`}`} aria-pressed={task.status === 'done'} disabled={mutating} onClick={onCheck}>{checkActive ? <Check size={checkSize} weight="bold" /> : null}</button>
+      <button type="button" className="tile-title" onClick={() => setEditor(task)} aria-label={`编辑 ${task.title}`}><b title={task.title}>{task.title}</b></button>
+    </span>
+    {task.progress !== null ? <span className="plan-progress" role="progressbar" aria-label={`${task.title}进度`} aria-valuenow={task.progress} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${task.progress}%` }} /></span> : null}
+    {armed
+      ? <span className="confirm-bar"><button type="button" className="confirm-btn" disabled={mutating} onClick={onConfirm}>确认完成</button><button type="button" className="confirm-cancel" onClick={onDisarm}>取消</button></span>
+      : <span className="tile-foot">
+          <span className="plan-category"><i className="plan-dot" aria-hidden="true" style={{ backgroundColor: category?.color ?? 'var(--muted)' }} />{category?.name ?? '无标签'}</span>
+          {task.progress !== null ? <span className="plan-progress-num">{task.progress}%</span> : null}
+        </span>}
+  </li>;
+  return <li className={`plan-item${task.status === 'done' ? ' is-done' : ''}${current ? ' is-current' : ''}${armed ? ' is-armed' : ''}`}>
+    <button type="button" className={`task-check${checkActive ? ' is-active' : ''}`} aria-label={`${task.status === 'done' ? '恢复待办' : armed ? `取消完成 ${task.title}` : `完成 ${task.title}`}`} aria-pressed={task.status === 'done'} disabled={mutating} onClick={onCheck}>{checkActive ? <Check size={checkSize} weight="bold" /> : null}</button>
     <button type="button" className="plan-main" onClick={() => setEditor(task)} aria-label={`编辑 ${task.title}`}>
       <span className="plan-task-copy"><b title={task.title}>{task.title}</b><span className="plan-category"><i className="plan-dot" aria-hidden="true" style={{ backgroundColor: category?.color ?? 'var(--muted)' }} />{category?.name ?? '无标签'}{overdue ? <> · <time dateTime={task.plannedDate}>{task.plannedDate}</time></> : null}</span></span>
       {task.progress !== null ? <span className="plan-progress" role="progressbar" aria-label={`${task.title}进度`} aria-valuenow={task.progress} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${task.progress}%` }} /></span> : null}
