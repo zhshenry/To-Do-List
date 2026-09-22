@@ -171,6 +171,16 @@ try {
   await poll(async () => (await page.evaluate(() => window.desktop.state())).tasks.find(item => item.title === '冒烟双步确认')?.status === 'done', 'board two-step completion');
   await poll(async () => await page.getByRole('region', { name: '待办' }).getByText('冒烟双步确认').count().then(n => n === 0), 'completed row leaves the board');
   checks.push('board checkbox two-step confirm with armed bar and completion leaving the card');
+  // v2 方块视图：徽章 + 右上时间 + 底行百分比
+  await page.getByRole('button', { name: '切换到方块视图', exact: true }).click();
+  await page.locator('.plan-tiles').waitFor();
+  assert.ok(await page.locator('.plan-tiles .tile-pill.pill-todo').first().isVisible(), 'tiles show type badge');
+  assert.ok(await page.locator('.plan-tiles .tile-top time[datetime]').first().isVisible(), 'tiles show schedule stamp');
+  assert.equal((await page.locator('.plan-tiles .plan-progress-num').allTextContents())[0], '40%', 'tiles show progress percentage');
+  await screenshot('board-tiles');
+  await page.getByRole('button', { name: '切换到列表视图', exact: true }).click();
+  await page.locator('.plan-list').first().waitFor();
+  checks.push('tiles view redesigned with badge, stamp and percentage');
   await page.evaluate(async input => { await window.desktop.create(input); }, meeting('明日准备材料', { plannedDate: day(1) }));
   await page.locator('.plan-folder-tab').filter({ hasText: '明天' }).click();
   await page.locator('#plan-folder-tomorrow').getByText('明日准备材料', { exact: true }).waitFor();
