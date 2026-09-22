@@ -1,10 +1,65 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { ArrowClockwise, ArrowsOutSimple, CaretLeft, LockSimple, PaperPlaneTilt, Sparkle, Stop, X } from '@phosphor-icons/react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { ArrowClockwise, ArrowsOutSimple, CaretDown, CaretLeft, PaperPlaneTilt, Sparkle, Stop, Trash, X } from '@phosphor-icons/react';
 import { createPortal } from 'react-dom';
 import type { AIAction, AIProposalSelection, AssistantAnchor, ChatSession, ChatSummary, State } from '../shared/contracts';
 import { AIConversation, type ConversationEntry } from './AIConversation';
 import { IconButton, Modal, Select, errorText } from './ui';
 import './assistant-updates.css';
+
+function HistoryMenu({ sessions, value, disabled, onOpen, onDelete }: {
+  sessions: ChatSummary[]; value: string; disabled: boolean; onOpen: (id: string) => void; onDelete: (id: string) => void;
+}) {
+  const listId = useId();
+  const root = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [armed, setArmed] = useState<string | null>(null);
+  const label = sessions.find(item => item.id === value)?.title ?? '新对话';
+  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
+  useEffect(() => { if (!open) setArmed(null); }, [open]);
+  useLayoutEffect(() => {
+    const list = menu.current; const button = trigger.current;
+    if (!open || !list || !button) return;
+    const rect = button.getBoundingClientRect();
+    list.style.width = `${Math.min(Math.max(rect.width, 220), window.innerWidth - 16)}px`;
+    const height = list.offsetHeight;
+    let top = rect.bottom + 4;
+    if (top + height > window.innerHeight - 8) top = Math.max(8, rect.top - height - 4);
+    let left = rect.left;
+    if (left + list.offsetWidth > window.innerWidth - 8) left = Math.max(8, window.innerWidth - 8 - list.offsetWidth);
+    list.style.top = `${top}px`; list.style.left = `${left}px`;
+  }, [open, sessions, armed]);
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: PointerEvent) {
+      const node = event.target as Node;
+      if (root.current?.contains(node) || menu.current?.contains(node)) return;
+      setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      event.preventDefault(); setOpen(false); trigger.current?.focus();
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => { document.removeEventListener('pointerdown', onPointerDown); window.removeEventListener('keydown', onKeyDown, true); };
+  }, [open]);
+  return <div ref={root} className="select assistant-session">
+    <button type="button" ref={trigger} className="select-trigger" role="combobox" aria-label="历史对话" aria-haspopup="listbox" aria-expanded={open} aria-controls={listId} disabled={disabled} onClick={() => setOpen(current => !current)}>
+      <span>{label}</span><CaretDown size={12} weight="bold" />
+    </button>
+    {open ? createPortal(<div ref={menu} id={listId} className="select-menu history-menu" role="listbox" aria-label="历史对话">
+      {sessions.map(item => <div key={item.id} className={`history-row${item.id === value ? ' is-current' : ''}`}>
+        <button type="button" role="option" className="history-pick" aria-selected={item.id === value} onClick={() => { setOpen(false); onOpen(item.id); }}>{item.title}</button>
+        <button type="button" className={`history-delete${armed === item.id ? ' is-confirm' : ''}`} aria-label={armed === item.id ? `确认删除 ${item.title}` : `删除 ${item.title}`} onClick={() => {
+          if (armed !== item.id) { setArmed(item.id); return; }
+          setOpen(false); onDelete(item.id);
+        }}>{armed === item.id ? '确认' : <Trash size={14} />}</button>
+      </div>)}
+    </div>, document.body) : null}
+  </div>;
+}
 
 function AssistantShell({ children }: { children: ReactNode }) {
   const [anchor, setAnchor] = useState<AssistantAnchor>({ side: 'left', along: 0.78 });
@@ -12,8 +67,8 @@ function AssistantShell({ children }: { children: ReactNode }) {
   return <div className="assistant-shell" data-tail={anchor.side} style={{ '--tail-along': `${Math.round(anchor.along * 10000) / 100}%` } as CSSProperties}><span className="assistant-tail" aria-hidden="true" />{children}</div>;
 }
 
-export function AssistantApp({ compact = false, back, expand, initialPrompt = null, consumedPrompt }: {
-  compact?: boolean; back?: () => void; expand?: () => void;
+export function AssistantApp({ compact = false, embedded = false, closing = false, back, expand, onClose, initialPrompt = null, consumedPrompt }: {
+  compact?: boolean; embedded?: boolean; closing?: boolean; back?: () => void; expand?: () => void; onClose?: () => void;
   initialPrompt?: { id: number; text: string } | null; consumedPrompt?: () => void;
 } = {}) {
   const api = window.desktop;
@@ -97,12 +152,12 @@ export function AssistantApp({ compact = false, back, expand, initialPrompt = nu
     });
   }, [modelOpen]);
   useEffect(() => {
-    if (!compact || !initialPrompt || !chat || !data || busy || hasPendingAction || handledPrompt.current === initialPrompt.id) return;
+    if ((!compact && !embedded) || !initialPrompt || !chat || !data || busy || hasPendingAction || handledPrompt.current === initialPrompt.id) return;
     handledPrompt.current = initialPrompt.id;
     consumedPrompt?.();
     setCompactComposer(false);
     void askAI(initialPrompt.text);
-  }, [compact, initialPrompt, chat, data, busy, hasPendingAction]);
+  }, [compact, embedded, initialPrompt, chat, data, busy, hasPendingAction]);
 
   function saveDraft(text: string) {
     setInput(text);
@@ -125,6 +180,13 @@ export function AssistantApp({ compact = false, back, expand, initialPrompt = nu
     if (!api || busy || mutating || changingChat.current) return;
     changingChat.current = true; setMutating(true);
     try { selectChat(await api.chatNew()); setSessions(await api.chatList()); setConfirmNew(false); inputRef.current?.focus(); }
+    catch (cause) { setError(errorText(cause)); }
+    finally { changingChat.current = false; setMutating(false); }
+  }
+  async function removeConversation(id: string) {
+    if (!api || busy || mutating || changingChat.current) return;
+    changingChat.current = true; setMutating(true);
+    try { selectChat(await api.chatRemove(id)); setSessions(await api.chatList()); }
     catch (cause) { setError(errorText(cause)); }
     finally { changingChat.current = false; setMutating(false); }
   }
@@ -231,26 +293,24 @@ export function AssistantApp({ compact = false, back, expand, initialPrompt = nu
       <div className="mini-ai-quick">{gate ? <><span className="mini-ai-gate-label">{gate.label}</span><button type="button" className="mini-ai-gate-button" ref={gateButtonRef} onClick={gate.onAction}>{gate.action}</button></> : null}{modelControl}</div>{modelMenu}
     </section>;
   }
+  const history = chat ? (sessions.some(item => item.id === chat.id) ? sessions : [{ id: chat.id, title: chat.title, updatedAt: chat.updatedAt }, ...sessions]) : [];
+  const overlayHead = <header className="assistant-overlay-head">
+    {chat ? <HistoryMenu sessions={history} value={chat.id} disabled={busy || mutating} onOpen={id => { if (!busy && !mutating && id !== chat.id) void api.chatOpen(id).then(selectChat).catch(cause => setError(errorText(cause))); }} onDelete={id => void removeConversation(id)} /> : <span className="assistant-overlay-title">AI 助手</span>}
+    <button type="button" className="assistant-new-chat" disabled={!chat || busy || mutating || !conversation.length && !input} onClick={() => setConfirmNew(true)}>新对话</button>
+    <IconButton label="关闭 AI 助手" onClick={() => onClose?.()}><X size={18} /></IconButton>
+  </header>;
+  if (embedded && (!data || !chat)) return <section className={`assistant-overlay${closing ? ' is-closing' : ''}`} aria-label="AI 助手">{overlayHead}<div className={`assistant-loading${loadError ? ' is-error' : ''}`} role={loadError ? 'alert' : 'status'}><span>{loadError || '正在准备你的本地工作区…'}</span>{loadError ? <div className="assistant-loading-actions"><button type="button" onClick={() => { setLoadError(''); setLoadAttempt(attempt => attempt + 1); }}><ArrowClockwise size={15} />重试</button><button type="button" onClick={() => onClose?.()}>关闭</button></div> : null}</div></section>;
   if (!data || !chat) return <AssistantShell><main className="assistant-widget"><header className="assistant-titlebar"><span className="assistant-identity"><span className="assistant-header-avatar" aria-hidden="true"><Sparkle size={20} weight="fill" /></span><span className="assistant-identity-text"><b>AI 助手</b><small>{loadError ? '读取失败' : '正在读取本地对话…'}</small></span></span><span className="assistant-header-controls"><IconButton label="关闭 AI 助手" onClick={() => void api.assistant({ action: 'hide', animate: !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false) })}><X size={18} /></IconButton></span></header><div className={`assistant-loading${loadError ? ' is-error' : ''}`} role={loadError ? 'alert' : 'status'}><span>{loadError || '正在准备你的本地工作区…'}</span>{loadError ? <div className="assistant-loading-actions"><button type="button" onClick={() => { setLoadError(''); setLoadAttempt(attempt => attempt + 1); }}><ArrowClockwise size={15} />重试</button><button type="button" onClick={() => void api.assistant({ action: 'hide', animate: false })}>关闭</button></div> : null}</div></main></AssistantShell>;
-  return <AssistantShell><main className="assistant-widget">
-    <header className="assistant-titlebar">
-      <span className="assistant-identity"><span className="assistant-header-avatar" aria-hidden="true"><Sparkle size={20} weight="fill" /><i className={`assistant-online${busy ? ' is-busy' : ''}${!available ? ' is-unavailable' : ''}`} /></span><span className="assistant-identity-text"><b>AI 助手</b><small role="status">{status}</small></span></span>
-      <span className="assistant-header-controls">
-        <button type="button" className="assistant-new-chat" disabled={busy || mutating || !conversation.length && !input} onClick={() => setConfirmNew(true)}>新对话</button>
-        <IconButton label="关闭 AI 助手" onClick={() => void api.assistant({ action: 'hide', animate: !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false) })}><X size={18} /></IconButton>
-      </span>
-    </header>
-    <div className="assistant-history"><Select aria-label="历史对话" disabled={busy || mutating} value={chat.id} onChange={id => { if (!busy && !mutating) void api.chatOpen(id).then(selectChat).catch(cause => setError(errorText(cause))); }} options={(sessions.some(item => item.id === chat.id) ? sessions : [{ id: chat.id, title: chat.title, updatedAt: chat.updatedAt }, ...sessions]).map(item => ({ value: item.id, label: item.title }))} /><span className="assistant-local-note"><LockSimple size={12} />保存在本机</span></div>
+  const conversationBody = <>
     <AIConversation entries={conversation} pendingText="" busy={busy} error={error} actionError={actionError} tasks={data.tasks} categories={data.categories} aiEnabled={available} configured={configured} mutating={mutating} retry={failedText && !busy ? () => void askAI(failedText) : null} openSettings={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))} enable={enableAI} apply={(entry, items) => void apply(entry, items)} discard={entry => void discard(entry)} adjust={adjust} updateAction={updateAction} />
     {gate && conversation.length ? <div className="ai-gate" role="status"><span>{gate.label}</span><button type="button" ref={gateButtonRef} onClick={gate.onAction}>{gate.action}</button></div> : null}
     <footer className="assistant-footer"><form className="assistant-compose" noValidate onSubmit={send}>
       <span className="assistant-compose-copy">
-        <textarea ref={inputRef} autoFocus rows={2} className="assistant-compose-input resize-none" aria-label="AI 对话输入" aria-describedby="assistant-compose-hint" value={input} onChange={event => saveDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !(event.nativeEvent.isComposing || event.keyCode === 229)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder={hasPendingAction ? '继续追问，或告诉我如何调整建议…' : '你想让我记录什么？'} maxLength={10000} />
+        <textarea ref={inputRef} autoFocus rows={2} className="assistant-compose-input resize-none" aria-label="AI 对话输入" value={input} onChange={event => saveDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !(event.nativeEvent.isComposing || event.keyCode === 229)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder={hasPendingAction ? '继续追问，或告诉我如何调整建议…' : 'Enter 发送 · Shift + Enter 换行'} maxLength={10000} />
       </span>
       <span className="assistant-compose-meta">
         <span className="assistant-compose-options">
           {data.settings.models.length ? <Select className="assistant-model" aria-label="当前模型" disabled={busy} value={data.settings.activeModelId || data.settings.models[0].id} onChange={id => { if (!busy && id !== data.settings.activeModelId) void api.activateProfile(id).then(setData).catch(cause => setError(errorText(cause))); }} options={data.settings.models.map(model => ({ value: model.id, label: model.name }))} /> : null}
-          <small id="assistant-compose-hint">Enter 发送 · Shift + Enter 换行</small>
         </span>
         {busy ? <button type="button" className="assistant-stop" aria-label="停止并取消 AI 请求" onClick={() => void api.cancelAI()}><Stop size={13} weight="fill" /><span>停止</span></button> : <button className="send-button" type="submit" aria-label="发送给 AI" disabled={!input.trim() || mutating}><PaperPlaneTilt size={16} weight="fill" /></button>}
       </span>
@@ -265,5 +325,17 @@ export function AssistantApp({ compact = false, back, expand, initialPrompt = nu
         <button type="button" className="primary" disabled={mutating} onClick={() => void newConversation()}>开始新对话</button>
       </div>
     </Modal> : null}
+  </>;
+  if (embedded) return <section className={`assistant-overlay${closing ? ' is-closing' : ''}`} aria-label="AI 助手">{overlayHead}{conversationBody}</section>;
+  return <AssistantShell><main className="assistant-widget">
+    <header className="assistant-titlebar">
+      <span className="assistant-identity"><span className="assistant-header-avatar" aria-hidden="true"><Sparkle size={20} weight="fill" /><i className={`assistant-online${busy ? ' is-busy' : ''}${!available ? ' is-unavailable' : ''}`} /></span><span className="assistant-identity-text"><b>AI 助手</b><small role="status">{status}</small></span></span>
+      <HistoryMenu sessions={sessions.some(item => item.id === chat.id) ? sessions : [{ id: chat.id, title: chat.title, updatedAt: chat.updatedAt }, ...sessions]} value={chat.id} disabled={busy || mutating} onOpen={id => { if (!busy && !mutating && id !== chat.id) void api.chatOpen(id).then(selectChat).catch(cause => setError(errorText(cause))); }} onDelete={id => void removeConversation(id)} />
+      <span className="assistant-header-controls">
+        <button type="button" className="assistant-new-chat" disabled={busy || mutating || !conversation.length && !input} onClick={() => setConfirmNew(true)}>新对话</button>
+        <IconButton label="关闭 AI 助手" onClick={() => void api.assistant({ action: 'hide', animate: !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false) })}><X size={18} /></IconButton>
+      </span>
+    </header>
+    {conversationBody}
   </main></AssistantShell>;
 }

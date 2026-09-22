@@ -1,3 +1,37 @@
+@property --assistant-glow { syntax: "<angle>"; inherits: false; initial-value: 28deg; }
+.assistant-overlay {
+  position: absolute; z-index: 6; left: 10px; right: 10px; bottom: 10px;
+  height: 520px; max-height: calc(100vh - 180px);
+  display: flex; flex-direction: column; border-radius: 16px; background: #fbfaf7;
+  box-shadow: 0 -10px 28px #1719231a; overflow: hidden;
+  animation: assistant-overlay-in 240ms cubic-bezier(.16, 1, .3, 1) both;
+}
+.assistant-overlay.is-closing { animation: assistant-overlay-out 180ms cubic-bezier(.4, 0, 1, 1) both; }
+.assistant-overlay::before {
+  content: ""; position: absolute; z-index: 3; inset: 0; padding: 1.5px; border-radius: inherit; pointer-events: none;
+  background: conic-gradient(from var(--assistant-glow), transparent 0deg 276deg, #bd55320d 292deg, #bd5532a6 315deg, #fff1db 328deg, #bd553247 345deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+  filter: drop-shadow(0 0 2px #bd55324d);
+  animation: assistant-border-glow 3.2s linear 240ms infinite;
+}
+.assistant-overlay::after {
+  content: ""; position: absolute; z-index: 4; top: 0; bottom: 0; left: -18%; width: 18%; pointer-events: none;
+  background: linear-gradient(90deg, transparent, #c66a4240, transparent); filter: blur(2px);
+  animation: assistant-overlay-scan 420ms ease-out 180ms both;
+}
+.assistant-overlay.is-closing::before, .assistant-overlay.is-closing::after { animation: none; }
+.assistant-overlay > * { position: relative; z-index: 1; }
+.assistant-overlay .ai-conversation { flex: 1; min-height: 0; background: transparent; }
+.assistant-overlay .assistant-footer { flex-shrink: 0; padding: 8px 10px 12px; }
+.assistant-overlay-head { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 8px 0 12px; }
+.assistant-overlay-head .assistant-session { flex: 1; }
+.assistant-overlay-title { flex: 1; font-size: 13px; font-weight: 650; }
+@keyframes assistant-overlay-in { from { transform: translateY(110%); } }
+@keyframes assistant-overlay-out { to { transform: translateY(110%); } }
+@keyframes assistant-border-glow { to { --assistant-glow: 388deg; } }
+@keyframes assistant-overlay-scan { to { left: 104%; } }
+
 .assistant-widget {
   --assistant-surface: var(--paper);
   --assistant-raised: color-mix(in srgb, var(--white) 92%, var(--paper));
@@ -55,33 +89,22 @@
 
 .assistant-new-chat:hover { border-color: var(--assistant-active-line); background: var(--white); }
 
-.assistant-history {
-  min-height: 50px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--white) 66%, var(--assistant-tint));
-  min-width: 0;
-}
-
-.assistant-history .select { flex: 1; min-width: 0; }
-.assistant-history .select-trigger { width: 100%; min-height: 34px; border-color: transparent; background: transparent; font-weight: 600; }
-.assistant-history .select-trigger:hover { border-color: var(--line); background: var(--white); }
-.assistant-history .select-trigger > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.assistant-local-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-  padding-left: 10px;
-  border-left: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 11px;
-  white-space: nowrap;
-}
+.assistant-titlebar:has(.assistant-session) .assistant-identity { flex: 0 1 auto; min-width: 0; }
+.assistant-session { flex: 1; min-width: 0; -webkit-app-region: no-drag; }
+.assistant-session .select-trigger { min-height: 32px; padding: 0 6px; border-color: transparent; background: transparent; font-size: 12px; font-weight: 600; }
+.assistant-session .select-trigger:hover, .assistant-session .select-trigger[aria-expanded="true"] { border-color: var(--line); background: var(--white); }
+.assistant-session .select-trigger > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-menu { padding: 4px; }
+.history-row { display: flex; align-items: center; gap: 4px; min-height: 32px; padding: 2px 4px 2px 2px; border-radius: 8px; }
+.history-row.is-current { background: var(--accent-soft); }
+.history-pick { flex: 1; min-width: 0; margin: 0; padding: 4px 6px; border: 0; border-radius: 8px; background: transparent; color: inherit; font-size: 12px; font-weight: 550; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-row.is-current .history-pick { color: var(--accent); }
+.history-pick:hover, .history-pick:active { background: transparent; }
+.history-row:not(.is-current):hover { background: var(--subtle); }
+.history-delete { width: 26px; height: 26px; margin: 0; padding: 0; display: grid; place-items: center; flex-shrink: 0; border: 0; border-radius: 7px; background: transparent; color: var(--muted); }
+.history-delete:hover, .history-delete:active { background: var(--white); color: var(--ink); }
+.history-delete.is-confirm { width: auto; height: 24px; padding: 0 8px; border: 1px solid var(--danger); background: var(--white); color: var(--danger); font-size: 11px; font-weight: 650; }
+.history-delete.is-confirm:hover, .history-delete.is-confirm:active { border-color: var(--danger); background: var(--white); color: var(--danger); }
 
 .assistant-widget .ai-conversation { background: transparent; }
 
@@ -586,14 +609,13 @@
 
 @media (max-width: 360px) {
   .assistant-titlebar { gap: 4px; padding-inline: 10px 6px; }
-  .assistant-identity { flex: 1 0 82px; min-width: 82px; gap: 7px; }
+  .assistant-identity { flex: 0 1 auto; min-width: 0; gap: 7px; }
   .assistant-header-avatar { width: 34px; height: 34px; }
   .assistant-identity-text b { font-size: 13px; }
   .assistant-identity-text small { max-width: 58px; font-size: 9.5px; }
   .assistant-new-chat { padding-inline: 6px; font-size: 10.5px; }
   .assistant-titlebar .icon-button { width: 28px; height: 28px; }
-  .assistant-history { min-height: 46px; padding-inline: 10px; }
-  .assistant-local-note { display: none; }
+  .assistant-session .select-trigger { font-size: 11px; padding-inline: 4px; }
   .assistant-widget .chat-scroll { padding: 13px 10px 17px; }
   .assistant-widget .chat-message-row { max-width: 97%; }
   .assistant-widget .chat-message.user .chat-message-row { max-width: 91%; }

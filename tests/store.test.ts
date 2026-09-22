@@ -66,6 +66,30 @@ test('chat sessions, drafts and completed tool output survive restart; pending w
   } finally { store.close(); }
 });
 
+test('deleting the open chat opens the next one, and the last chat becomes an empty conversation', () => {
+  const store = new Store(':memory:');
+  try {
+    const first = store.newChat();
+    first.title = '第一则';
+    store.saveChat(first);
+    const second = store.newChat();
+    second.title = '第二则';
+    store.saveChat(second);
+    const opened = store.deleteChat(second.id);
+    assert.equal(opened.id, first.id);
+    assert.equal(store.setting('activeChatId', ''), first.id);
+    assert.equal(store.chats().map(item => item.id).includes(second.id), false);
+    const kept = store.newChat();
+    const stayed = store.deleteChat(first.id);
+    assert.equal(stayed.id, kept.id);
+    const empty = store.deleteChat(kept.id);
+    assert.equal(empty.title, '新对话');
+    assert.equal(empty.entries.length, 0);
+    assert.equal(store.chats().length, 1);
+    assert.throws(() => store.deleteChat(first.id), /不存在/);
+  } finally { store.close(); }
+});
+
 test('applying chat proposal and durable acknowledgement commit together', () => {
   const store = new Store(':memory:');
   try {

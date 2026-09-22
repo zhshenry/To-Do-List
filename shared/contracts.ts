@@ -136,6 +136,7 @@ export interface DesktopAPI {
   chatList(): Promise<ChatSummary[]>;
   chatOpen(id?: string): Promise<ChatSession>;
   chatNew(): Promise<ChatSession>;
+  chatRemove(id: string): Promise<ChatSession>;
   chatDraft(id: string, text: string): Promise<void>;
   chatAsk(input: { sessionId: string; text: string }): Promise<ChatSession>;
   onChatUpdate(callback: (session: ChatSession) => void): () => void;

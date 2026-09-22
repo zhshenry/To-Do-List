@@ -1030,6 +1030,14 @@ function registerHandlers(): void {
     }
     const chat = store.newChat(); emitChat(chat, true); return chat;
   });
+  handle('chat:remove', id => {
+    if (activeRequest) throw new Error('请先等待回复完成或取消生成');
+    const chatId = z.string().uuid().parse(id);
+    if (pending && store.chats().some(item => item.id === chatId) && store.chat(chatId).entries.some(entry => entry.proposal?.token === pending?.plan.token)) pending = null;
+    const chat = store.deleteChat(chatId);
+    emitChat(chat, true);
+    return chat;
+  });
   handle('chat:draft', (id, text) => {
     const chat = store.chat(z.string().uuid().parse(id));
     chat.draft = z.string().max(10000).parse(text); emitChat(store.saveChat(chat));

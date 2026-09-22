@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { PushPin, Minus, Plus, GearSix, Sparkle, Note, Check, Clock, X, ArrowsOut, ArrowsInLineVertical, List, SquaresFour, CaretDown, Archive, DotsThree, Circle } from '@phosphor-icons/react';
 import { DOCK_FEATURE_ENABLED, activeToday, localDay, openToday, taskTime, type State, type Task } from '../shared/contracts';
-import { BrandMark, IconButton, Modal, errorText, scheduleStamp } from './ui';
+import { BrandMark, IconButton, Modal, errorText, scheduleStamp, stampLabel } from './ui';
 import { TaskEditor } from './TaskEditor';
 import { SettingsPanel, type SettingsTab } from './SettingsPanel';
 import { TaskLibrary } from './TaskLibrary';
 import { DockIcon } from './DockIcon';
 import { MiniCard, type MiniMode, type MiniMotion } from './MiniCard';
+import { AssistantApp } from './AssistantApp';
 
 const DOCK_LIFT = 32;
 
@@ -22,6 +23,9 @@ export function App() {
   const [review, setReview] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [assistantVisible, setAssistantVisible] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantClosing, setAssistantClosing] = useState(false);
+  const [assistantPrompt, setAssistantPrompt] = useState<{ id: number; text: string } | null>(null);
   const [mutating, setMutating] = useState(false);
   const [planView, setPlanView] = useState<'rows' | 'tiles'>('rows');
   const [dockOpen, setDockOpen] = useState(false);
@@ -35,6 +39,12 @@ export function App() {
   const today = localDay(clock);
   function accept(state: State) { seq.current++; setData(state); }
   function motionEnabled() { return !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false); }
+  function closeAssistant() {
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    if (reduce) { setAssistantOpen(false); setAssistantClosing(false); return; }
+    setAssistantClosing(true);
+    window.setTimeout(() => { setAssistantOpen(false); setAssistantClosing(false); }, 180);
+  }
   async function changeMainCollapsed(collapsed: boolean, after?: () => void | Promise<void>) {
     if (mutating) return;
     setMutating(true); setError('');
@@ -119,7 +129,7 @@ export function App() {
     </main>;
   }
   if (data.settings.mainCollapsed) return <MiniCard data={data} today={today} api={api} mode={miniMode} setMode={setMiniMode} draft={miniDraft} setDraft={setMiniDraft} mutating={mutating} motion={(mainMotion === 'entering' ? 'entering' : mainMotion === 'expanding' ? 'expanding' : 'idle') as MiniMotion} error={error} clearError={() => setError('')} mutate={mutate} expand={ai => {
-    void changeMainCollapsed(false, async () => { if (ai) await api.assistant({ action: 'show', source: 'main', animate: false }); });
+    void changeMainCollapsed(false, () => { if (ai) setAssistantOpen(true); });
   }} edit={task => { void changeMainCollapsed(false, () => setEditor(task)); }} />;
   return <main className={`widget${mainMotion === 'collapsing' ? ' is-collapsing' : mainMotion === 'entering' ? ' is-entering' : ''}`}>
     <span className="brand-logo" role="img" aria-label="To Do List"><BrandMark /></span>
@@ -143,26 +153,24 @@ export function App() {
         </div>
       </div>
       <section className="agenda">
-        {libraryOpen ? <TaskLibrary tasks={data.tasks} categories={data.categories} api={api} changed={accept} edit={setEditor} close={() => setLibraryOpen(false)} /> : <>
-          <div className="plan-view-toolbar"><button type="button" aria-label={planView === 'rows' ? '切换到方块视图' : '切换到列表视图'} onClick={() => setPlanView(planView === 'rows' ? 'tiles' : 'rows')}>{planView === 'rows' ? <SquaresFour size={15} /> : <List size={15} />}{planView === 'rows' ? '方块视图' : '列表视图'}</button>
+        {libraryOpen ? <TaskLibrary tasks={data.tasks} categories={data.categories} api={api} changed={accept} edit={setEditor} close={() => setLibraryOpen(false)} /> : <TodayBoard tasks={data.tasks} today={today} categoryById={categoryById} planView={planView} mutating={mutating} api={api} mutate={mutate} setEditor={setEditor} toolbar={<div className="plan-view-toolbar"><button type="button" aria-label={planView === 'rows' ? '切换到方块视图' : '切换到列表视图'} onClick={() => setPlanView(planView === 'rows' ? 'tiles' : 'rows')}>{planView === 'rows' ? <SquaresFour size={15} /> : <List size={15} />}{planView === 'rows' ? '方块视图' : '列表视图'}</button>
             <details className="plan-more" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) event.currentTarget.open = false; }} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
               <summary aria-label="更多操作" title="更多操作"><DotsThree size={20} weight="bold" /></summary>
               <button type="button" onClick={async event => { const menu = event.currentTarget.closest('details'); if (menu) { menu.open = false; menu.querySelector('summary')?.focus(); } try { setReview(await api.review()); } catch (e) { setError(errorText(e)); } }}><Note size={17} />今日复盘</button>
             </details>
-          </div>
-          <TodayBoard tasks={data.tasks} today={today} categoryById={categoryById} planView={planView} mutating={mutating} api={api} mutate={mutate} setEditor={setEditor} />
-        </>}
+          </div>} />}
       </section>
       <footer className="widget-footer">
         {dueReminders.length ? <div className="reminder-strip"><Clock size={16} /><span>{dueReminders[0].title}</span><button disabled={mutating} onClick={() => void mutate(() => api.snooze(dueReminders[0].id), '将在10分钟后提醒')}>稍后10分钟</button></div> : null}
         {error ? <div className="error inline-error" role="alert"><span>{error}</span><IconButton label="关闭提示" onClick={() => setError('')}><X size={15} /></IconButton></div> : null}
-        <IconButton className="ai-launcher" label={assistantVisible ? '隐藏 AI 助手' : '打开 AI 助手'} aria-pressed={assistantVisible} onClick={async () => { try { setAssistantVisible(await api.assistant({ action: 'toggle', source: 'main', animate: !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false) })); } catch (e) { setError(errorText(e)); } }}><Sparkle size={25} weight={assistantVisible ? 'fill' : 'regular'} /></IconButton>
+        <IconButton className="ai-launcher" label="打开 AI 助手" aria-pressed={assistantOpen} hidden={assistantOpen || assistantClosing} onClick={() => setAssistantOpen(true)}><Sparkle size={25} weight={assistantOpen ? 'fill' : 'regular'} /></IconButton>
         <div className="toast" role="status" aria-live="polite">{notice}</div>
       </footer>
+      {(assistantOpen || assistantClosing) ? <AssistantApp embedded closing={assistantClosing} onClose={closeAssistant} initialPrompt={assistantPrompt} consumedPrompt={() => setAssistantPrompt(null)} /> : null}
     </div>
     {editor ? <TaskEditor key={editor === 'new' ? 'new' : editor.id} task={editor === 'new' ? undefined : editor} categories={data.categories} api={api} changed={accept} saved={state => { accept(state); setNotice('事项已保存'); }} close={() => setEditor(null)} /> : null}
     {settingsOpen ? <SettingsPanel settings={data.settings} api={api} changed={accept} saved={state => { accept(state); setNotice('设置已保存'); }} close={() => setSettingsOpen(false)} initialTab={settingsTab} /> : null}
-    {review !== null ? <Modal title="今日复盘" close={() => setReview(null)}><div className="form-body"><div className="sheet-card"><pre className="review-content">{review}</pre><p className="field-help">以上由本地事项记录生成。点击下方按钮，会把相关事项和最近对话发送到已配置的模型进行总结。</p></div><button className="primary" onClick={async () => { if (!data.settings.aiEnabled) { setReview(null); setSettingsTab('ai'); setSettingsOpen(true); return; } const prompt = '请根据今日待办、日程和进展生成简短的中文每日复盘：完成事项、未完成事项、明日建议。只返回总结，不修改任何事项。'; setReview(null); try { setAssistantVisible(await api.assistant({ action: 'show', source: 'main', prompt, animate: !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false) })); } catch (e) { setError(errorText(e)); } }}>{data.settings.aiEnabled ? '在 AI 助手中总结' : '先设置 AI 助手'}</button></div></Modal> : null}
+    {review !== null ? <Modal title="今日复盘" close={() => setReview(null)}><div className="form-body"><div className="sheet-card"><pre className="review-content">{review}</pre><p className="field-help">以上由本地事项记录生成。点击下方按钮，会把相关事项和最近对话发送到已配置的模型进行总结。</p></div><button className="primary" onClick={async () => { if (!data.settings.aiEnabled) { setReview(null); setSettingsTab('ai'); setSettingsOpen(true); return; } const prompt = '请根据今日待办、日程和进展生成简短的中文每日复盘：完成事项、未完成事项、明日建议。只返回总结，不修改任何事项。'; setReview(null); setAssistantPrompt({ id: Date.now(), text: prompt }); setAssistantOpen(true); }}>{data.settings.aiEnabled ? '在 AI 助手中总结' : '先设置 AI 助手'}</button></div></Modal> : null}
   </main>;
 }
 
@@ -172,11 +180,11 @@ function shiftDay(day: string, days: number) {
   return localDay(date);
 }
 
-function TodayBoard({ tasks, today, categoryById, planView, mutating, api, mutate, setEditor }: {
+function TodayBoard({ tasks, today, categoryById, planView, mutating, api, mutate, setEditor, toolbar }: {
   tasks: Task[]; today: string; categoryById: Map<string, { id: string; name: string; color: string }>;
   planView: 'rows' | 'tiles'; mutating: boolean;
   api: NonNullable<typeof window.desktop>; mutate: (action: () => Promise<State>, message?: string) => Promise<void> | void;
-  setEditor: (task: Task | 'new') => void;
+  setEditor: (task: Task | 'new') => void; toolbar: ReactNode;
 }) {
   const [openFolder, setOpenFolder] = useState<string | null>(null);
   const [armedId, setArmedId] = useState<string | null>(null);
@@ -216,7 +224,7 @@ function TodayBoard({ tasks, today, categoryById, planView, mutating, api, mutat
     .sort((a, b) => a.plannedDate.localeCompare(b.plannedDate) || taskTime(a) - taskTime(b) || a.createdAt.localeCompare(b.createdAt)) }));
   return <div className="today-board">
     <section className={`plan-card plan-today${todos.length ? '' : ' is-empty'}`} aria-label="待办">
-      <header className="plan-card-heading"><h2>待办</h2></header>
+      <header className="plan-card-heading"><h2>待办</h2>{toolbar}</header>
       {todos.length ? <ul className={planView === 'tiles' ? 'plan-tiles' : 'plan-list'}>{todos.map(task => <PlanRow key={task.id} task={task} tiles={planView === 'tiles'} category={task.categoryId ? categoryById.get(task.categoryId) : undefined} current={task.id === currentId} today={today} mutating={mutating} api={api} mutate={mutate} setEditor={setEditor} armed={armedId === task.id} onCheck={() => onRowCheck(task)} onConfirm={() => confirmRow(task)} onDisarm={disarmArm} />)}</ul> : <div className="plan-empty">点击 + 添加，或让 AI 帮你安排。</div>}
     </section>
     <section className="plan-schedule" aria-label="日程">
@@ -248,7 +256,8 @@ function PlanRow({ task, tiles, category, current, today, mutating, api, mutate,
 }) {
   const overdue = task.status !== 'done' && task.plannedDate < today;
   const checkActive = task.status === 'done' || armed;
-  const checkSize = tiles ? 11 : 14;
+  const checkSize = tiles ? 11 : 12;
+  const showProgress = task.progress !== null && task.progress > 0;
   if (tiles) return <li className={`plan-item is-tile${task.status === 'done' ? ' is-done' : ''}${current ? ' is-current' : ''}${armed ? ' is-armed' : ''}`}>
     <span className="tile-top">
       {task.status === 'doing' ? <span className="tile-pill pill-doing">进行中</span> : <span className="tile-pill pill-todo">待办</span>}
@@ -269,13 +278,13 @@ function PlanRow({ task, tiles, category, current, today, mutating, api, mutate,
   </li>;
   return <li className={`plan-item${task.status === 'done' ? ' is-done' : ''}${current ? ' is-current' : ''}${armed ? ' is-armed' : ''}`}>
     <button type="button" className={`task-check${checkActive ? ' is-active' : ''}`} aria-label={`${task.status === 'done' ? '恢复待办' : armed ? `取消完成 ${task.title}` : `完成 ${task.title}`}`} aria-pressed={task.status === 'done'} disabled={mutating} onClick={onCheck}>{checkActive ? <Check size={checkSize} weight="bold" /> : null}</button>
-    <button type="button" className="plan-main" onClick={() => setEditor(task)} aria-label={`编辑 ${task.title}`}>
-      <span className="plan-task-copy"><b title={task.title}>{task.title}</b><span className="plan-category"><i className="plan-dot" aria-hidden="true" style={{ backgroundColor: category?.color ?? 'var(--muted)' }} />{category?.name ?? '无标签'}{overdue ? <> · <time dateTime={task.plannedDate}>{task.plannedDate}</time></> : null}</span></span>
-      {task.progress !== null ? <span className="plan-progress" role="progressbar" aria-label={`${task.title}进度`} aria-valuenow={task.progress} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${task.progress}%` }} /></span> : null}
-      {task.progress !== null ? <span className="plan-progress-num">{task.progress}%</span> : null}
-      {current && overdue ? <span className="plan-pill">待处理</span> : task.status === 'doing' ? <span className="plan-pill">进行中</span> : null}
-      <time className={overdue ? 'is-overdue' : undefined} dateTime={task.dueAt ?? undefined}>{scheduleStamp(task)}</time>
-    </button>
-    {armed ? <span className="confirm-bar"><button type="button" className="confirm-btn" disabled={mutating} onClick={onConfirm}>确认完成</button><button type="button" className="confirm-cancel" onClick={onDisarm}>取消</button></span> : null}
+    <button type="button" className="plan-title" onClick={() => setEditor(task)} aria-label={`编辑 ${task.title}`}><b title={task.title}>{task.title}</b></button>
+    {armed
+      ? <span className="confirm-bar"><button type="button" className="confirm-btn" disabled={mutating} onClick={onConfirm}>确认完成</button><button type="button" className="confirm-cancel" onClick={onDisarm}>取消</button></span>
+      : <span className="plan-meta">
+          <span className="plan-category">{overdue ? <span className="plan-overdue">已超期</span> : task.status === 'doing' ? <span className="plan-pill">进行中</span> : null}<i className="plan-dot" aria-hidden="true" style={{ backgroundColor: category?.color ?? 'var(--muted)' }} />{category?.name ?? '无标签'}</span>
+          {showProgress ? <span className="plan-progress-num">{task.progress}%</span> : null}
+          <time className={overdue ? 'is-overdue' : undefined} dateTime={task.dueAt ?? undefined}><span className="time-label">{stampLabel(task.kind)}</span>{scheduleStamp(task)}</time>
+        </span>}
   </li>;
 }

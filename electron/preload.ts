@@ -28,6 +28,7 @@ const api: DesktopAPI = {
   chatList: () => ipcRenderer.invoke('chat:list'),
   chatOpen: id => ipcRenderer.invoke('chat:open', id),
   chatNew: () => ipcRenderer.invoke('chat:new'),
+  chatRemove: id => ipcRenderer.invoke('chat:remove', id),
   chatDraft: (id, text) => ipcRenderer.invoke('chat:draft', id, text),
   chatAsk: input => ipcRenderer.invoke('chat:ask', input),
   onChatUpdate: callback => { const listener = (_event: Electron.IpcRendererEvent, session: import('../shared/contracts').ChatSession) => callback(session); ipcRenderer.on('chat:update', listener); return () => ipcRenderer.removeListener('chat:update', listener); },

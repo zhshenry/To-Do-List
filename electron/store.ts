@@ -35,6 +35,18 @@ export class Store {
     this.setSetting('activeChatId', chat.id);
     return chat;
   }
+  deleteChat(id: string): ChatSession {
+    const all = this.chats();
+    const index = all.findIndex(item => item.id === id);
+    if (index < 0) throw new Error('对话不存在，请重新选择');
+    this.db.prepare('DELETE FROM chats WHERE id=?').run(id);
+    const active = this.setting('activeChatId', '');
+    if (active && active !== id) return this.chat(active);
+    const remaining = all.filter(item => item.id !== id);
+    const next = remaining[Math.min(index, remaining.length - 1)];
+    if (next) { this.setSetting('activeChatId', next.id); return this.chat(next.id); }
+    return this.newChat();
+  }
   resolveChatProposal(token: string, state: 'applied' | 'discarded' | 'expired' | 'revised'): ChatSession | undefined {
     for (const summary of this.chats()) {
       const chat = this.chat(summary.id);

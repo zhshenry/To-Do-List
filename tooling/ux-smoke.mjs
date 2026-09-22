@@ -60,12 +60,9 @@ async function checkLauncherInsets() {
   assert.ok(Math.abs(right - bottom) < 1 && right >= 12 && right <= 14, 'AI launcher keeps equal right and bottom insets');
 }
 async function openAssistant() {
-  await page.getByRole('button', { name: '打开 AI 助手', exact: true }).click();
-  if (!assistant) {
-    await poll(async () => { assistant = app.windows().find(window => window.url().includes('window=assistant')); return !!assistant; }, 'assistant renderer');
-    assistant.setDefaultTimeout(12000); assistant.on('pageerror', error => errors.push(error.message));
-  }
-  await assistant.getByLabel('AI 对话输入', { exact: true }).waitFor();
+  if (await page.locator('.assistant-overlay').count() === 0) await page.getByRole('button', { name: '打开 AI 助手', exact: true }).click();
+  assistant = page;
+  await page.locator('.assistant-overlay').getByLabel('AI 对话输入', { exact: true }).waitFor();
 }
 function event(res, delta, finish_reason = null) {
   res.write(`data: ${JSON.stringify({ id: 'chatcmpl-ux', object: 'chat.completion.chunk', choices: [{ index: 0, delta, finish_reason }] })}\n\n`);
@@ -129,10 +126,9 @@ try {
   await resize(440, 700);
   checks.push('compact empty state, unified schedule card and relocated keyboard-accessible review');
   await openAssistant();
-  await assistant.getByText('未启用', { exact: true }).waitFor();
   await assistant.getByText('请先配置 AI 大模型', { exact: true }).waitFor();
   const assistantInput = assistant.getByLabel('AI 对话输入', { exact: true });
-  assert.equal(await assistantInput.getAttribute('placeholder'), '你想让我记录什么？');
+  assert.equal(await assistantInput.getAttribute('placeholder'), 'Enter 发送 · Shift + Enter 换行');
   assert.equal(await assistantInput.evaluate(element => getComputedStyle(element).textAlign), 'left');
   const [assistantComposeBox, assistantInputBox] = await Promise.all([
     assistant.locator('.assistant-compose').boundingBox(),
@@ -159,6 +155,9 @@ try {
   testCategoryId = fixture.categoryId;
   const todayRow = page.locator('.plan-item').filter({ hasText: '完成项目报告' });
   await todayRow.getByText('工作', { exact: true }).waitFor();
+  await todayRow.locator('.time-label', { hasText: '完成时间' }).waitFor();
+  assert.equal(await todayRow.locator('.plan-progress-num').textContent(), '40%');
+  assert.equal(await todayRow.locator('.plan-progress').count(), 0);
   await page.getByRole('region', { name: '待办' }).getByText('下周产品评审', { exact: true }).waitFor();
   await screenshot('main-rows');
   // v2 双步确认：主界面勾选 → armed 确认条 → 确认完成 → 离卡（openToday 过滤）
@@ -192,11 +191,11 @@ try {
   ]);
   await page.locator('.plan-folder-tab').filter({ hasText: '近期' }).click();
   assert.equal(await page.locator('#plan-folder-tomorrow').count(), 0);
-  assert.deepEqual(await page.locator('#plan-folder-soon .plan-task-copy b').allTextContents(), ['后天检查材料']);
+  assert.deepEqual(await page.locator('#plan-folder-soon .plan-title b').allTextContents(), ['后天检查材料']);
   assert.deepEqual(await page.locator('#plan-folder-soon time[datetime]').evaluateAll(nodes => nodes.map(node => node.getAttribute('datetime'))), [`${day(2)}T10:00:00+08:00`]); // v2: 右栏统一 scheduleStamp（含日期），分类行仅逾期挂日期
   await screenshot('upcoming-week');
   await page.locator('.plan-folder-tab').filter({ hasText: '更晚' }).click();
-  assert.deepEqual(await page.locator('#plan-folder-later .plan-task-copy b').allTextContents(), ['下周整理文档', '明年长期规划']);
+  assert.deepEqual(await page.locator('#plan-folder-later .plan-title b').allTextContents(), ['下周整理文档', '明年长期规划']);
   assert.equal(await page.locator('#plan-folder-soon').count(), 0);
   await screenshot('upcoming-later');
   await resize(340, 480);
@@ -401,7 +400,7 @@ try {
   checks.push('fixed-size two-tab settings, persisted standard/narrow width presets, immediate persistence, advanced disclosure, local connection test and missing-model validation');
 
   await openAssistant();
-  await assistant.getByText('可用', { exact: true }).waitFor();
+  await assistant.getByText('可以连续聊一件事', { exact: true }).waitFor();
   await assistant.getByLabel('AI 对话输入', { exact: true }).fill('检查我的事项');
   await assistant.getByRole('button', { name: '发送给 AI', exact: true }).click();
   await assistant.getByText('已经读取你的事项，', { exact: true }).waitFor();
@@ -487,6 +486,10 @@ try {
   await assistant.getByRole('button', { name: '开始新对话', exact: true }).click();
   await poll(async () => await assistant.locator('.chat-message').count() === 0, 'new session without deleting history');
   await assistant.getByLabel('历史对话', { exact: true }).click();
+  await assistant.getByRole('button', { name: '删除 新对话', exact: true }).click();
+  await assistant.getByRole('button', { name: '确认删除 新对话', exact: true }).click();
+  await assistant.getByText('已经读取你的事项，这是逐步显示的完整回复。', { exact: true }).waitFor();
+  await assistant.getByLabel('历史对话', { exact: true }).click();
   await assistant.getByRole('option', { name: '检查我的事项', exact: true }).click();
   await assistant.getByText('已经读取你的事项，这是逐步显示的完整回复。', { exact: true }).waitFor();
   assert.equal(await assistant.getByLabel('AI 对话输入', { exact: true }).inputValue(), '下次继续的草稿');
@@ -501,35 +504,18 @@ try {
   assert.equal(await assistant.getByRole('button', { name: '应用所选 1 项', exact: true }).count(), 0);
   assert.equal((await page.evaluate(() => window.desktop.state())).tasks.some(item => item.title === 'AI 未确认事项'), false);
   checks.push('pending proposal expires safely after restart without applying');
-  await poll(async () => await app.evaluate(({ BrowserWindow }) => {
-    const window = BrowserWindow.getAllWindows().find(item => item.webContents.getURL().includes('window=assistant'));
-    return !!window && window.getOpacity() >= .99;
-  }), 'assistant opening motion settles before narrow resize');
-  await wait(220);
-  await app.evaluate(({ BrowserWindow }) => {
-    const window = BrowserWindow.getAllWindows().find(item => item.webContents.getURL().includes('window=assistant'));
-    window.setBounds({ width: 320, height: 420 });
+  await resize(340, 480);
+  await wait(300);
+  const overlayFit = await page.evaluate(() => {
+    const overlay = document.querySelector('.assistant-overlay')?.getBoundingClientRect();
+    const todo = document.querySelector('.plan-today')?.getBoundingClientRect();
+    return { overlayTop: overlay?.top, overlayHeight: overlay?.height, overlayBottom: overlay?.bottom, todoTop: todo?.top, inner: innerHeight };
   });
-  await poll(async () => await assistant.evaluate(() => innerWidth <= 320), 'assistant narrow viewport');
-  await screenshot('assistant-narrow', assistant);
-  const narrowAssistant = await assistant.evaluate(() => {
-    const title = document.querySelector('.assistant-identity-text b').getBoundingClientRect();
-    const close = document.querySelector('[aria-label="关闭 AI 助手"]').getBoundingClientRect();
-    return {
-      width: innerWidth,
-      compactMedia: matchMedia('(max-width: 360px)').matches,
-      titleLines: title.height / parseFloat(getComputedStyle(document.querySelector('.assistant-identity-text b')).lineHeight),
-      closeRight: close.right,
-      localNote: getComputedStyle(document.querySelector('.assistant-local-note')).display
-    };
-  });
-  assert.equal(narrowAssistant.compactMedia, true, `assistant narrow media query must match at ${narrowAssistant.width}px`);
-  assert.ok(narrowAssistant.titleLines <= 1.5, 'assistant title stays on one line');
-  assert.ok(narrowAssistant.closeRight <= narrowAssistant.width, 'assistant close action stays inside the narrow viewport');
-  assert.equal(narrowAssistant.localNote, 'none', 'secondary local-storage note yields space on narrow assistant windows');
-  assert.equal(await assistant.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-  assert.equal(await assistant.locator('.assistant-footer').evaluate(element => element.getBoundingClientRect().bottom <= innerHeight), true);
-  await assistant.getByRole('button', { name: '关闭 AI 助手', exact: true }).click();
+  assert.ok(overlayFit.overlayHeight <= 520 && overlayFit.overlayBottom <= overlayFit.inner + 1 && overlayFit.todoTop < overlayFit.overlayTop, JSON.stringify(overlayFit));
+  assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some(item => item.webContents.getURL().includes('window=assistant'))), false, 'main assistant stays inside the todo window');
+  await screenshot('assistant-narrow');
+  await page.getByRole('button', { name: '关闭 AI 助手', exact: true }).click();
+  await poll(async () => await page.locator('.assistant-overlay').count() === 0, 'assistant overlay closes');
 
   await resize(340, 480);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
