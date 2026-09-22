@@ -60,8 +60,8 @@
 .mini-task-open:hover { background: transparent; }
 .mini-task-open > b { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 12.5px; line-height: 1.3; }
 .mini-home-with-insight .mini-task-open > b { font-size: 12px; line-height: 1.2; -webkit-line-clamp: 1; }
-.front-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; min-height: 15px; }
-.mini-home-with-insight .front-meta { margin-top: 3px; min-height: 13px; }
+.front-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; height: 16px; }
+.mini-home-with-insight .front-meta { margin-top: 2px; height: 16px; }
 .meta-id { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .meta-cat { display: flex; align-items: center; gap: 4px; min-width: 0; color: var(--muted); font-size: 10px; }
 .meta-cat > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -87,9 +87,9 @@
 @keyframes deck-out-prev { from { transform: none; opacity: 1; } to { transform: translateY(-13px) scale(.93); opacity: 0; } }
 @keyframes deck-in-prev { from { transform: translateY(-13px) scale(.93); opacity: 0; } to { transform: none; opacity: 1; } }
 .confirm-bar { margin-left: auto; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-.mini-root .confirm-btn { display: inline-flex; align-items: center; gap: 4px; min-height: 17px; padding: 1px 8px; font-size: 10px; line-height: 1; font-weight: 600; border-radius: 999px; background: var(--accent); color: var(--white); border: 1px solid var(--accent); white-space: nowrap; }
+.mini-root .confirm-btn { display: inline-flex; align-items: center; gap: 4px; min-height: 15px; padding: 1px 8px; font-size: 10px; line-height: 1; font-weight: 600; border-radius: 999px; background: var(--accent); color: var(--white); border: 1px solid var(--accent); white-space: nowrap; }
 .mini-root .confirm-btn:hover { background: var(--accent-hover); }
-.mini-root .confirm-cancel { min-height: 17px; padding: 1px 7px; font-size: 10px; line-height: 1; border-radius: 999px; background: var(--white); color: var(--muted); }
+.mini-root .confirm-cancel { min-height: 15px; padding: 1px 7px; font-size: 10px; line-height: 1; border-radius: 999px; background: var(--white); color: var(--muted); }
 .mini-task-front.is-empty { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: center; height: 104px; padding-top: 10px; }
 .mini-home-with-insight .mini-task-front.is-empty { height: 70px; padding-top: 7px; }
 .mini-task-front.is-empty > span { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
