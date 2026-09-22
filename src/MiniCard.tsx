@@ -4,7 +4,7 @@ import {
   DotsThree, Flag, GearSix, Minus, Plus, PushPin, Sparkle, Tag, X,
 } from '@phosphor-icons/react';
 import {
-  DOCK_FEATURE_ENABLED, localDay, newTask, openToday,
+  DOCK_FEATURE_ENABLED, insightTarget, localDay, newTask, openToday,
   type Category, type DesktopAPI, type MainWindowWidth, type State, type Task, type TaskInput, type UpdaterStatus,
 } from '../shared/contracts';
 import { AssistantApp } from './AssistantApp';
@@ -65,33 +65,6 @@ function priorityName(priority: TaskInput['priority']) {
   return priority === 'high' ? '高' : priority === 'medium' ? '中' : '低';
 }
 
-function insightFor(task: Task | undefined, count: number, now: Date) {
-  if (!task) return null;
-  const due = task.dueAt ? Date.parse(task.dueAt) : NaN;
-  const minutes = Number.isFinite(due) ? Math.round((due - now.getTime()) / 60000) : null;
-  if (task.kind === 'meeting' && minutes !== null && minutes >= 0 && minutes <= 60) {
-    return {
-      title: `为「${task.title}」留出会前准备`,
-      context: minutes === 0 ? '即将开始' : `距开始约 ${minutes} 分钟`,
-      prompt: `请针对即将开始的日程“${task.title}”生成简短的会前准备清单；如需新增或修改事项，请只生成等待我确认的建议。`,
-    };
-  }
-  if (task.kind === 'task' && minutes !== null && minutes <= 90) {
-    return {
-      title: minutes < 0 ? `重新安排已到期的「${task.title}」` : `先拆出「${task.title}」的下一步`,
-      context: minutes < 0 ? '截止时间已过' : `距截止约 ${minutes} 分钟`,
-      prompt: `请帮我处理待办“${task.title}”：先拆出下一步，并根据今天的安排给出可确认的调整建议。`,
-    };
-  }
-  if (count >= 3 && !task.dueAt) {
-    return {
-      title: `为今天剩余的 ${count} 项安排先后顺序`,
-      context: '当前事项没有具体时间',
-      prompt: '请读取今天尚未完成的事项，给出简短的执行顺序；如需调整时间，请只生成等待我确认的建议。',
-    };
-  }
-  return null;
-}
 
 function SelectorShell({ kind, title, icon, close, children, footer }: {
   kind: AddSelector; title: string; icon: ReactNode; close(): void; children: ReactNode; footer: ReactNode;
@@ -336,7 +309,7 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
   const current = remaining[index % Math.max(remaining.length, 1)];
   const armed = Boolean(current && armedId === current.id);
   const aiAvailable = data.settings.aiEnabled && !!data.settings.activeModelId;
-  const suggestion = !suggestionIgnored && aiAvailable ? insightFor(current, remaining.length, new Date()) : null;
+  const suggestion = !suggestionIgnored && aiAvailable ? insightTarget(remaining, new Date()) : null;
   const showInsight = !aiAvailable || !!suggestion;
 
   function disarmArm() {
