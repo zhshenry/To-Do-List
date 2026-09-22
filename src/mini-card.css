@@ -69,7 +69,7 @@
 .meta-progress { flex: 0 0 auto; color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
 .mini-home-with-insight .meta-cat, .mini-home-with-insight .meta-progress { font-size: 9px; }
 .mini-deck-pager { margin-left: auto; display: flex; align-items: center; color: var(--muted); font-size: 10px; white-space: nowrap; }
-.mini-deck-pager > span { font-variant-numeric: tabular-nums; }
+.mini-deck-pager > span { margin-right: 5px; font-variant-numeric: tabular-nums; }
 .mini-deck-pager button { width: 14px; height: 14px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; }
 .mini-deck-pager button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
 .mini-deck-pager .is-up { transform: rotate(180deg); }
