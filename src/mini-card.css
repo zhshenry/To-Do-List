@@ -103,8 +103,8 @@
 .mini-insight { grid-column: 1 / -1; min-width: 0; height: 22px; display: flex; align-items: center; gap: 5px; padding: 0 6px; border: 0; border-radius: 7px; background: #f8f4ef; text-align: left; }
 .mini-insight:hover { background: #f5e9e2; }
 .mini-insight > span { flex: 0 0 auto; color: var(--accent); font-size: 9px; font-weight: 700; }
-.mini-insight > b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
-.mini-insight > small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 9px; }
+.mini-insight > b { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+.mini-insight > small { flex: 0 0 auto; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 9px; }
 .mini-insight > em { margin-left: auto; flex: 0 0 auto; color: var(--accent); font-size: 9px; font-style: normal; font-weight: 650; }
 .mini-suggestion-preview { height: 77px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 12px; background: #fff; animation: mini-suggestion-down 260ms cubic-bezier(.16, 1, .3, 1) both; transform-origin: top; }
 @keyframes mini-suggestion-down { from { opacity: 0; clip-path: inset(0 0 100%); transform: translateY(-5px); } to { opacity: 1; clip-path: inset(0); transform: none; } }

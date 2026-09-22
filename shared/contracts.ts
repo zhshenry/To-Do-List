@@ -175,3 +175,32 @@ export function activeToday(tasks: Task[], today = localDay()): Task[] {
 export function openToday(tasks: Task[], today = localDay()): Task[] {
   return activeToday(tasks, today).filter(t => t.status !== 'done');
 }
+export interface InsightSuggestion { title: string; context: string; prompt: string; }
+export function insightTarget(tasks: Task[], now = new Date()): InsightSuggestion | null {
+  const due = (t: Task) => (t.dueAt ? Date.parse(t.dueAt) : NaN);
+  const soonest = (list: Task[]) => list.filter(t => Number.isFinite(due(t))).sort((a, b) => due(a) - due(b))[0];
+  const meeting = soonest(tasks.filter(t => t.kind === 'meeting'));
+  if (meeting) {
+    const minutes = Math.round((due(meeting) - now.getTime()) / 60000);
+    if (minutes >= 0 && minutes <= 60) return {
+      title: meeting.title,
+      context: `留出会前准备 · ${minutes === 0 ? '即将开始' : `距开始约 ${minutes} 分钟`}`,
+      prompt: `请针对即将开始的日程“${meeting.title}”生成简短的会前准备清单；如需新增或修改事项，请只生成等待我确认的建议。`,
+    };
+  }
+  const task = soonest(tasks.filter(t => t.kind === 'task'));
+  if (task) {
+    const minutes = Math.round((due(task) - now.getTime()) / 60000);
+    if (minutes <= 90) return {
+      title: task.title,
+      context: minutes < 0 ? '重新安排 · 截止时间已过' : `先拆出下一步 · 距截止约 ${minutes} 分钟`,
+      prompt: `请帮我处理待办“${task.title}”：先拆出下一步，并根据今天的安排给出可确认的调整建议。`,
+    };
+  }
+  if (tasks.length >= 3) return {
+    title: `今日剩余的 ${tasks.length} 项`,
+    context: '安排先后顺序',
+    prompt: '请读取今天尚未完成的事项，给出简短的执行顺序；如需调整时间，请只生成等待我确认的建议。',
+  };
+  return null;
+}

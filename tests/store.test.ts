@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Store } from '../electron/store';
-import { activeToday, newTask, openToday, taskInputSchema, taskPatchSchema, type Task } from '../shared/contracts';
+import { activeToday, insightTarget, newTask, openToday, taskInputSchema, taskPatchSchema, type Task } from '../shared/contracts';
 
 test('openToday excludes completed tasks and meetings while activeToday keeps them', () => {
   const day = '2026-09-21';
@@ -18,6 +18,30 @@ test('openToday excludes completed tasks and meetings while activeToday keeps th
   ];
   assert.deepEqual(openToday(items, day).map(task => task.id), ['没做完', '要开的会']);
   assert.ok(activeToday(items, day).some(task => task.status === 'done'), 'activeToday 仍含已完成（事项库视图依赖）');
+});
+
+test('insightTarget picks globally: soonest meeting, then soonest task, then ordering hint', () => {
+  const mk = (title: string, extra: Partial<Task> = {}): Task => ({ ...newTask(title), id: title, createdAt: '2026-09-22T00:00:00.000Z', updatedAt: '2026-09-22T00:00:00.000Z', completedAt: null, notifiedFor: null, deletedAt: null, ...extra });
+  const now = new Date('2026-09-22T10:00:00+08:00');
+  // 最紧急的临近日程优先于更早的临近待办
+  const withMeeting = [
+    mk('待办A', { plannedDate: '2026-09-22', dueAt: '2026-09-22T10:30:00+08:00' }),
+    mk('临近的会', { plannedDate: '2026-09-22', kind: 'meeting', dueAt: '2026-09-22T10:40:00+08:00' }),
+  ];
+  const meetingPick = insightTarget(withMeeting, now);
+  assert.equal(meetingPick?.title, '临近的会');
+  assert.match(meetingPick?.context ?? '', /留出会前准备/);
+  // 无临近日程时选截止最近的待办；逾期转「重新安排」
+  const taskPick = insightTarget([mk('逾期件', { plannedDate: '2026-09-22', dueAt: '2026-09-22T09:00:00+08:00' }), mk('临期件', { plannedDate: '2026-09-22', dueAt: '2026-09-22T11:00:00+08:00' })], now);
+  assert.equal(taskPick?.title, '逾期件');
+  assert.match(taskPick?.context ?? '', /重新安排/);
+  // 一小时后的会（>60 分钟）不触发日程建议，落到临期待办
+  const laterMeeting = insightTarget([mk('待办B', { plannedDate: '2026-09-22', dueAt: '2026-09-22T11:20:00+08:00' }), mk('稍后的会', { plannedDate: '2026-09-22', kind: 'meeting', dueAt: '2026-09-22T12:00:00+08:00' })], now);
+  assert.equal(laterMeeting?.title, '待办B');
+  // 无临近目标且 ≥3 项时给排序建议；不足 3 项则不显示
+  const many = [mk('甲'), mk('乙'), mk('丙')];
+  assert.equal(insightTarget(many, now)?.title, '今日剩余的 3 项');
+  assert.equal(insightTarget([mk('甲'), mk('乙')], now), null);
 });
 
 test('partial task updates preserve omitted category and progress while explicit null clears them', () => {
