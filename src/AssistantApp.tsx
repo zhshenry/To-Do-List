@@ -1,12 +1,33 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { ArrowClockwise, ArrowsOutSimple, CaretDown, CaretLeft, PaperPlaneTilt, Sparkle, Stop, Trash, X } from '@phosphor-icons/react';
+import { ArrowClockwise, ArrowsOutSimple, Check, CaretRight, ListMagnifyingGlass, Plus, CaretDown, CaretLeft, PaperPlaneTilt, Sparkle, Stop, Trash, X } from '@phosphor-icons/react';
 import { createPortal } from 'react-dom';
-import type { AIAction, AIProposalSelection, AIAsk, AssistantAnchor, ChatSession, ChatSummary, State } from '../shared/contracts';
+import type { AIAction, AIProposalSelection, AIAsk, AssistantAnchor, ChatSession, ChatSummary, State, Task } from '../shared/contracts';
+import { localDay, renderInsightContext } from '../shared/contracts';
 import { AIConversation, type ConversationEntry } from './AIConversation';
 import { markdownToPlainText, renderMarkdown } from './markdown';
 import { IconButton, Modal, Select, errorText } from './ui';
 import './assistant-updates.css';
 
+// ── #18 关联事项选择器：日期分组（今天/明天/近期/更晚/无日期）──
+type PickerGroup = { label: string; tasks: Task[] };
+function groupPickerTasks(tasks: Task[]): PickerGroup[] {
+  const today = localDay();
+  const tomorrow = localDay(new Date(Date.now() + 86400000));
+  const week = localDay(new Date(Date.now() + 7 * 86400000));
+  const groups: PickerGroup[] = [{ label: '今天', tasks: [] }, { label: '明天', tasks: [] }, { label: '近期', tasks: [] }, { label: '更晚', tasks: [] }, { label: '无日期', tasks: [] }];
+  for (const task of tasks) {
+    if (task.deletedAt || task.status === 'done') continue;
+    const bucket = !task.plannedDate ? groups[4] : task.plannedDate === today ? groups[0] : task.plannedDate === tomorrow ? groups[1] : task.plannedDate <= week ? groups[2] : groups[3];
+    bucket.tasks.push(task);
+  }
+  return groups.filter(group => group.tasks.length);
+}
+function filterPickerTasks(tasks: Task[], query: string): PickerGroup[] {
+  const q = query.trim().toLowerCase();
+  const groups = groupPickerTasks(tasks);
+  if (!q) return groups;
+  return groups.map(group => ({ ...group, tasks: group.tasks.filter(task => task.title.toLowerCase().includes(q)) })).filter(group => group.tasks.length);
+}
 function HistoryMenu({ sessions, value, disabled, onOpen, onDelete }: {
   sessions: ChatSummary[]; value: string; disabled: boolean; onOpen: (id: string) => void; onDelete: (id: string) => void;
 }) {
@@ -89,6 +110,13 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   const [logOpen, setLogOpen] = useState(false);
   const [compactComposer, setCompactComposer] = useState(true);
   const [activeAsk, setActiveAsk] = useState<AIAsk | null>(null);
+  const [linkedTask, setLinkedTask] = useState<Task | null>(null);
+  const [plusOpen, setPlusOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerQuery, setPickerQuery] = useState('');
+  const [slashMode, setSlashMode] = useState(false);
+  const [slashIndex, setSlashIndex] = useState(0);
+  const [miniPickerOpen, setMiniPickerOpen] = useState(false);
   const [answerHover, setAnswerHover] = useState(false);
   const answerRef = useRef<HTMLDivElement | null>(null);
   const answerHoverTimer = useRef<number | null>(null);
@@ -150,6 +178,13 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
     const record = chat.entries.flatMap(entry => entry.tools ?? []).find(tool => tool.id === activeAsk.id);
     if (record && record.status !== 'running') setActiveAsk(null);
   }, [chat, activeAsk]);
+  const pickTask = (task: Task) => {
+    setLinkedTask(task);
+    setPlusOpen(false); setPickerOpen(false); setMiniPickerOpen(false);
+    setInput(''); setSlashMode(false);
+    inputRef.current?.focus();
+  };
+  const slashCandidates = slashMode ? filterPickerTasks(data?.tasks ?? [], input).flatMap(group => group.tasks) : [];
   const answerAsk = (kind: 'option' | 'text' | 'skip', value?: string) => {
     if (!activeAsk || !api) return;
     api.answerAsk({ id: activeAsk.id, kind, value });
@@ -161,9 +196,9 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   }, [api, data, chat, compact]);
   useEffect(() => {
     if (!api || !compact) return;
-    void api.compactHeight(modelOpen ? 380 : activeAsk ? 300 : null);
+    void api.compactHeight(modelOpen ? 380 : activeAsk ? 300 : miniPickerOpen ? 320 : null);
     return () => { if (modelOpen) void api.compactHeight(null); };
-  }, [api, compact, modelOpen, activeAsk]);
+  }, [api, compact, modelOpen, activeAsk, miniPickerOpen]);
   useEffect(() => {
     const host = document.querySelector('.mini-window');
     if (host) host.classList.toggle('is-asking-window', Boolean(activeAsk));
@@ -194,11 +229,11 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
     if (!api || !chat || busy || sending.current || !text.trim() || (compact && hasPendingAction)) return;
     if (!available) { gateButtonRef.current?.focus(); return; }
     sending.current = true; setBusy(true); setCompactComposer(false); setModelOpen(false); setLogOpen(false); setError(''); setActionError(''); setFailedText(''); setInput('');
-    try { setChat(await api.chatAsk({ sessionId: chat.id, text: text.trim() })); }
+    try { setChat(await api.chatAsk({ sessionId: chat.id, text: text.trim(), taskId: linkedTask?.id ?? null })); }
     catch (cause) {
       setError(errorText(cause)); setFailedText(text); setInput(current => current || text);
       try { setChat(await api.chatOpen(chat.id)); } catch { /* Keep the last visible transcript when reload fails. */ }
-    } finally { sending.current = false; setBusy(false); void api.chatList().then(setSessions); }
+    } finally { sending.current = false; setBusy(false); setLinkedTask(null); void api.chatList().then(setSessions); }
   }
   async function newConversation() {
     if (!api || busy || mutating || changingChat.current) return;
@@ -349,8 +384,13 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
     </section>;
     return <section className="mini-ai-surface">
       {compactHeader}
-      <form className="mini-ai-compose" onSubmit={send}><textarea ref={inputRef} aria-label="AI 对话输入" rows={1} value={input} maxLength={10000} onChange={event => saveDraft(event.target.value)} placeholder="一句话告诉 AI 你想怎么处理" onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !(event.nativeEvent.isComposing || event.keyCode === 229)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} /><button type="submit" aria-label="发送给 AI" disabled={!input.trim() || mutating}><PaperPlaneTilt size={13} /></button></form>
-      <div className="mini-ai-quick">{gate ? <><span className="mini-ai-gate-label">{gate.label}</span><button type="button" className="mini-ai-gate-button" ref={gateButtonRef} onClick={gate.onAction}>{gate.action}</button></> : null}{modelControl}</div>{modelMenu}
+  <div className="mini-compose-tools"><button type="button" className="mini-plus" aria-label="关联已有事项" aria-expanded={miniPickerOpen} onClick={() => setMiniPickerOpen(value => !value)}><Plus size={14} /></button>{linkedTask ? <button type="button" className="mini-linked-chip" aria-label={`已关联 ${linkedTask.title}，点击取消`} onClick={() => setLinkedTask(null)}><i className={`picker-pill ${linkedTask.kind === 'meeting' ? 'is-meeting' : 'is-task'}`} aria-hidden="true" /><span>{linkedTask.title}</span><X size={11} /></button> : null}</div>
+      <form className="mini-ai-compose" onSubmit={send}><textarea ref={inputRef} aria-label="AI 对话输入" rows={1} value={input} maxLength={10000} onChange={event => saveDraft(event.target.value)} placeholder={linkedTask ? `针对「${linkedTask.title}」提问…` : '一句话告诉 AI 你想怎么处理'} onKeyDown={event => {
+              if (event.key === '/' && (input === '' || input.endsWith(' '))) { event.preventDefault(); setMiniPickerOpen(true); return; }
+              if (event.key === 'Escape' && miniPickerOpen) { event.preventDefault(); setMiniPickerOpen(false); return; }
+              if (event.key === 'Enter' && !event.shiftKey && !(event.nativeEvent.isComposing || event.keyCode === 229)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); }
+            }} /><button type="submit" aria-label="发送给 AI" disabled={!input.trim() || mutating}><PaperPlaneTilt size={13} /></button></form>
+      <div className="mini-ai-quick">{miniPickerOpen ? <div className="mini-task-picker" role="listbox" aria-label="选择事项">{groupPickerTasks(data.tasks).flatMap(group => group.tasks).map(task => <button key={task.id} type="button" role="option" aria-selected={linkedTask?.id === task.id} className={`picker-row${linkedTask?.id === task.id ? ' is-linked' : ''}`} onClick={() => pickTask(task)}><i className={`picker-pill ${task.kind === 'meeting' ? 'is-meeting' : 'is-task'}`} aria-hidden="true" /><span className="picker-title">{task.title}</span>{(() => { const tag = data.categories.find(category => category.id === task.categoryId); return tag ? <span className="picker-tag">{tag.name}</span> : null; })()}{linkedTask?.id === task.id ? <Check size={12} /> : null}</button>)}</div> : null}{gate ? <><span className="mini-ai-gate-label">{gate.label}</span><button type="button" className="mini-ai-gate-button" ref={gateButtonRef} onClick={gate.onAction}>{gate.action}</button></> : null}{modelControl}</div>{modelMenu}
     </section>;
   }
   const history = chat ? (sessions.some(item => item.id === chat.id) ? sessions : [{ id: chat.id, title: chat.title, updatedAt: chat.updatedAt }, ...sessions]) : [];
@@ -373,14 +413,47 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
     {gate && conversation.length ? <div className="ai-gate" role="status"><span>{gate.label}</span><button type="button" ref={gateButtonRef} onClick={gate.onAction}>{gate.action}</button></div> : null}
     <footer className="assistant-footer"><form className="assistant-compose" noValidate onSubmit={send}>
       <span className="assistant-compose-copy">
-        <textarea ref={inputRef} autoFocus rows={2} className="assistant-compose-input resize-none" aria-label="AI 对话输入" value={input} onChange={event => saveDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !(event.nativeEvent.isComposing || event.keyCode === 229)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder={hasPendingAction ? '继续追问，或告诉我如何调整建议…' : 'Enter 发送 · Shift + Enter 换行'} maxLength={10000} />
+        <textarea ref={inputRef} autoFocus rows={2} className="assistant-compose-input resize-none" aria-label="AI 对话输入" value={input} onChange={event => saveDraft(event.target.value)} onKeyDown={event => {
+            if (slashMode) {
+              if (event.key === 'ArrowDown') { event.preventDefault(); setSlashIndex(index => (index + 1) % Math.max(1, slashCandidates.length)); return; }
+              if (event.key === 'ArrowUp') { event.preventDefault(); setSlashIndex(index => (index - 1 + slashCandidates.length) % Math.max(1, slashCandidates.length)); return; }
+              if (event.key === 'Enter' && slashCandidates.length) { event.preventDefault(); pickTask(slashCandidates[Math.min(slashIndex, slashCandidates.length - 1)]); return; }
+              if (event.key === 'Escape') { event.preventDefault(); setSlashMode(false); return; }
+            }
+            if (event.key === '/' && (input === '' || input.endsWith(' '))) { event.preventDefault(); setSlashMode(true); return; }
+            if (event.key === 'Enter' && !event.shiftKey && !(event.nativeEvent.isComposing || event.keyCode === 229)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); }
+          }} placeholder={hasPendingAction ? '继续追问，或告诉我如何调整建议…' : 'Enter 发送 · Shift + Enter 换行'} maxLength={10000} />
       </span>
       <span className="assistant-compose-meta">
+          <button type="button" className="assistant-plus" aria-label="关联已有事项" aria-expanded={plusOpen} disabled={busy} onClick={() => { setPlusOpen(value => !value); setPickerOpen(false); setSlashMode(false); }}><Plus size={15} /></button>
         <span className="assistant-compose-options">
           {data.settings.models.length ? <Select className="assistant-model" aria-label="当前模型" disabled={busy} value={data.settings.activeModelId || data.settings.models[0].id} onChange={id => { if (!busy && id !== data.settings.activeModelId) void api.activateProfile(id).then(setData).catch(cause => setError(errorText(cause))); }} options={data.settings.models.map(model => ({ value: model.id, label: model.name }))} /> : null}
         </span>
         {busy ? <button type="button" className="assistant-stop" aria-label="停止并取消 AI 请求" onClick={() => void api.cancelAI()}><Stop size={13} weight="fill" /><span>停止</span></button> : <button className="send-button" type="submit" aria-label="发送给 AI" disabled={!input.trim() || mutating}><PaperPlaneTilt size={16} weight="fill" /></button>}
       </span>
+          {linkedTask ? <div className="linked-chip-row"><button type="button" className="linked-chip" aria-label={`已关联 ${linkedTask.title}，点击更换`} onClick={() => { setPlusOpen(true); setPickerOpen(true); }}><i className={`picker-pill ${linkedTask.kind === 'meeting' ? 'is-meeting' : 'is-task'}`} aria-hidden="true" /><span className="linked-title">{linkedTask.title}</span>{(() => { const tag = data.categories.find(category => category.id === linkedTask.categoryId); return tag ? <span className="linked-tag">{tag.name}</span> : null; })()}</button><button type="button" className="linked-clear" aria-label="取消关联" onClick={() => setLinkedTask(null)}><X size={12} /></button></div> : null}
+          {plusOpen ? <div className="plus-root" role="menu"><button type="button" role="menuitem" className={pickerOpen ? 'is-open' : ''} onMouseEnter={() => setPickerOpen(true)} onClick={() => setPickerOpen(value => !value)}><ListMagnifyingGlass size={13} />选择事项<CaretRight size={11} /></button></div> : null}
+          {plusOpen && pickerOpen ? <div className="plus-sub" role="listbox" aria-label="选择事项">
+            <div className="picker-search"><ListMagnifyingGlass size={13} /><input autoFocus value={pickerQuery} placeholder="搜索事项或标签" onChange={event => setPickerQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setPlusOpen(false); setPickerOpen(false); setPickerQuery(''); } }} /></div>
+            <div className="picker-list">
+              {filterPickerTasks(data.tasks, pickerQuery).map(group => <div key={group.label}>
+                <div className="picker-group">{group.label}</div>
+                {group.tasks.map(task => <button key={task.id} type="button" role="option" aria-selected={linkedTask?.id === task.id} className={`picker-row${linkedTask?.id === task.id ? ' is-linked' : ''}`} onClick={() => pickTask(task)}>
+                  <span className="picker-row-main"><i className={`picker-pill ${task.kind === 'meeting' ? 'is-meeting' : 'is-task'}`} aria-hidden="true" /><span className="picker-title">{task.title}</span>{linkedTask?.id === task.id ? <Check size={13} className="picker-check" /> : null}</span>
+                  <span className="picker-row-meta">{(() => { const tag = data.categories.find(category => category.id === task.categoryId); return tag ? <><i className="picker-dot" style={{ background: tag.color }} /><span>{tag.name}</span></> : null; })()}<span>{task.dueAt ? new Date(task.dueAt).toLocaleString('sv-SE', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>{task.priority !== 'medium' ? <span>{task.priority === 'high' ? '高优先级' : '低优先级'}</span> : null}</span>
+                </button>)}
+              </div>)}
+              {!filterPickerTasks(data.tasks, pickerQuery).length ? <p className="picker-empty">没有匹配的事项</p> : null}
+            </div>
+            <div className="picker-foot">单选 · 点选即关联并关闭</div>
+          </div> : null}
+          {slashMode && slashCandidates.length ? <div className="slash-menu" role="listbox" aria-label="按 / 关联事项">
+            {slashCandidates.map((task, index) => <button key={task.id} type="button" role="option" aria-selected={index === slashIndex} className={`picker-row${index === slashIndex ? ' is-active' : ''}`} onMouseEnter={() => setSlashIndex(index)} onClick={() => pickTask(task)}>
+              <span className="picker-row-main"><i className={`picker-pill ${task.kind === 'meeting' ? 'is-meeting' : 'is-task'}`} aria-hidden="true" /><span className="picker-title">{task.title}</span></span>
+              <span className="picker-row-meta"><span>{task.dueAt ? new Date(task.dueAt).toLocaleString('sv-SE', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span></span>
+            </button>)}
+            <div className="picker-foot">↑↓ 选择 · Enter 关联 · Esc 关闭</div>
+          </div> : null}
     </form></footer>
     {confirmNew ? <Modal className="assistant-confirm" title="开始新对话？" close={() => setConfirmNew(false)}>
       <div className="confirm-copy">
