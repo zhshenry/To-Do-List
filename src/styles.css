@@ -78,12 +78,14 @@ h3 { font-size: 15px; font-weight: 650; }
 .icon-button.date-action { width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--white); color: var(--ink); }
 .icon-button.date-action:hover, .icon-button.date-action:active { background: var(--white); color: var(--accent); }
 .agenda { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 var(--space) 0; }
-.today-board { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
+/* 待办/日程固定双区：55:45，外层不滚动，两卡各自内部滚动 */
+.today-board { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .plan-card { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px 8px; margin-bottom: 12px; }
-.plan-today { flex: 0 0 auto; display: flex; flex-direction: column; margin-bottom: 10px; }
-.plan-today.is-empty { min-height: 96px; }
-.plan-today .plan-list, .plan-today .plan-tiles { flex: none; overflow: visible; }
-.plan-schedule { flex-shrink: 0; display: flex; flex-direction: column; padding: 10px 12px 4px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; }
+.plan-today { flex: 11 1 0; min-height: 0; display: flex; flex-direction: column; margin-bottom: 10px; }
+.plan-today.is-empty { flex: 0 0 auto; min-height: 96px; }
+.plan-today .plan-list, .plan-today .plan-tiles { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 2px; }
+.plan-schedule { flex: 9 1 0; min-height: 0; display: flex; flex-direction: column; padding: 10px 12px 4px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 12px; }
+.plan-schedule-groups { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 2px; }
 .plan-schedule .plan-empty { padding: 4px 2px 8px; }
 .plan-folder + .plan-folder { border-top: 1px solid var(--line); }
 .plan-folder-tab { width: 100%; display: flex; align-items: center; gap: 8px; min-height: 40px; margin: 0; padding: 8px 0; border: 0; border-radius: inherit; background: transparent; color: var(--ink); text-align: left; }
@@ -94,7 +96,7 @@ h3 { font-size: 15px; font-weight: 650; }
 .plan-folder-count { flex-shrink: 0; min-width: 1.4em; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; }
 .plan-folder-caret { color: var(--muted) !important; transition: transform 180ms cubic-bezier(.2, .7, .2, 1); }
 .plan-folder.is-open .plan-folder-caret { transform: rotate(180deg); }
-.plan-folder-body { padding: 0 0 8px 20px; max-height: 168px; overflow-y: auto; }
+.plan-folder-body { padding: 0 0 8px 20px; }
 .plan-folder-body .plan-item:not(.is-tile) { padding-left: 0; padding-right: 0; }
 .plan-empty { color: var(--muted); font-size: 12px; padding: 8px 2px 10px; }
 .plan-today .plan-empty { flex: 1; display: flex; align-items: center; padding: 16px 2px 24px; }
@@ -510,7 +512,7 @@ input[type="range"].progress-range::-webkit-slider-thumb { appearance: none; wid
 .confirm { padding: 22px; }.confirm p { margin: 15px 0; }.review-content { font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.85; }.ai-message { white-space: pre-wrap; font-size: 14px; line-height: 1.8; }.proposal-action { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 5px; }.proposal-action > small { color: var(--accent); }.proposal-action h3 { margin: 4px 0; }.proposal-action p { font-size: 12px; color: var(--muted); margin: 3px 0; }.proposal-action.is-danger > small { color: var(--danger); }.proposal-card.is-danger .proposal-card-title > small { color: var(--danger); }
 .standalone-message { padding: 25px; background: var(--paper); height: 100%; }
 @media (max-width: 370px) { :root { --space: 17px; }.dashboard-top { align-items: center; gap: 8px; }.date-heading { flex: 1; min-width: 0; padding: 0 0 12px; }.date-heading h1 { font-size: 24px; white-space: nowrap; }.date-heading > span { display: none; }.date-actions { width: auto; padding: 0 0 12px; justify-content: flex-end; }.widget > .brand-logo { left: 11px; }.titlebar { padding-left: 11px; gap: 5px; }.app-title { font-size: 14px; }.plan-card { padding: 8px; }.assistant-titlebar { padding-left: 13px; }.chat-scroll { padding-left: 13px; padding-right: 13px; }.assistant-footer { padding-left: 13px; padding-right: 13px; } }
-@media (max-height: 600px) { .date-heading { padding: 6px 0 10px; }.date-heading h1 { font-size: 24px; }.date-actions { padding-top: 6px; }.plan-folder-body { max-height: 96px; }.plan-folder-tab { min-height: 32px; padding: 5px 0; }.widget-footer { min-height: 58px; padding-top: 4px; padding-bottom: 7px; }.plan-item.is-tile { min-height: 104px; }.task-library { gap: 6px; } }
+@media (max-height: 600px) { .date-heading { padding: 6px 0 10px; }.date-heading h1 { font-size: 24px; }.date-actions { padding-top: 6px; }.plan-folder-tab { min-height: 32px; padding: 5px 0; }.widget-footer { min-height: 58px; padding-top: 4px; padding-bottom: 7px; }.plan-item.is-tile { min-height: 104px; }.task-library { gap: 6px; } }
 /* Accessibility override must win over component feedback transitions. */
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
 @media (forced-colors: active) { * { scrollbar-color: auto; }.task-check,.timeline-marker { border-color: ButtonText; }.done .task-check { forced-color-adjust: none; background: Highlight; color: HighlightText; }.select-option[aria-selected="true"], .segmented button[aria-checked="true"], .date-grid button.is-selected, .time-col button.is-selected { background: Highlight; color: HighlightText; }.segmented::before { display: none; }.toggle[aria-checked="true"] { background: Highlight; border-color: Highlight; }.settings-tabs::after { background: Highlight; } }
