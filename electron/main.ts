@@ -7,7 +7,8 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { Store } from './store';
 import { requestPlan, testConnection, validateEndpoint } from './ai';
-import { DOCK_FEATURE_ENABLED, aiActionSchema, aiConversationTurnSchema, aiProtocolSchema, aiProviderKindSchema, dockIconPresetSchema, mainWindowWidthSchema, rlcdProviderKindSchema, type AIAction, type AIModel, type AIProtocol, type AIProviderKind, type MainWindowWidth, type Proposal, type Settings, type State, type Task, type UpdaterStatus } from '../shared/contracts';
+import { generateInsight, insightTasksHash } from './insight';
+import { DOCK_FEATURE_ENABLED, insightTarget, localDay, aiActionSchema, aiConversationTurnSchema, aiProtocolSchema, aiProviderKindSchema, dockIconPresetSchema, mainWindowWidthSchema, rlcdProviderKindSchema, type AIAction, type AIModel, type InsightSuggestion, type AIProtocol, type AIProviderKind, type MainWindowWidth, type Proposal, type Settings, type State, type Task, type UpdaterStatus } from '../shared/contracts';
 
 const testMode = !app.isPackaged && process.env.TODO_TEST === '1';
 if (testMode && process.env.TODO_TEST_DATA) app.setPath('userData', process.env.TODO_TEST_DATA);
@@ -173,7 +174,7 @@ function settings(): Settings {
   const active = activeConnection(providers, models);
   const profiles = derivedProfiles(providers, models);
   return {
-    providers: publicProviders(providers), models, activeModelId: active?.model.id ?? '',
+    insight: store.setting<InsightSuggestion | null>('insightSuggestion', null), providers: publicProviders(providers), models, activeModelId: active?.model.id ?? '',
     rlcdProviders: publicRlcdProviders(), rlcdModels: loadRlcdModels(), activeRlcdModelId: store.setting('activeRlcdModelId', ''),
     profiles, activeProfileId: active?.model.id ?? '',
     endpoint: active?.provider.endpoint ?? '', model: active?.model.name ?? '', protocol: active?.provider.protocol ?? 'openai-chat', hasKey: !!active?.provider.apiKey,
@@ -216,8 +217,54 @@ function assertUniqueName(items: { id: string; name: string }[], name: string, e
   if (items.some(item => item.id !== exceptId && item.name.toLocaleLowerCase('zh-CN') === normalized)) throw new Error(message);
 }
 function state(): State { return { tasks: store.all(true), categories: store.categories(), settings: settings() }; }
+// ── AI 建议（#21）：主进程单次补全 + 三层防刷（哈希 / 防抖 / 退避），失败静默回退本地规则 ──
+let insightRunning = false;
+let insightLastAttempt = 0;
+let insightLastHash = "";
+let insightFailures = 0;
+const insightBackoff = () => (insightFailures >= 2 ? 15 * 60 * 1000 : insightFailures === 1 ? 5 * 60 * 1000 : 0);
+async function refreshInsight(force = false): Promise<void> {
+  if (insightRunning) return;
+  const today = localDay();
+  const tasks = store.all().filter(task => !task.deletedAt && task.status !== 'done' && task.plannedDate === today);
+  const hash = insightTasksHash(tasks);
+  const stored = store.setting<InsightSuggestion | null>('insightSuggestion', null);
+  const generatedAt = stored?.generatedAt ? Date.parse(stored.generatedAt) : 0;
+  const stale = !stored || Date.now() - generatedAt > 60 * 60 * 1000 || localDay(new Date(generatedAt)) !== today;
+  const blocked = Date.now() < insightLastAttempt + insightBackoff();
+  if (!force) {
+    if (blocked) return;
+    if (Date.now() - insightLastAttempt < 90 * 1000) return;
+    if (!stale && hash === insightLastHash) return;
+    if (!stale && stored) return;
+  }
+  const connection = activeConnection();
+  if (!store.setting('aiEnabled', false) || !connection || !tasks.length) return;
+  insightRunning = true; insightLastAttempt = Date.now(); insightLastHash = hash;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    let ai = null;
+    for (let attempt = 0; attempt < 2 && !ai; attempt++) {
+      try { ai = await generateInsight({ endpoint: connection.provider.endpoint, model: connection.model.name, protocol: connection.provider.protocol, key: decryptKey(connection.provider.apiKey) }, tasks, controller.signal); }
+      catch { /* 静默 */ }
+    }
+    clearTimeout(timeout);
+    if (!ai) { insightFailures++; return; }
+    insightFailures = 0;
+    const task = tasks.find(item => item.id === ai!.taskId)!;
+    const suggestion: InsightSuggestion = {
+      title: task.title, context: ai!.context,
+      prompt: `${ai!.prompt}如需新增或修改事项，请只生成等待我确认的建议。`,
+      source: 'ai', generatedAt: new Date().toISOString(), taskId: task.id, dueAt: task.dueAt,
+    };
+    store.setSetting('insightSuggestion', suggestion);
+    changed();
+  } finally { insightRunning = false; }
+}
 function changed(): State {
   for (const target of [win, dockWin, assistantWin]) if (target && !target.isDestroyed() && !target.webContents.isDestroyed()) target.webContents.send('changed');
+  void refreshInsight();
   return state();
 }
 function assistantVisible(): boolean { return !!assistantWin && !assistantWin.isDestroyed() && assistantWin.isVisible(); }

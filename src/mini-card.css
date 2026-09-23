@@ -355,6 +355,10 @@
 @media (prefers-reduced-motion: reduce) {
   .mini-root *, .mini-root *::before, .mini-root *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+.mini-insight.is-ai, .mini-insight.is-open.is-ai { border-color: var(--accent); background: var(--accent-soft); }
+.mini-insight.is-ai span { color: var(--accent); font-weight: 650; }
+.mini-insight.is-ai em { color: var(--accent); }
+.mini-insight.is-open { width: 100%; margin-bottom: 8px; }
 
 /* ── ask_user 折叠态提问视图（#19，262px 扩展高度）── */
 .mini-ai-surface.is-asking { padding: 10px 12px; gap: 8px; }
