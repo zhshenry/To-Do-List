@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ArrowClockwise, CalendarCheck, CaretDown, CheckCircle, FileText, Info, Sparkle } from '@phosphor-icons/react';
 import type { AIAction, AIProposalSelection, AIToolEvent, Category, ChatEntry, Task } from '../shared/contracts';
 import { AIProposalCards } from './AIProposalCards';
+import { renderMarkdown } from './markdown';
 
 export interface StandaloneConversationProps {
   entries: ChatEntry[]; pendingText: string; busy: boolean; error: string; actionError: string;
@@ -62,7 +63,7 @@ export function StandaloneAIConversation({ entries, pendingText, busy, error, ac
             {entry.role === 'assistant' ? <span className="assistant-avatar" aria-hidden="true"><Sparkle size={14} weight="fill" /></span> : null}
             <div className="chat-message-column">
               {entry.role === 'assistant' ? <span className="chat-speaker">AI 助手</span> : null}
-              <div className="chat-bubble">{entry.content ? <p>{entry.content}</p> : entry.streaming ? <span className="typing-indicator" aria-label="AI 正在生成回复"><i /><i /><i /></span> : null}
+              <div className={"chat-bubble" + (entry.role === 'assistant' && entry.content ? ' md' : '')}>{entry.role === 'assistant' && entry.content ? <div className="md-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.content) }} /> : entry.content ? <p>{entry.content}</p> : entry.streaming ? <span className="typing-indicator" aria-label="AI 正在生成回复"><i /><i /><i /></span> : null}
                 {entry.role === 'assistant' && tools.length ? <ActivityDisclosure tools={tools} active={Boolean(entry.streaming || tools.some(tool => tool.status === 'running'))} /> : null}
                 {entry.error ? <p className="chat-entry-error" role="alert">{entry.error}</p> : null}
                 {entry.proposal?.actions.length && entry.actionState && entry.actionState !== 'pending' ? <p className={`chat-action-state ${entry.actionState}`}>{entry.actionState === 'applied' ? '已应用到事项。' : entry.actionState === 'discarded' ? '已放弃，没有修改事项。' : entry.actionState === 'revised' ? '建议已根据后续对话更新。' : '建议已过期，未修改事项。'}</p> : null}
