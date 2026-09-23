@@ -197,3 +197,61 @@ test('connection test pings the named model and maps auth failures', async () =>
     await assert.rejects(testConnection({ endpoint, model: 'blocked', protocol: 'openai-chat', key: 'k' }, AbortSignal.timeout(5000)), /认证失败/);
   } finally { server.closeAllConnections(); server.close(); }
 });
+
+test('ask_user suspends the loop, delivers the answer back to the model, and records the tool event', async () => {
+  const toolBodies: { messages: { role: string; content: unknown }[] }[] = [];
+  const server = createServer(async (req, res) => {
+    let raw = ''; for await (const chunk of req) raw += chunk;
+    const body = JSON.parse(raw);
+    if (body.messages.some((message: { role: string }) => message.role === 'tool')) {
+      toolBodies.push(body);
+      writeChatSse(res, '好的，按你的选择继续。');
+      return;
+    }
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.write(`data: ${JSON.stringify({ id: 'ask', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'call-ask', type: 'function', function: { name: 'ask_user', arguments: '{"question":"周报今天发还是明天发？","options":[{"label":"今天发"},{"label":"明天发","description":"留出缓冲"}]}' } }] }, finish_reason: null }] })}\n\n`);
+    res.write(`data: ${JSON.stringify({ id: 'ask', object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] })}\n\n`);
+    res.end('data: [DONE]\n\n');
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  try {
+    const events: AIToolEvent[] = []; const deltas: string[] = [];
+    const endpoint = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`;
+    const onAskUser = async (ask: { question: string; options: { label: string }[] }) => {
+      assert.equal(ask.question, '周报今天发还是明天发？');
+      assert.equal(ask.options[1]?.label, '明天发');
+      return '用户选择：今天发（选项回答）';
+    };
+    const plan = await requestPlan({ endpoint, model: 'test', protocol: 'openai-chat', key: 'k' }, '帮我发周报', [], [], [], AbortSignal.timeout(15000), text => deltas.push(text), event => events.push(event), onAskUser);
+    assert.match(plan.message ?? deltas.join(''), /按你的选择/);
+    const askEvents = events.filter(event => event.name === 'ask_user');
+    assert.deepEqual(askEvents.map(event => event.status), ['running', 'complete']);
+    assert.equal(askEvents[0].label, '向用户提问');
+    assert.match(askEvents[1].output, /用户选择：今天发/);
+    // 模型收到的工具结果包含用户回答
+    const toolMessage = toolBodies[0]?.messages.find((message: { role: string }) => message.role === 'tool');
+    assert.match(String(toolMessage?.content ?? ''), /用户选择：今天发/);
+  } finally { server.closeAllConnections(); server.close(); }
+});
+
+test('ask_user rejection (abort) yields a cancellation tool result instead of crashing the loop', async () => {
+  const server = createServer(async (req, res) => {
+    let raw = ''; for await (const chunk of req) raw += chunk;
+    const body = JSON.parse(raw);
+    if (body.messages.some((message: { role: string }) => message.role === 'tool')) { writeChatSse(res, '已取消本轮操作。'); return; }
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.write(`data: ${JSON.stringify({ id: 'ask2', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'call-ask2', type: 'function', function: { name: 'ask_user', arguments: '{"question":"确定要继续吗？"}' } }] }, finish_reason: null }] })}\n\n`);
+    res.write(`data: ${JSON.stringify({ id: 'ask2', object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] })}\n\n`);
+    res.end('data: [DONE]\n\n');
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  try {
+    const events: AIToolEvent[] = [];
+    const endpoint = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`;
+    const plan = await requestPlan({ endpoint, model: 'test', protocol: 'openai-chat', key: 'k' }, '继续', [], [], [], AbortSignal.timeout(15000), undefined, event => events.push(event), async () => { throw new Error('aborted'); });
+    const askEnd = events.find(event => event.name === 'ask_user' && event.status === 'complete');
+    assert.ok(askEnd, 'ask_user must complete even on rejection');
+    assert.match(askEnd.output, /用户已取消/);
+    assert.match(plan.message, /已取消本轮操作/);
+  } finally { server.closeAllConnections(); server.close(); }
+});

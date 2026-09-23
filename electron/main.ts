@@ -803,6 +803,13 @@ function checkSender(event: IpcMainInvokeEvent): void {
   const allowed = [win, dockWin, assistantWin].some(target => target && !target.isDestroyed() && event.sender === target.webContents && event.senderFrame === target.webContents.mainFrame);
   if (!allowed) throw new Error('请求来源无效');
 }
+type AskAnswerInput = { id: string; kind: 'option' | 'text' | 'skip'; value?: string };
+let activeAskAnswer: ((input: AskAnswerInput) => boolean) | null = null;
+ipcMain.on('ask:answer', (event, input) => {
+  checkSender(event);
+  const parsed = z.object({ id: z.string().min(1), kind: z.enum(['option', 'text', 'skip']), value: z.string().max(500).optional() }).safeParse(input);
+  if (parsed.success) activeAskAnswer?.(parsed.data);
+});
 function handle(channel: string, fn: (...args: any[]) => unknown): void {
   ipcMain.handle(channel, async (event, ...args) => {
     checkSender(event);
@@ -1181,7 +1188,48 @@ function registerHandlers(): void {
       change(entry); emitChat(store.saveChat(latest));
     };
     const controller = new AbortController(); activeRequest = controller;
-    const timeout = setTimeout(() => controller.abort(), 45000);
+    let timeout = setTimeout(() => controller.abort(), 45000);
+    // 分段超时：流式阶段 45s；ask_user 等待用户期间不计时（等的是用户不是网络）
+    const pauseAskTimeout = () => clearTimeout(timeout);
+    const resumeAskTimeout = () => { timeout = setTimeout(() => controller.abort(), 45000); };
+    const pendingAsks = new Map<string, { resolve: (answer: string) => void }>();
+    const askLog = new Map<string, { question: string; answer?: string }>();
+    const composeAnswer = (input: AskAnswerInput): string => input.kind === 'option'
+      ? `用户选择：${input.value ?? ''}（选项回答）`
+      : input.kind === 'text' ? `用户输入：${(input.value ?? '').trim()}`
+        : '用户跳过了这个问题，请按你的判断继续，并在结果中说明假设';
+    const deliverAsk = (ask: import('../shared/contracts').AIAsk): boolean => {
+      let delivered = false;
+      for (const target of [assistantWin, win]) {
+        if (target && !target.isDestroyed() && !target.webContents.isDestroyed() && target.isVisible()) { target.webContents.send('ai:ask', ask); delivered = true; }
+      }
+      return delivered;
+    };
+    const onAskUser = async (ask: import('../shared/contracts').AIAsk): Promise<string> => {
+      pauseAskTimeout();
+      askLog.set(ask.id, { question: ask.question });
+      try {
+        if (!deliverAsk(ask)) await showAssistant(undefined, true, 'main');
+        if (!deliverAsk(ask)) throw new Error('没有可用的提问窗口');
+        return await new Promise<string>(resolve => {
+          pendingAsks.set(ask.id, { resolve });
+          activeAskAnswer = input => {
+            const pending = pendingAsks.get(input.id);
+            if (!pending) return false;
+            pendingAsks.delete(input.id);
+            const answer = composeAnswer(input);
+            const log = askLog.get(input.id);
+            if (log) log.answer = input.kind === 'option' ? input.value ?? '' : input.kind === 'text' ? (input.value ?? '').trim() : '已跳过';
+            pending.resolve(answer);
+            return true;
+          };
+          controller.signal.addEventListener('abort', () => { pendingAsks.delete(ask.id); resolve('用户已取消'); }, { once: true });
+        });
+      } finally {
+        activeAskAnswer = null;
+        resumeAskTimeout();
+      }
+    };
     const tasks = store.all(); const categories = store.categories();
     let deltaTimer: ReturnType<typeof setTimeout> | null = null; let latestDelta = '';
     const pushDelta = (text: string) => {
@@ -1197,9 +1245,10 @@ function registerHandlers(): void {
     try {
       const plan = await requestPlan({ endpoint: connection.provider.endpoint, model: connection.model.name, protocol: connection.provider.protocol, key }, request.text, request.history, tasks, categories, controller.signal, onDelta, tool => updateEntry(entry => {
         const tools = entry.tools ?? []; const index = tools.findIndex(item => item.id === tool.id);
-        if (index < 0) tools.push(tool); else tools[index] = tool;
+        const enriched = tool.name === 'ask_user' ? { ...tool, question: askLog.get(tool.id)?.question, answer: tool.status === 'complete' ? askLog.get(tool.id)?.answer : undefined } : tool;
+        if (index < 0) tools.push(enriched); else tools[index] = enriched;
         entry.tools = tools;
-      }));
+      }), onAskUser);
       if (controller.signal.aborted) throw new Error('已取消生成，输入内容已保留。');
       if (deltaTimer) { clearTimeout(deltaTimer); deltaTimer = null; }
       if (latestDelta) pushDelta(latestDelta);

@@ -356,6 +356,21 @@
   .mini-root *, .mini-root *::before, .mini-root *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
 
+/* ── ask_user 折叠态提问视图（#19，262px 扩展高度）── */
+.mini-ai-surface.is-asking { padding: 10px 12px; gap: 8px; }
+.mini-ask-question { margin: 0; font-size: var(--fs-compact); font-weight: 650; line-height: 1.45; }
+.mini-ask-options { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.mini-ask-options button { display: flex; align-items: center; gap: 6px; min-height: var(--ctl-sm); padding: 4px 8px; border-radius: var(--r-control); text-align: left; }
+.mini-ask-options button:hover { border-color: var(--accent); }
+.mini-ask-label { font-size: var(--fs-compact); font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini-ask-options small { margin-left: auto; color: var(--muted); font-size: var(--fs-compact-sm); flex: 0 0 auto; }
+.mini-ask-free { margin: 0; color: var(--muted); font-size: var(--fs-compact-sm); }
+.mini-ask-foot { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: var(--fs-compact-sm); padding-bottom: 2px; }
+.mini-ask-foot span { flex: 1; min-width: 0; }
+.mini-ask-foot button { min-height: var(--ctl-xs); font-size: var(--fs-compact-sm); padding: 2px 8px; }
+.mini-window.is-asking-window { height: auto; min-height: 176px; }
+.mini-ai-surface.is-asking { height: auto; display: flex; flex-direction: column; grid-template-rows: none; overflow: visible; }
+.mini-window.is-asking-window .mini-content { height: auto; overflow: visible; }
 /* ── AI 回复悬浮预览（#17 二期）——尺寸取自尺寸阶 ── */
 .mini-ai-answer { position: relative; }
 .mini-ai-answer-extra { display: flex; justify-content: flex-end; gap: 6px; margin-top: 3px; }

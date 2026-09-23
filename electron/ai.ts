@@ -114,7 +114,7 @@ export function requestSystemPrompt(now: Date, snapshot: ReturnType<typeof taskS
 categoryId 只能使用已有标签或本次 propose_create_category 返回的 id，不能编造。已有标签：${JSON.stringify(snapshot.categoryContext)}。
 priority 只能是 high、medium 或 low。
 存在歧义时用中文提问，不要调用修改类工具。查询、复盘和建议安排可以直接回答。未经用户明确要求不修改事项或标签。
-信息不足时先一次性问清再建议，优先列出候选选项让用户直接选（如“放进哪个标签？工作 / 生活 / 不设标签”）；同一问题只问一次，用户回答后立即据此生成建议，不要重复追问。以下情况必须先问：分类有歧义（存在多个标签且用户未指明）、时间表述不完整（如“明天”但未说几点且事项类型为日程，kind 为 "meeting"）、指向不明（“把它改掉”但本轮有多个事项）。用户明确说了“不设标签”“随便”或此前对话已回答过时，不得再问。
+信息不足时调用 ask_user 工具一次性问清（question 简短，尽量给 2–4 个候选选项让用户直接选）；同一问题只问一次，用户回答后立即据此生成建议，不要重复追问。以下情况必须先问：分类有歧义（存在多个标签且用户未指明）、时间表述不完整（如“明天”但未说几点且事项类型为日程，kind 为 "meeting"）、指向不明（“把它改掉”但本轮有多个事项）。用户明确说了“不设标签”“随便”或此前对话已回答过时，不得再问。
 最近对话只是上下文，不代表建议已经应用；以最新事项数据和用户在对话中明确说明的应用或放弃状态为准。
 这是最近 ${snapshot.context.length} 条事项，不能声称覆盖未提供的数据：${JSON.stringify(snapshot.context)}`;
 }
@@ -165,7 +165,7 @@ export function planFromReply(text: string, actions: AIPlan['actions'], knownTas
   return plan;
 }
 
-export async function requestPlan(config: { endpoint: string; model: string; protocol: AIProtocol; key: string }, text: string, history: AIConversationTurn[], tasks: Task[], categories: Category[], signal: AbortSignal, onDelta?: (text: string) => void, onTool?: (event: AIToolEvent) => void): Promise<AIPlan> {
+export async function requestPlan(config: { endpoint: string; model: string; protocol: AIProtocol; key: string }, text: string, history: AIConversationTurn[], tasks: Task[], categories: Category[], signal: AbortSignal, onDelta?: (text: string) => void, onTool?: (event: AIToolEvent) => void, onAskUser?: (ask: import('../shared/contracts').AIAsk) => Promise<string>): Promise<AIPlan> {
   const endpoint = validateEndpoint(config.endpoint);
   const snapshot = taskSnapshot(tasks, categories);
   const actions: AIPlan['actions'] = [];
@@ -285,19 +285,36 @@ export async function requestPlan(config: { endpoint: string; model: string; pro
         return toolText('已记录删除标签建议，等待用户确认后才会写入。关联事项会变为无标签。');
       },
     }),
+    defineTool({
+      name: 'ask_user', label: '向用户提问', description: '就当前任务的歧义向用户提问并等待回答，循环会暂停直到用户应答。仅在必要歧义时使用；鼓励给出 2–4 个候选选项，也允许只提问不给选项。',
+      parameters: Type.Object({
+        question: Type.String({ minLength: 1, maxLength: 200 }),
+        options: Type.Optional(Type.Array(Type.Object({ label: Type.String({ minLength: 1, maxLength: 30 }), description: Type.Optional(Type.String({ maxLength: 60 })) }), { minItems: 2, maxItems: 4 })),
+      }),
+      execute: async (toolCallId, params) => {
+        if (!onAskUser) return toolText('当前环境无法向用户提问，请按你的判断继续，并在结果中说明假设。');
+        const payload = params as { question: string; options?: { label: string; description?: string }[] };
+        try {
+          const answer = await onAskUser({ id: toolCallId, question: payload.question, options: payload.options ?? [] });
+          return toolText(answer);
+        } catch {
+          return toolText('用户已取消');
+        }
+      },
+    }),
   ];
   let session: Awaited<ReturnType<typeof createAgentSession>>['session'] | undefined;
   try {
     session = (await createAgentSession({
       cwd: workspace, agentDir: workspace, model, thinkingLevel: 'off', modelRuntime, settingsManager, resourceLoader: loader,
       sessionManager: SessionManager.inMemory(workspace), noTools: 'builtin', customTools,
-      tools: ['list_tasks', 'propose_create', 'propose_update', 'propose_remove', 'propose_create_category', 'propose_update_category', 'propose_remove_category'],
+      tools: ['list_tasks', 'propose_create', 'propose_update', 'propose_remove', 'propose_create_category', 'propose_update_category', 'propose_remove_category', 'ask_user'],
     })).session;
     const abort = () => { void session?.abort(); };
     signal.addEventListener('abort', abort);
     const unsubscribe = session.subscribe(event => {
       if (event.type === 'tool_execution_start' || event.type === 'tool_execution_update' || event.type === 'tool_execution_end') {
-        const labels: Record<string, string> = { list_tasks: '读取事项和标签', propose_create: '生成新增事项建议', propose_update: '生成修改事项建议', propose_remove: '生成删除事项建议', propose_create_category: '生成新增标签建议', propose_update_category: '生成修改标签建议', propose_remove_category: '生成删除标签建议' };
+        const labels: Record<string, string> = { list_tasks: '读取事项和标签', propose_create: '生成新增事项建议', propose_update: '生成修改事项建议', propose_remove: '生成删除事项建议', propose_create_category: '生成新增标签建议', propose_update_category: '生成修改标签建议', propose_remove_category: '生成删除标签建议', ask_user: '向用户提问' };
         if (!labels[event.toolName]) return;
         const result = event.type === 'tool_execution_end' ? event.result : event.type === 'tool_execution_update' ? event.partialResult : undefined;
         // Only tool text is visible; never forward model reasoning, request headers, or raw events.

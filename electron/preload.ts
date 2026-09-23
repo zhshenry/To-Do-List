@@ -37,6 +37,8 @@ const api: DesktopAPI = {
   chatRemove: id => ipcRenderer.invoke('chat:remove', id),
   chatDraft: (id, text) => ipcRenderer.invoke('chat:draft', id, text),
   chatAsk: input => ipcRenderer.invoke('chat:ask', input),
+  onAIAsk: callback => { const listener = (_event: Electron.IpcRendererEvent, ask: import('../shared/contracts').AIAsk) => callback(ask); ipcRenderer.on('ai:ask', listener); return () => ipcRenderer.removeListener('ai:ask', listener); },
+  answerAsk: input => ipcRenderer.send('ask:answer', input),
   onChatUpdate: callback => { const listener = (_event: Electron.IpcRendererEvent, session: import('../shared/contracts').ChatSession) => callback(session); ipcRenderer.on('chat:update', listener); return () => ipcRenderer.removeListener('chat:update', listener); },
   onChatSelected: callback => { const listener = (_event: Electron.IpcRendererEvent, session: import('../shared/contracts').ChatSession) => callback(session); ipcRenderer.on('chat:selected', listener); return () => ipcRenderer.removeListener('chat:selected', listener); },
   updateProposal: input => ipcRenderer.invoke('proposal:update', input),
