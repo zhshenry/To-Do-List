@@ -156,7 +156,7 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   }, [api, data, chat, compact]);
   useEffect(() => {
     if (!api || !compact) return;
-    void api.compactHeight(modelOpen ? 380 : activeAsk ? 262 : null);
+    void api.compactHeight(modelOpen ? 380 : activeAsk ? 300 : null);
     return () => { if (modelOpen) void api.compactHeight(null); };
   }, [api, compact, modelOpen, activeAsk]);
   useEffect(() => {

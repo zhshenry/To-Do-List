@@ -368,3 +368,5 @@
 .mini-ask-foot { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: var(--fs-compact-sm); padding-bottom: 2px; }
 .mini-ask-foot span { flex: 1; min-width: 0; }
 .mini-ask-foot button { min-height: var(--ctl-xs); font-size: var(--fs-compact-sm); padding: 2px 8px; }
+.mini-root:has(.mini-ai-surface.is-asking) .mini-window { height: auto; min-height: 176px; }
+.mini-ai-surface.is-asking { height: auto; display: flex; flex-direction: column; grid-template-rows: none; overflow: visible; }
