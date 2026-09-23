@@ -355,3 +355,6 @@
 @media (prefers-reduced-motion: reduce) {
   .mini-root *, .mini-root *::before, .mini-root *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+.mini-insight.is-ai, .mini-insight.is-open.is-ai { border-color: var(--accent); background: var(--accent-soft); }
+.mini-insight.is-ai span { color: var(--accent); font-weight: 650; }
+.mini-insight.is-ai em { color: var(--accent); }

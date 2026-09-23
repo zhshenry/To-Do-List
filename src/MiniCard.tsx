@@ -4,7 +4,7 @@ import {
   DotsThree, Flag, GearSix, Minus, Plus, PushPin, Sparkle, Tag, X,
 } from '@phosphor-icons/react';
 import {
-  DOCK_FEATURE_ENABLED, insightTarget, localDay, newTask, openToday,
+  DOCK_FEATURE_ENABLED, insightTarget, localDay, newTask, openToday, renderInsightContext,
   type Category, type DesktopAPI, type MainWindowWidth, type State, type Task, type TaskInput, type UpdaterStatus,
 } from '../shared/contracts';
 import { AssistantApp } from './AssistantApp';
@@ -309,7 +309,11 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
   const current = remaining[index % Math.max(remaining.length, 1)];
   const armed = Boolean(current && armedId === current.id);
   const aiAvailable = data.settings.aiEnabled && !!data.settings.activeModelId;
-  const suggestion = !suggestionIgnored && aiAvailable ? insightTarget(remaining, new Date()) : null;
+  const storedInsight = data.settings.insight;
+  const aiInsight = aiAvailable && storedInsight?.source === 'ai' ? storedInsight : null;
+  const suggestion = !suggestionIgnored ? (aiInsight ?? (aiAvailable ? insightTarget(remaining, new Date()) : null)) : null;
+  const insightMinutes = suggestion?.dueAt ? Math.round((Date.parse(suggestion.dueAt) - Date.now()) / 60000) : null;
+  const insightIsAi = suggestion?.source === 'ai';
   const showInsight = !aiAvailable || !!suggestion;
 
   function disarmArm() {
@@ -456,10 +460,10 @@ export function MiniCard({ data, today, api, mode, setMode, draft, setDraft, mut
       {titlebar}
       <div className={`mini-content motion-${contentMotion || 'idle'}${mode === 'ai' ? ' is-ai' : ''}`}>
         {mode === 'home' ? suggestionOpen && suggestion ? <>
-          <button type="button" className="mini-insight is-open" aria-expanded="true" onClick={() => setSuggestionOpen(false)}><span>AI 建议</span><b>{suggestion.title}</b><small>{suggestion.context}</small><em>收起</em></button>
-          <section className="mini-suggestion-preview" aria-label="AI 建议预览"><span><b>生成可确认的处理方案</b><small>AI 会先读取当前事项；写入前仍需你确认。</small></span><div><button type="button" onClick={() => { setSuggestionIgnored(true); setSuggestionOpen(false); }}>忽略</button><button type="button" onClick={() => startSuggestion(`${suggestion.prompt}\n请先和我确认目标，再生成建议。`)}>调整</button><button type="button" className="primary" onClick={() => startSuggestion()}>生成方案</button></div></section>
+          <button type="button" className={`mini-insight is-open${insightIsAi ? ' is-ai' : ''}`} aria-expanded="true" aria-label={insightIsAi ? 'AI 生成的建议' : '建议'} onClick={() => setSuggestionOpen(false)}><span>{insightIsAi ? '✦ AI 建议' : '建议'}</span><b>{suggestion.title}</b><small>{renderInsightContext(suggestion.context, insightMinutes)}</small><em>收起</em></button>
+          <section className="mini-suggestion-preview" aria-label="AI 建议预览"><span><b>让 AI 助手处理这条建议</b><small>会针对「{suggestion.title}」给出处理建议；改动先出建议卡，确认后才写入。</small></span><div><button type="button" onClick={() => { setSuggestionIgnored(true); setSuggestionOpen(false); }}>忽略</button><button type="button" onClick={() => startSuggestion(`${suggestion.prompt}\n请先和我确认目标，再生成建议。`)}>调整</button><button type="button" className="primary" onClick={() => startSuggestion()}>生成方案</button></div></section>
         </> : <div className={showInsight ? 'mini-home-with-insight' : 'mini-home'}>
-          {!aiAvailable ? !!data.settings.endpoint.trim() && !!data.settings.model.trim() ? <button type="button" className="mini-insight" aria-label="AI建议：AI 未启用" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: true, autoStart: data.settings.autoStart }))}><span>AI建议：</span><b>AI 未启用</b><em>启用</em></button> : <button type="button" className="mini-insight" aria-label="AI建议：请先配置AI大模型" onClick={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))}><span>AI建议：</span><b>请先配置AI大模型</b><em>配置</em></button> : suggestion ? <button type="button" className="mini-insight" aria-expanded="false" onClick={() => setSuggestionOpen(true)}><span>AI 建议</span><b>{suggestion.title}</b><small>{suggestion.context}</small><em>查看</em></button> : null}
+          {!aiAvailable ? !!data.settings.endpoint.trim() && !!data.settings.model.trim() ? <button type="button" className="mini-insight" aria-label="AI建议：AI 未启用" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: true, autoStart: data.settings.autoStart }))}><span>建议：</span><b>配置 AI 后可获得个性化建议</b><em>启用</em></button> : <button type="button" className="mini-insight" aria-label="AI建议：请先配置AI大模型" onClick={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))}><span>建议：</span><b>配置 AI 后可获得个性化建议</b><em>配置</em></button> : suggestion ? <button type="button" className={`mini-insight${insightIsAi ? ' is-ai' : ''}`} aria-expanded="false" aria-label={insightIsAi ? 'AI 生成的建议' : '建议'} onClick={() => setSuggestionOpen(true)}><span>{insightIsAi ? '✦ AI 建议' : '建议'}</span><b>{suggestion.title}</b><small>{renderInsightContext(suggestion.context, insightMinutes)}</small><em>查看</em></button> : null}
           <div className="mini-home-main">
             <div className={`mini-task-stack${remaining.length === 2 ? ' is-pair' : ''}${deck ? ` is-rolling stack-${deck.dir}` : ''}`} onWheel={event => { event.preventDefault(); page(event.deltaY > 0 ? 1 : -1); }}>
               {remaining.length ? <><button type="button" className="mini-stack-sheet back" aria-label="查看下一项" disabled={remaining.length < 2} onClick={() => page(1)} />{remaining.length > 2 ? <span className="mini-stack-sheet middle" /> : null}

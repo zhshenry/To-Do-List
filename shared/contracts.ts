@@ -96,6 +96,7 @@ export const mainWindowWidthSchema = z.enum(['standard', 'narrow']);
 export type MainWindowWidth = z.infer<typeof mainWindowWidthSchema>;
 export interface Settings {
   providers: AIProvider[]; models: AIModel[]; activeModelId: string;
+  insight: InsightSuggestion | null;
   profiles: AIProfile[]; activeProfileId: string;
   endpoint: string; model: string; protocol: AIProtocol; hasKey: boolean; aiEnabled: boolean;
   alwaysOnTop: boolean; autoStart: boolean; mainVisible: boolean; mainCollapsed: boolean; mainWindowWidth: MainWindowWidth; dockEnabled: boolean; dockAlwaysOnTop: boolean;
@@ -175,7 +176,11 @@ export function activeToday(tasks: Task[], today = localDay()): Task[] {
 export function openToday(tasks: Task[], today = localDay()): Task[] {
   return activeToday(tasks, today).filter(t => t.status !== 'done');
 }
-export interface InsightSuggestion { title: string; context: string; prompt: string; }
+export interface InsightSuggestion { title: string; context: string; prompt: string; source?: 'local' | 'ai'; generatedAt?: string; taskId?: string; dueAt?: string | null; }
+export function renderInsightContext(context: string, minutes: number | null): string {
+  if (!context.includes('{min}')) return context;
+  return context.replace('{min}', minutes === null ? '' : String(Math.max(0, minutes)));
+}
 export function insightTarget(tasks: Task[], now = new Date()): InsightSuggestion | null {
   const due = (t: Task) => (t.dueAt ? Date.parse(t.dueAt) : NaN);
   const soonest = (list: Task[]) => list.filter(t => Number.isFinite(due(t))).sort((a, b) => due(a) - due(b))[0];
