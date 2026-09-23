@@ -114,12 +114,27 @@ await page.locator('.mini-ai-surface.is-asking').waitFor({ timeout: 8000 }).catc
     asks: await candidate.evaluate(() => (window.__asks ?? 'none').length ?? 'none').catch(() => 'err'),
   })));
   console.log('WINDOWS:', JSON.stringify(windowDump));
-  const dump = await page.evaluate(() => ({ surfaces: [...document.querySelectorAll('.mini-ai-surface')].map(node => node.className), windowAsks: window.__asks ?? 'no-probe', overlayInDom: !!document.querySelector('.assistant-overlay') }));
+  const dump = await page.evaluate(() => ({ surfaces: [...document.querySelectorAll('.mini-ai-surface')].map(node => node.className), windowAsks: window.__asks ?? 'no-probe', overlayInDom: !!document.querySelector('.assistant-overlay'), hasSupport: CSS.supports('selector(:has(*))'), innerH: window.innerHeight, miniWindowH: document.querySelector('.mini-window')?.getBoundingClientRect().height ?? null, rootH: document.querySelector('.mini-root')?.getBoundingClientRect().height ?? null, askingH: document.querySelector('.mini-ai-surface.is-asking')?.getBoundingClientRect().height ?? null, winClass: document.querySelector('.mini-window')?.className ?? null }));
   console.log('MINI ASK DEBUG:', JSON.stringify(dump, null, 1));
   throw new Error('mini is-asking missing');
 });
 await page.waitForTimeout(700);
 await page.screenshot({ path: path.join(outputDir, '19-ask-mini.png') });
+const probe = await page.evaluate(() => {
+  const win = document.querySelector('.mini-window');
+  const computed = win ? getComputedStyle(win) : null;
+  return {
+    hasSupport: CSS.supports('selector(:has(*))'), innerH: window.innerHeight,
+    bodyH: document.body.getBoundingClientRect().height,
+    rootH: document.querySelector('.mini-root')?.getBoundingClientRect().height ?? null,
+    winH: win?.getBoundingClientRect().height ?? null,
+    winClass: win?.className ?? null,
+    computedHeight: computed?.height ?? null,
+    parentChain: (() => { let node = document.querySelector('.mini-ai-surface.is-asking'); const chain = []; while (node && chain.length < 8) { chain.push(node.className?.toString().slice(0, 40) || node.tagName); node = node.parentElement; } return chain; })(),
+    askingH: document.querySelector('.mini-ai-surface.is-asking')?.getBoundingClientRect().height ?? null,
+  };
+});
+console.log('MINI PROBE:', JSON.stringify(probe));
 await page.locator('.mini-ask-options button', { hasText: '发我本人' }).click();
 await poll(async () => {
   const session = await page.evaluate(() => window.desktop.chatOpen());

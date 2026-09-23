@@ -160,6 +160,10 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
     return () => { if (modelOpen) void api.compactHeight(null); };
   }, [api, compact, modelOpen, activeAsk]);
   useEffect(() => {
+    const host = document.querySelector('.mini-window');
+    if (host) host.classList.toggle('is-asking-window', Boolean(activeAsk));
+  }, [activeAsk, compact]);
+  useEffect(() => {
     if (!modelOpen) return;
     requestAnimationFrame(() => {
       const target = modelMenuRef.current?.querySelector<HTMLButtonElement>('[aria-checked="true"]') ?? modelMenuRef.current?.querySelector<HTMLButtonElement>('button');
