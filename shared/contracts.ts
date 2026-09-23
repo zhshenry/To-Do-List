@@ -72,6 +72,13 @@ export const AI_PROVIDER_PRESETS: Record<AIProviderKind, { name: string; endpoin
   deepseek: { name: 'DeepSeek', endpoint: 'https://api.deepseek.com/v1', protocol: 'openai-chat' },
   custom: { name: '', endpoint: '', protocol: 'openai-chat' },
 };
+export const rlcdProviderKindSchema = z.enum(['typesafe', 'openrouter', 'custom']);
+export type RlcdProviderKind = z.infer<typeof rlcdProviderKindSchema>;
+export const RLCD_PROVIDER_PRESETS: Record<RlcdProviderKind, { name: string; endpoint: string; protocol: AIProtocol }> = {
+  typesafe: { name: 'TypeSafe', endpoint: 'https://api.typesafe.ai/v1', protocol: 'openai-chat' },
+  openrouter: { name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1', protocol: 'openai-chat' },
+  custom: { name: '', endpoint: '', protocol: 'openai-chat' },
+};
 export interface Proposal extends AIPlan { token: string; }
 export interface AIToolEvent { id: string; name: string; label: string; status: 'running' | 'complete' | 'error' | 'interrupted'; output: string; question?: string; answer?: string; }
 export interface AIAskOption { label: string; description?: string; }
@@ -87,7 +94,13 @@ export interface AIProvider {
   id: string; kind: AIProviderKind; name: string; endpoint: string; protocol: AIProtocol; hasKey: boolean;
 }
 export interface AIModel {
-  id: string; providerId: string; name: string;
+  id: string; providerId: string; name: string; vision: boolean;
+}
+export interface RlcdProvider {
+  id: string; kind: RlcdProviderKind; name: string; endpoint: string; protocol: AIProtocol; hasKey: boolean;
+}
+export interface RlcdModel {
+  id: string; providerId: string; name: string; vision: boolean;
 }
 export interface AIProfile {
   id: string; name: string; endpoint: string; model: string; protocol: AIProtocol; hasKey: boolean;
@@ -98,6 +111,7 @@ export const mainWindowWidthSchema = z.enum(['standard', 'narrow']);
 export type MainWindowWidth = z.infer<typeof mainWindowWidthSchema>;
 export interface Settings {
   providers: AIProvider[]; models: AIModel[]; activeModelId: string;
+  rlcdProviders: RlcdProvider[]; rlcdModels: RlcdModel[]; activeRlcdModelId: string;
   profiles: AIProfile[]; activeProfileId: string;
   endpoint: string; model: string; protocol: AIProtocol; hasKey: boolean; aiEnabled: boolean;
   alwaysOnTop: boolean; autoStart: boolean; mainVisible: boolean; mainCollapsed: boolean; mainWindowWidth: MainWindowWidth; dockEnabled: boolean; dockAlwaysOnTop: boolean;
@@ -132,7 +146,13 @@ export interface DesktopAPI {
   removeProvider(id: string): Promise<State>;
   saveModel(input: { id?: string; providerId: string; name: string }): Promise<State>;
   removeModel(id: string): Promise<State>;
+  setModelVision(input: { modelId: string; vision: boolean }): Promise<State>;
   testConnection(input: { providerId?: string; endpoint?: string; protocol?: AIProtocol; apiKey?: string; model: string }): Promise<string>;
+  saveRlcdProvider(input: { id?: string; kind: RlcdProviderKind; name: string; endpoint: string; protocol: AIProtocol; apiKey?: string; clearKey?: boolean }): Promise<State>;
+  removeRlcdProvider(id: string): Promise<State>;
+  saveRlcdModel(input: { id?: string; providerId: string; name: string }): Promise<State>;
+  removeRlcdModel(id: string): Promise<State>;
+  testRlcdConnection(input: { providerId?: string; endpoint?: string; protocol?: AIProtocol; apiKey?: string; model: string }): Promise<string>;
   activateProfile(id: string): Promise<State>;
   ask(input: { text: string; history: AIConversationTurn[] }): Promise<Proposal>;
   chatList(): Promise<ChatSummary[]>;

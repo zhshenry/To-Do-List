@@ -1,8 +1,8 @@
 import { DockIcon, DOCK_ICONS } from './DockIcon';
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { CaretDown, Check, Eye, EyeSlash, Lightning, PencilSimple, Plus, Trash, X } from '@phosphor-icons/react';
-import type { AIModel, AIProtocol, AIProvider, AIProviderKind, DesktopAPI, MainWindowWidth, Settings, State, UpdaterStatus } from '../shared/contracts';
-import { AI_PROVIDER_PRESETS, DOCK_FEATURE_ENABLED } from '../shared/contracts';
+import type { AIModel, AIProtocol, AIProvider, AIProviderKind, DesktopAPI, MainWindowWidth, RlcdProviderKind, Settings, State, UpdaterStatus } from '../shared/contracts';
+import { AI_PROVIDER_PRESETS, DOCK_FEATURE_ENABLED, RLCD_PROVIDER_PRESETS } from '../shared/contracts';
 import { Modal, IconButton, Segmented, Select, HelpTip, errorText } from './ui';
 import './settings.css';
 
@@ -40,29 +40,55 @@ const PROVIDER_KIND_OPTIONS = [
   { value: 'deepseek', label: 'DeepSeek' },
   { value: 'custom', label: '自定义' },
 ];
+const RLCD_KIND_OPTIONS = [
+  { value: 'typesafe', label: 'TypeSafe' },
+  { value: 'openrouter', label: 'OpenRouter' },
+  { value: 'custom', label: '自定义' },
+];
+type ModelSurface = 'llm' | 'rlcd';
+type AnyProviderKind = AIProviderKind | RlcdProviderKind;
+const KIND_OPTIONS = { llm: PROVIDER_KIND_OPTIONS, rlcd: RLCD_KIND_OPTIONS } as const;
 const PROTOCOL_OPTIONS = [
   { value: 'openai-chat', label: 'OpenAI Chat Completions' },
   { value: 'openai-responses', label: 'OpenAI Responses' },
   { value: 'anthropic', label: 'Anthropic Messages' },
 ];
-type ProviderDraft = { id: string; kind: AIProviderKind; name: string; endpoint: string; protocol: AIProtocol; apiKey: string; clearKey: boolean };
-function emptyProvider(): ProviderDraft {
-  return { id: '', kind: 'openai', ...AI_PROVIDER_PRESETS.openai, apiKey: '', clearKey: false };
+type ProviderDraft = { id: string; kind: AnyProviderKind; name: string; endpoint: string; protocol: AIProtocol; apiKey: string; clearKey: boolean };
+type StoredProviderLike = { id: string; kind: AnyProviderKind; name: string; endpoint: string; protocol: AIProtocol; hasKey: boolean };
+type ProviderPreset = { name: string; endpoint: string; protocol: AIProtocol };
+function presetFor(surface: ModelSurface, kind: AnyProviderKind): ProviderPreset {
+  return surface === 'rlcd' ? RLCD_PROVIDER_PRESETS[kind as RlcdProviderKind] : AI_PROVIDER_PRESETS[kind as AIProviderKind];
 }
-function providerDraftFrom(provider: AIProvider): ProviderDraft {
+function emptyProvider(surface: ModelSurface): ProviderDraft {
+  const kind = surface === 'rlcd' ? 'typesafe' : 'openai';
+  return { id: '', kind, ...presetFor(surface, kind), apiKey: '', clearKey: false };
+}
+function providerDraftFrom(provider: { id: string; kind: AnyProviderKind; name: string; endpoint: string; protocol: AIProtocol }): ProviderDraft {
   return { id: provider.id, kind: provider.kind, name: provider.name, endpoint: provider.endpoint, protocol: provider.protocol, apiKey: '', clearKey: false };
 }
-function withKind(kind: AIProviderKind, current: ProviderDraft): ProviderDraft {
-  const preset = AI_PROVIDER_PRESETS[kind];
+function withKind(surface: ModelSurface, kind: AnyProviderKind, current: ProviderDraft): ProviderDraft {
+  const preset = presetFor(surface, kind);
   return { ...current, kind, name: preset.name, endpoint: preset.endpoint, protocol: preset.protocol };
 }
 
-function ProviderCard({ provider, models, activeModelId, api, changed, fail, onClose, onDirty, onPending, registerFlush, canCancel = false }: {
-  provider: AIProvider | null; models: AIModel[]; activeModelId: string; api: DesktopAPI;
+function ProviderCard({ surface = 'llm', provider, models, activeModelId, api, changed, fail, onClose, onDirty, onPending, registerFlush, canCancel = false }: {
+  surface?: ModelSurface; provider: StoredProviderLike | null; models: AIModel[]; activeModelId: string; api: DesktopAPI;
   changed(state: State): void; fail(message: string): void; onClose?(): void; onDirty(dirty: boolean): void;
   registerFlush: RegisterFlush; canCancel?: boolean; onPending(dirty: boolean): void;
 }) {
-  const [draft, setDraft] = useState<ProviderDraft>(() => provider ? providerDraftFrom(provider) : emptyProvider());
+  const rlcd = surface === 'rlcd';
+  const kindOptions = KIND_OPTIONS[surface];
+  const saveProviderOp = rlcd
+    ? (input: ProviderDraft, name: string) => api.saveRlcdProvider({ ...input, kind: input.kind as RlcdProviderKind, id: input.id || undefined, name })
+    : (input: ProviderDraft, name: string) => api.saveProvider({ ...input, kind: input.kind as AIProviderKind, id: input.id || undefined, name });
+  const saveModelOp = rlcd ? api.saveRlcdModel : api.saveModel;
+  const removeModelOp = rlcd ? api.removeRlcdModel : api.removeModel;
+  const removeProviderOp = rlcd ? api.removeRlcdProvider : api.removeProvider;
+  const testOp = rlcd ? api.testRlcdConnection : api.testConnection;
+  function storedScope(state: State) {
+    return rlcd ? { providers: state.settings.rlcdProviders, models: state.settings.rlcdModels } : { providers: state.settings.providers, models: state.settings.models };
+  }
+  const [draft, setDraft] = useState<ProviderDraft>(() => provider ? providerDraftFrom(provider) : emptyProvider(surface));
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -81,15 +107,15 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
   const modelEditRef = useRef({ id: editingModel, name: modelDraft }); modelEditRef.current = { id: editingModel, name: modelDraft };
   const queue = useRef(Promise.resolve());
   const baseline = useRef(draft);
-  const storedRef = useRef(provider); storedRef.current = provider ?? storedRef.current;
+  const storedRef = useRef<StoredProviderLike | null>(provider); storedRef.current = provider ?? storedRef.current;
   const saved = provider;
   const current = models.some(model => model.id === activeModelId);
   function update(next: ProviderDraft) { draftRef.current = next; setDraft(next); if (!saved) onDirty(true); else onPending(JSON.stringify(next) !== JSON.stringify(baseline.current)); }
-  async function persist(next = draft): Promise<{ stored: AIProvider; state: State }> {
-    const name = next.name.trim() || AI_PROVIDER_PRESETS[next.kind].name;
+  async function persist(next = draft): Promise<{ stored: StoredProviderLike; state: State }> {
+    const name = next.name.trim() || presetFor(surface, next.kind).name;
     if (!name || !next.endpoint.trim()) throw new Error('请填写供应商名称和服务地址');
-    const state = await api.saveProvider({ ...next, id: next.id || undefined, name });
-    const stored = state.settings.providers.find(item => next.id ? item.id === next.id : item.name === name);
+    const state = await saveProviderOp(next, name);
+    const stored = storedScope(state).providers.find(item => next.id ? item.id === next.id : item.name === name);
     if (!stored) throw new Error('供应商未保存');
     storedRef.current = stored;
     baseline.current = providerDraftFrom(stored);
@@ -109,9 +135,9 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
     await run(async () => {
       await flushProvider();
       const target = storedRef.current ?? (await persist(draftRef.current)).stored;
-      let state = await api.saveModel({ providerId: target.id, name: modelRef.current.trim() || name });
-      if (!saved) {
-        const created = state.settings.models.find(model => model.providerId === target.id && model.name === name);
+      let state = await saveModelOp({ providerId: target.id, name: modelRef.current.trim() || name });
+      if (!saved && !rlcd) {
+        const created = storedScope(state).models.find(model => model.providerId === target.id && model.name === name);
         if (created) state = await api.activateProfile(created.id);
       }
       await finishNew(state);
@@ -151,7 +177,7 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
       const model = name.trim();
       if (!model) throw new Error('请先填写模型名称或 ID');
       const next = draftRef.current;
-      const note = await api.testConnection({
+      const note = await testOp({
         providerId: saved?.id,
         endpoint: next.endpoint.trim() || undefined,
         protocol: next.protocol,
@@ -171,7 +197,7 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
     if (name === model.name) { setEditingModel(null); onPending(false); return; }
     const operation = queue.current.catch(() => undefined).then(async () => {
       if (modelEditRef.current.id !== model.id) return;
-      changed(await api.saveModel({ id: model.id, providerId: model.providerId, name }));
+      changed(await saveModelOp({ id: model.id, providerId: model.providerId, name }));
       modelEditRef.current.id = null; setEditingModel(null); onPending(false);
     });
     queue.current = operation;
@@ -185,20 +211,20 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
       <span className="provider-card-spacer" />
       {confirming ? <>
         <button type="button" disabled={busy} onClick={() => setConfirming(false)}>保留</button>
-        <button type="button" className="danger" disabled={busy} onClick={() => void run(async () => { const state = await api.removeProvider(saved.id); onDirty(false); onPending(false); changed(state); })}>删除</button>
+        <button type="button" className="danger" disabled={busy} onClick={() => void run(async () => { const state = await removeProviderOp(saved.id); onDirty(false); onPending(false); changed(state); })}>删除</button>
       </> : <IconButton className="text-danger" label={`删除供应商 ${saved.name}`} onClick={() => setConfirming(true)}><Trash size={16} /></IconButton>}
     </header> : null}
     {!saved ? <p className="field-help">选择服务，填写密钥和模型后添加。新供应商在点击添加前不会保存。</p> : null}
     {!saved || editing ? <>
       <label htmlFor={saved ? `ai-provider-kind-${saved.id}` : 'ai-provider-kind'}>供应商类型</label>
       <Select id={saved ? `ai-provider-kind-${saved.id}` : 'ai-provider-kind'} aria-label="供应商类型" value={draft.kind} onChange={value => {
-        const kind = value as AIProviderKind;
-        const next = withKind(kind, draftRef.current);
+        const kind = value as AnyProviderKind;
+        const next = withKind(surface, kind, draftRef.current);
         // A stored credential is never forwarded to a different service by changing its preset.
         if (kind !== draft.kind && (saved?.hasKey || draftRef.current.apiKey)) { fail('当前已填写密钥。请先移除密钥再切换供应商，或添加新供应商。'); return; }
         update(next);
         if (saved) void flushProvider().catch(e => fail(errorText(e)));
-      }} options={PROVIDER_KIND_OPTIONS} />
+      }} options={kindOptions} />
     </> : null}
     {rename || (!saved && draft.kind === 'custom') ? <>
       <div className="label-with-help">
@@ -224,7 +250,8 @@ function ProviderCard({ provider, models, activeModelId, api, changed, fail, onC
         {editingModel === model.id ? <input aria-label={`编辑模型 ${model.name}`} value={modelDraft} maxLength={200} autoFocus onChange={e => { modelEditRef.current.name = e.target.value; setModelDraft(e.target.value); onPending(e.target.value !== model.name); }} onBlur={() => void renameModel(model).catch(e => fail(errorText(e)))} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void renameModel(model).catch(cause => fail(errorText(cause))); } }} /> : <span className="category-name">{model.name}</span>}
         <ModelTestButton label={`测试连接 ${model.name}`} status={testFor(model.id)} detail={testFor(model.id) === 'idle' ? '' : testMessage} disabled={busy || !(saved || draft.endpoint.trim())} onClick={() => void probe(model.name, model.id)} />
         {editingModel === model.id ? <IconButton label={`保存 ${model.name}`} onMouseDown={e => e.preventDefault()} onClick={() => void renameModel(model).catch(cause => fail(errorText(cause)))}><Check size={15} /></IconButton> : <IconButton label={`重命名 ${model.name}`} onClick={() => { modelEditRef.current = { id: model.id, name: model.name }; setEditingModel(model.id); setModelDraft(model.name); }}><PencilSimple size={15} /></IconButton>}
-        <IconButton className="text-danger" label={`删除 ${model.name}`} onClick={() => void run(async () => { changed(await api.removeModel(model.id)); })}><Trash size={15} /></IconButton>
+        {!rlcd ? <IconButton className={`vision-toggle${model.vision ? ' is-active' : ''}`} aria-pressed={model.vision} label={`视觉（多模态） ${model.name}${model.vision ? '，已开启' : '，未开启'}`} title={model.vision ? '该模型已标记支持视觉，点击关闭' : '标记该模型是否支持视觉（多模态）'} onClick={() => void run(async () => { changed(await api.setModelVision({ modelId: model.id, vision: !model.vision })); })}><Eye size={15} weight={model.vision ? 'fill' : 'regular'} /></IconButton> : null}
+        <IconButton className="text-danger" label={`删除 ${model.name}`} onClick={() => void run(async () => { changed(await removeModelOp(model.id)); })}><Trash size={15} /></IconButton>
         {testKey === model.id && testStatus === 'error' ? <p className="model-test-note" role="alert">{testMessage}</p> : null}
       </li>)}</ul> : <p className="field-help">还没有模型。同一供应商可添加多个模型名称或 ID，每个都能单独测试。</p>}
       {adding ? <div className="model-create"><input id={saved ? `ai-model-${saved.id}` : 'ai-model'} aria-label="模型名称 / ID" value={modelName} maxLength={200} placeholder="填写服务提供的模型名称" autoComplete="off" onChange={e => { modelRef.current = e.target.value; setModelName(e.target.value); onDirty(Boolean(e.target.value)); }} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void addModel(); } }} /><button type="button" disabled={busy || !modelName.trim() || !draft.endpoint.trim()} onClick={() => void addModel()}>{saved ? '添加模型' : '添加并使用'}</button><ModelTestButton label="测试连接" status={testFor('new')} detail={testFor('new') === 'idle' ? '' : testMessage} disabled={busy || !modelName.trim() || !(saved || draft.endpoint.trim())} onClick={() => void probe(modelName, 'new')} /></div> : models.length < 8 ? <button type="button" className="model-add-button" onClick={() => setAdding(true)}><Plus size={14} weight="bold" /> 添加模型</button> : null}
@@ -255,6 +282,7 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
   const [updater, setUpdater] = useState<UpdaterStatus | null>(null);
   const [creating, setCreating] = useState(false);
+  const [creatingRlcd, setCreatingRlcd] = useState(false);
   const api = useMemo<DesktopAPI>(() => {
     function track<T>(action: () => Promise<T>): Promise<T> {
       setPending(count => count + 1); setError('');
@@ -273,6 +301,11 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
       removeProvider: id => track(() => rawApi.removeProvider(id)),
       saveModel: input => track(() => rawApi.saveModel(input)),
       removeModel: id => track(() => rawApi.removeModel(id)),
+      setModelVision: input => track(() => rawApi.setModelVision(input)),
+      saveRlcdProvider: input => track(() => rawApi.saveRlcdProvider(input)),
+      removeRlcdProvider: id => track(() => rawApi.removeRlcdProvider(id)),
+      saveRlcdModel: input => track(() => rawApi.saveRlcdModel(input)),
+      removeRlcdModel: id => track(() => rawApi.removeRlcdModel(id)),
       activateProfile: id => track(() => rawApi.activateProfile(id)),
     };
   }, [rawApi]);
@@ -394,10 +427,20 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
             <HelpTip label="启用 AI 说明">发送时会把本次输入、当前对话最近6轮、已有标签和最近最多120条事项的名称、时间及备注发送到选用的模型服务。对话历史保存在本机，退出后仍保留。可在 AI 助手中管理历史；本地事项和提醒不依赖 AI。</HelpTip>
           </div>
         </section>
-        {!settings.providers.length && !creating ? <p className="field-help">还没有供应商。</p> : null}
-        {settings.providers.map(provider => <ProviderCard key={provider.id} provider={provider} models={settings.models.filter(model => model.providerId === provider.id)} activeModelId={settings.activeModelId} api={api} changed={changed} fail={setError} registerFlush={registerFlush} onDirty={dirty => setDrafts(current => ({ ...current, [provider.id]: dirty }))} onPending={dirty => setUncommitted(current => ({ ...current, [provider.id]: dirty }))} />)}
-        {creating ? <ProviderCard provider={null} models={[]} activeModelId={settings.activeModelId} api={api} changed={changed} fail={setError} onDirty={dirty => setDrafts(current => ({ ...current, new: dirty }))} onPending={() => undefined} canCancel onClose={() => { setCreating(false); setDrafts(current => ({ ...current, new: false })); }} registerFlush={registerFlush} /> : null}
-        {settings.providers.length < 8 && !creating ? <button type="button" className="provider-add-button" onClick={() => setCreating(true)}><Plus size={14} weight="bold" /> 添加供应商</button> : null}
+        <section className="sheet-card">
+          <h3 className="ai-surface-head">LLM 模型 <span className="surface-badge is-chat">对话用</span></h3>
+          {!settings.providers.length && !creating ? <p className="field-help">还没有供应商。</p> : null}
+          {settings.providers.map(provider => <ProviderCard key={provider.id} provider={provider} models={settings.models.filter(model => model.providerId === provider.id)} activeModelId={settings.activeModelId} api={api} changed={changed} fail={setError} registerFlush={registerFlush} onDirty={dirty => setDrafts(current => ({ ...current, [provider.id]: dirty }))} onPending={dirty => setUncommitted(current => ({ ...current, [provider.id]: dirty }))} />)}
+          {creating ? <ProviderCard provider={null} models={[]} activeModelId={settings.activeModelId} api={api} changed={changed} fail={setError} onDirty={dirty => setDrafts(current => ({ ...current, new: dirty }))} onPending={() => undefined} canCancel onClose={() => { setCreating(false); setDrafts(current => ({ ...current, new: false })); }} registerFlush={registerFlush} /> : null}
+          {settings.providers.length < 8 && !creating ? <button type="button" className="provider-add-button" onClick={() => setCreating(true)}><Plus size={14} weight="bold" /> 添加供应商</button> : null}
+        </section>
+        <section className="sheet-card">
+          <h3 className="ai-surface-head">RLCD 模型 <span className="surface-badge is-experiment">决策用 · 实验</span><HelpTip label="RLCD 模型说明">独立于对话 LLM 的决策模型配置，供应商与模型数据完全分开保存。当前版本仅保存配置，不参与任何功能；为后续能力预留。</HelpTip></h3>
+          {!settings.rlcdProviders.length && !creatingRlcd ? <p className="field-help">还没有 RLCD 供应商。这里的配置与对话模型完全独立，本期保存后不会产生任何行为。</p> : null}
+          {settings.rlcdProviders.map(provider => <ProviderCard key={provider.id} surface="rlcd" provider={provider} models={settings.rlcdModels.filter(model => model.providerId === provider.id)} activeModelId={settings.activeRlcdModelId} api={api} changed={changed} fail={setError} registerFlush={registerFlush} onDirty={dirty => setDrafts(current => ({ ...current, [`rlcd-${provider.id}`]: dirty }))} onPending={dirty => setUncommitted(current => ({ ...current, [`rlcd-${provider.id}`]: dirty }))} />)}
+          {creatingRlcd ? <ProviderCard surface="rlcd" provider={null} models={[]} activeModelId={settings.activeRlcdModelId} api={api} changed={changed} fail={setError} onDirty={dirty => setDrafts(current => ({ ...current, 'rlcd-new': dirty }))} onPending={() => undefined} canCancel onClose={() => { setCreatingRlcd(false); setDrafts(current => ({ ...current, 'rlcd-new': false })); }} registerFlush={registerFlush} /> : null}
+          {settings.rlcdProviders.length < 8 && !creatingRlcd ? <button type="button" className="provider-add-button" onClick={() => setCreatingRlcd(true)}><Plus size={14} weight="bold" /> 添加 RLCD 供应商（TypeSafe / OpenRouter / 自定义）</button> : null}
+        </section>
       </div>
 
       {notice ? <p role="status" className="field-help">{notice}</p> : null}{error ? <p role="alert" className="error">{error}</p> : null}

@@ -3,6 +3,7 @@ import { ArrowClockwise, ArrowsOutSimple, CaretDown, CaretLeft, PaperPlaneTilt, 
 import { createPortal } from 'react-dom';
 import type { AIAction, AIProposalSelection, AIAsk, AssistantAnchor, ChatSession, ChatSummary, State } from '../shared/contracts';
 import { AIConversation, type ConversationEntry } from './AIConversation';
+import { markdownToPlainText, renderMarkdown } from './markdown';
 import { IconButton, Modal, Select, errorText } from './ui';
 import './assistant-updates.css';
 
@@ -88,6 +89,10 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   const [logOpen, setLogOpen] = useState(false);
   const [compactComposer, setCompactComposer] = useState(true);
   const [activeAsk, setActiveAsk] = useState<AIAsk | null>(null);
+  const [answerHover, setAnswerHover] = useState(false);
+  const answerRef = useRef<HTMLDivElement | null>(null);
+  const answerHoverTimer = useRef<number | null>(null);
+  const [answerPopPos, setAnswerPopPos] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
   const selectedId = useRef('');
   const sending = useRef(false);
   const changingChat = useRef(false);
@@ -282,6 +287,24 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
     const modelLabel = activeModel?.name ?? '选择模型';
     const compactHeader = <div className="mini-ai-context"><span className="mini-ai-mark"><Sparkle size={11} weight="fill" /></span><span><b>AI 助手</b></span><IconButton label="展开 AI 对话" onClick={expand}><ArrowsOutSimple size={12} /></IconButton><button type="button" className="mini-ai-back" onClick={() => { setModelOpen(false); back?.(); }}><CaretLeft size={10} />返回</button></div>;
     const modelControl = data?.settings.models.length ? <button ref={modelToggleRef} type="button" className="mini-ai-model-toggle" aria-label={`切换模型，当前为 ${modelLabel}`} aria-haspopup="menu" aria-expanded={modelOpen} disabled={busy} onKeyDown={event => { if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setModelOpen(true); } else if (event.key === 'Escape' && modelOpen) { event.preventDefault(); closeModelMenu(); } }} onClick={() => modelOpen ? closeModelMenu() : setModelOpen(true)}><span>{modelLabel}</span><CaretLeft size={9} /></button> : null;
+    const openAnswerPop = () => {
+      if (answerHoverTimer.current) { window.clearTimeout(answerHoverTimer.current); answerHoverTimer.current = null; }
+      if (!latestAssistant?.content || !answerRef.current) return;
+      const rect = answerRef.current.getBoundingClientRect();
+      answerHoverTimer.current = window.setTimeout(() => {
+        const top = Math.max(8, Math.min(rect.bottom + 6, window.innerHeight - 200));
+        setAnswerPopPos({ left: rect.left, top, maxHeight: Math.min(300, window.innerHeight - top - 8) });
+        setAnswerHover(true);
+      }, 300);
+    };
+    const scheduleAnswerPopClose = () => {
+      if (answerHoverTimer.current) window.clearTimeout(answerHoverTimer.current);
+      answerHoverTimer.current = window.setTimeout(() => setAnswerHover(false), 160);
+    };
+    const closeAnswerPop = () => setAnswerHover(false);
+    const cancelAnswerPopClose = () => {
+      if (answerHoverTimer.current) { window.clearTimeout(answerHoverTimer.current); answerHoverTimer.current = null; }
+    };
     const modelMenu = modelOpen && data ? createPortal(<div ref={modelMenuRef} className="mini-ai-model-menu" role="menu" aria-label="按供应商选择模型" onKeyDown={handleModelMenuKeys}>
       {data.settings.providers.map(provider => {
         const models = data.settings.models.filter(model => model.providerId === provider.id);
@@ -312,7 +335,16 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
     </section>;
     if (!compactComposer && latestAssistant) return <section className="mini-ai-surface is-result">
       {compactHeader}
-      {logOpen ? log : <div className="mini-ai-answer"><p><span>AI 回复</span>{latestAssistant.content || latestAssistant.error || '本次处理没有返回文本。'}</p>{latestAssistant.error ? <button type="button" onClick={() => { setCompactComposer(true); setInput(failedText); }}>重试</button> : null}</div>}
+      {logOpen ? log : <div ref={answerRef} className="mini-ai-answer" onMouseEnter={openAnswerPop} onMouseLeave={scheduleAnswerPopClose}>
+  <p><span>AI 回复</span>{latestAssistant.error ? latestAssistant.error : markdownToPlainText(latestAssistant.content || '')}</p>
+  <span className="mini-ai-answer-extra">
+    {latestAssistant.error ? <button type="button" onClick={() => { setCompactComposer(true); setInput(failedText); }}>重试</button> : <button type="button" className="mini-ai-answer-expand" onClick={() => { closeAnswerPop(); void api.assistant({ action: 'show', source: 'main' }); }}>展开全文 ›</button>}
+  </span>
+  {answerHover && answerPopPos && latestAssistant.content ? createPortal(
+    <div className="hover-pop md-body" style={{ position: 'fixed', left: Math.max(8, Math.min(answerPopPos.left, window.innerWidth - 404)), top: answerPopPos.top, width: Math.min(396, window.innerWidth - 24), maxHeight: answerPopPos.maxHeight }} role="dialog" aria-label="AI 回复全文" onMouseEnter={cancelAnswerPopClose} onMouseLeave={scheduleAnswerPopClose}>
+      <div dangerouslySetInnerHTML={{ __html: renderMarkdown(latestAssistant.content) }} />
+    </div>, document.body) : null}
+</div>}
       <footer className="mini-ai-result-footer"><button type="button" onClick={() => setLogOpen(value => !value)}>{logOpen ? '返回回答' : `处理记录 · ${tools.length}`}</button><button type="button" onClick={() => { setLogOpen(false); setCompactComposer(true); requestAnimationFrame(() => inputRef.current?.focus()); }}>继续提问</button>{modelControl}</footer>{modelMenu}
     </section>;
     return <section className="mini-ai-surface">

@@ -285,3 +285,28 @@ test('open todos stay visible before the deadline; meetings follow the event day
   assert.equal(ids.has(overdue.id), true);
   store.close();
 });
+
+test('RLCD config roundtrips isolated from LLM data: orphan models dropped, bad rows coerced', () => {
+  const file = path.join(mkdtempSync(path.join(tmpdir(), 'todo-rlcd-test-')), 'tasks.db');
+  const store = new Store(file);
+  const provider = { id: randomUUID(), kind: 'typesafe', name: 'TypeSafe', endpoint: 'https://api.typesafe.ai/v1', protocol: 'openai-chat', apiKey: 'enc-key' };
+  const model = { id: randomUUID(), providerId: provider.id, name: 'jev-1.13', vision: false };
+  store.persistRlcd([provider], [model], model.id);
+  // 往返：读回字段完整，与 LLM 的 aiProviders/aiModels 键零共享
+  assert.deepEqual(store.rlcdProviders().map(item => ({ id: item.id, kind: item.kind, name: item.name, hasKeyLike: item.apiKey.length > 0 })), [{ id: provider.id, kind: 'typesafe', name: 'TypeSafe', hasKeyLike: true }]);
+  assert.deepEqual(store.rlcdModels(), [model]);
+  assert.equal(store.setting('aiProviders', []).length, 0, 'LLM provider storage must stay untouched');
+  assert.equal(store.setting('aiModels', []).length, 0, 'LLM model storage must stay untouched');
+  // 孤儿模型（供应商已删）被过滤；坏行被清洗；vision 默认 false；active 落回首个存活模型
+  const other = { id: randomUUID(), kind: 'openrouter', name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1', protocol: 'openai-chat', apiKey: '' };
+  const kept = { id: randomUUID(), providerId: other.id, name: 'my-rlcd-proxy' };
+  store.persistRlcd([provider, other], [model, kept, { id: 'orphan', providerId: randomUUID(), name: '幽灵' }, { id: randomUUID(), providerId: other.id }, null], model.id);
+  assert.deepEqual(store.rlcdModels().map(item => item.id), [model.id, kept.id], '孤儿与缺名行必须被清洗');
+  assert.equal(store.rlcdModels().find(item => item.id === kept.id)?.vision, false, 'vision 缺省为 false');
+  // 重开数据库（WAL 持久化往返）后读取一致
+  store.close();
+  const reopened = new Store(file);
+  assert.deepEqual(reopened.rlcdModels().map(item => item.id), [model.id, kept.id], '重开库后 RLCD 数据仍在');
+  assert.equal(reopened.rlcdProviders().length, 2, '重开库后 RLCD 供应商仍在');
+  reopened.close();
+});

@@ -3,7 +3,12 @@
 .settings-modal .sticky-actions button { min-height: 24px; padding: 3px 14px; font-size: 12px; border-radius: 8px; }
 .settings-modal .provider-card .field-help, .settings-modal .provider-card .warning { font-size: 12px; }
 .settings-modal .provider-card .icon-button { min-width: 32px; min-height: 32px; }
-.settings-modal .model-list li .icon-button { min-width: 20px; min-height: 20px; }
+.settings-modal .model-list li .icon-button { min-width: var(--ctl-xs); min-height: var(--ctl-xs); }
+.settings-modal .model-list li .vision-toggle.is-active { color: var(--accent); }
+.ai-surface-head { display: flex; align-items: center; gap: 8px; margin: 0; }
+.surface-badge { flex-shrink: 0; font-size: var(--fs-micro); font-weight: 650; border-radius: 999px; padding: 1px 6px; }
+.surface-badge.is-chat { color: var(--success); background: var(--success-soft); }
+.surface-badge.is-experiment { color: var(--accent); background: var(--accent-soft); }
 .settings-modal .model-create { grid-template-columns: 1fr auto; margin-top: 8px; }
 .settings-modal .model-create > input { grid-column: 1 / -1; }
 .modal.settings-modal .settings-pane[hidden] { display: none; }
