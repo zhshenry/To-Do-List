@@ -255,3 +255,43 @@ test('ask_user rejection (abort) yields a cancellation tool result instead of cr
     assert.match(plan.message, /已取消本轮操作/);
   } finally { server.closeAllConnections(); server.close(); }
 });
+
+test('requestPlan injects the focused task block with the full untruncated note', async () => {
+  let seenSystem = '';
+  const server = createServer(async (req, res) => {
+    let raw = ''; for await (const chunk of req) raw += chunk;
+    const body = JSON.parse(raw);
+    const system = body.messages.find((message: { role: string }) => message.role === 'system');
+    seenSystem = typeof system?.content === 'string' ? system.content : Array.isArray(system?.content) ? system.content.map((part: { text?: string }) => part.text ?? '').join('') : '';
+    writeChatSse(res, '好的，聚焦处理。');
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  try {
+    const endpoint = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`;
+    const note = '完整备注原文，'.repeat(80);
+    const focused = { ...newTask('写周报'), id: 't-1', note };
+    const plan = await requestPlan({ endpoint, model: 'test', protocol: 'openai-chat', key: 'k' }, '这件事帮我看看', [], [], [], AbortSignal.timeout(15000), undefined, undefined, undefined, focused);
+    assert.match(plan.message ?? '', /聚焦/);
+    assert.match(seenSystem, /## 用户本轮关联事项/);
+    assert.match(seenSystem, /标题：写周报/);
+    assert.ok(seenSystem.includes(note), 'note must appear in full, untruncated');
+    assert.match(seenSystem, /聚焦不是限定/);
+  } finally { server.closeAllConnections(); server.close(); }
+});
+
+test('requestPlan without focusedTask keeps the base system prompt untouched', async () => {
+  let seenSystem = '';
+  const server = createServer(async (req, res) => {
+    let raw = ''; for await (const chunk of req) raw += chunk;
+    const body = JSON.parse(raw);
+    const system = body.messages.find((message: { role: string }) => message.role === 'system');
+    seenSystem = typeof system?.content === 'string' ? system.content : '';
+    writeChatSse(res, '普通回答。');
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  try {
+    const endpoint = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`;
+    await requestPlan({ endpoint, model: 'test', protocol: 'openai-chat', key: 'k' }, '随便聊聊', [], [], [], AbortSignal.timeout(15000));
+    assert.doesNotMatch(seenSystem, /用户本轮关联事项/);
+  } finally { server.closeAllConnections(); server.close(); }
+});

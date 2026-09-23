@@ -1212,7 +1212,7 @@ function registerHandlers(): void {
     const chat = store.chat(z.string().uuid().parse(id));
     chat.draft = z.string().max(10000).parse(text); emitChat(store.saveChat(chat));
   });
-  const ask = async (input: unknown, sessionId?: string) => {
+  const ask = async (input: unknown, sessionId?: string, focusedTask?: import('../shared/contracts').Task | null) => {
     const request = z.object({ text: z.string().trim().min(1).max(10000, '输入最多10000字'), history: z.array(aiConversationTurnSchema).max(12) }).strict().parse(input);
     const config = settings();
     const connection = activeConnection();
@@ -1225,7 +1225,7 @@ function registerHandlers(): void {
     const previousPending = pendingInChat;
     const assistantId = randomUUID();
     if (chat) {
-      chat.entries.push({ id: randomUUID(), role: 'user', content: request.text }, { id: assistantId, role: 'assistant', content: '', streaming: true, tools: [] });
+      chat.entries.push({ id: randomUUID(), role: 'user', content: request.text, taskId: focusedTask?.id ?? null }, { id: assistantId, role: 'assistant', content: '', streaming: true, tools: [] });
       if (chat.title === '新对话') chat.title = request.text.slice(0, 32);
       chat.draft = ''; store.saveChat(chat); emitChat(chat);
     }
@@ -1295,7 +1295,7 @@ function registerHandlers(): void {
         const enriched = tool.name === 'ask_user' ? { ...tool, question: askLog.get(tool.id)?.question, answer: tool.status === 'complete' ? askLog.get(tool.id)?.answer : undefined } : tool;
         if (index < 0) tools.push(enriched); else tools[index] = enriched;
         entry.tools = tools;
-      }), onAskUser);
+      }), onAskUser, focusedTask);
       if (controller.signal.aborted) throw new Error('已取消生成，输入内容已保留。');
       if (deltaTimer) { clearTimeout(deltaTimer); deltaTimer = null; }
       if (latestDelta) pushDelta(latestDelta);
@@ -1321,12 +1321,14 @@ function registerHandlers(): void {
   };
   handle('ask', input => ask(input));
   handle('chat:ask', async input => {
-    const request = z.object({ sessionId: z.string().uuid(), text: z.string().trim().min(1).max(10000) }).strict().parse(input);
+    const request = z.object({ sessionId: z.string().uuid(), text: z.string().trim().min(1).max(10000), taskId: z.union([z.string().uuid(), z.null()]).optional() }).strict().parse(input);
     const chat = store.chat(request.sessionId);
+    const focusedTask = request.taskId ? store.all().find(task => task.id === request.taskId && !task.deletedAt) ?? null : null;
+    if (request.taskId && !focusedTask) throw new Error('关联的事项不存在或已删除，请重新选择');
     const stateText = { pending: '等待用户确认', applied: '用户已应用', discarded: '用户已放弃', expired: '已过期，未应用', revised: '已被后续对话更新' } as const;
     const history = chat.entries.filter(entry => !entry.streaming && !entry.error && entry.content.trim()).slice(-12).map(entry => ({
       role: entry.role,
-      content: `${entry.content}${entry.actionState ? `\n[建议状态：${stateText[entry.actionState]}]` : ''}${entry.actionState === 'pending' && entry.proposal ? `\n[待确认建议：${JSON.stringify(entry.proposal.actions)}]` : ''}`.slice(0, 6000),
+      content: `${entry.taskId && focusedTask ? `（此句关联事项：${focusedTask.title}）\n` : ''}${entry.content}${entry.actionState ? `\n[建议状态：${stateText[entry.actionState]}]` : ''}${entry.actionState === 'pending' && entry.proposal ? `\n[待确认建议：${JSON.stringify(entry.proposal.actions)}]` : ''}`.slice(0, 6000),
     }));
     await ask({ text: request.text, history }, chat.id);
     return store.chat(chat.id);

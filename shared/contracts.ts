@@ -86,7 +86,7 @@ export interface AIAsk { id: string; question: string; options: AIAskOption[]; }
 export interface ChatEntry {
   id: string; role: 'user' | 'assistant'; content: string; proposal?: Proposal;
   actionState?: 'pending' | 'applied' | 'discarded' | 'expired' | 'revised'; streaming?: boolean;
-  tools?: AIToolEvent[]; error?: string;
+  tools?: AIToolEvent[]; error?: string; taskId?: string | null;
 }
 export interface ChatSession { id: string; title: string; updatedAt: string; entries: ChatEntry[]; draft: string; }
 export interface ChatSummary { id: string; title: string; updatedAt: string; }
@@ -161,7 +161,7 @@ export interface DesktopAPI {
   chatNew(): Promise<ChatSession>;
   chatRemove(id: string): Promise<ChatSession>;
   chatDraft(id: string, text: string): Promise<void>;
-  chatAsk(input: { sessionId: string; text: string }): Promise<ChatSession>;
+  chatAsk(input: { sessionId: string; text: string; taskId?: string | null }): Promise<ChatSession>;
   onAIAsk(callback: (ask: AIAsk) => void): () => void;
   answerAsk(input: { id: string; kind: 'option' | 'text' | 'skip'; value?: string }): void;
   onChatUpdate(callback: (session: ChatSession) => void): () => void;

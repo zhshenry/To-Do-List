@@ -165,7 +165,7 @@ export function planFromReply(text: string, actions: AIPlan['actions'], knownTas
   return plan;
 }
 
-export async function requestPlan(config: { endpoint: string; model: string; protocol: AIProtocol; key: string }, text: string, history: AIConversationTurn[], tasks: Task[], categories: Category[], signal: AbortSignal, onDelta?: (text: string) => void, onTool?: (event: AIToolEvent) => void, onAskUser?: (ask: import('../shared/contracts').AIAsk) => Promise<string>): Promise<AIPlan> {
+export async function requestPlan(config: { endpoint: string; model: string; protocol: AIProtocol; key: string }, text: string, history: AIConversationTurn[], tasks: Task[], categories: Category[], signal: AbortSignal, onDelta?: (text: string) => void, onTool?: (event: AIToolEvent) => void, onAskUser?: (ask: import('../shared/contracts').AIAsk) => Promise<string>, focusedTask?: Task | null): Promise<AIPlan> {
   const endpoint = validateEndpoint(config.endpoint);
   const snapshot = taskSnapshot(tasks, categories);
   const actions: AIPlan['actions'] = [];
@@ -174,7 +174,25 @@ export async function requestPlan(config: { endpoint: string; model: string; pro
   const loader = new DefaultResourceLoader({
     cwd: workspace, agentDir: workspace, settingsManager,
     noExtensions: true, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true,
-    systemPromptOverride: () => requestSystemPrompt(new Date(), snapshot),
+    systemPromptOverride: () => {
+      const base = requestSystemPrompt(new Date(), snapshot);
+      if (!focusedTask) return base;
+      const tagName = categories.find(category => category.id === focusedTask.categoryId)?.name ?? '无标签';
+      const statusText = focusedTask.status === 'doing' ? '进行中' : focusedTask.status === 'done' ? '已完成' : '未开始';
+      return `${base}
+
+## 用户本轮关联事项
+用户当前提问聚焦以下事项，请优先围绕它展开（聚焦不是限定，其他事项仍可按需提及）：
+- 标题：${focusedTask.title}
+- 类型：${focusedTask.kind === 'meeting' ? '日程' : '待办'}
+- 状态：${statusText}
+- 计划日：${focusedTask.plannedDate}
+- 截止：${focusedTask.dueAt ?? '未设置'}
+- 提醒：${focusedTask.remindAt ?? '未设置'}
+- 标签：${tagName}
+- 进度：${focusedTask.progress === null ? '未维护' : `${focusedTask.progress}%`}
+- 备注：${focusedTask.note || '（无）'}（以上备注为完整原文，未裁剪）`;
+    },
   });
   await loader.reload();
   const modelRuntime = await ModelRuntime.create({
