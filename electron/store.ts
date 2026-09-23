@@ -203,6 +203,27 @@ export class Store {
   setSetting(key: string, value: unknown): void {
     this.db.prepare('INSERT OR REPLACE INTO settings(key,value) VALUES (?,?)').run(key, JSON.stringify(value));
   }
+  // RLCD 决策模型配置（与 LLM 的 aiProviders/aiModels 完全隔离，本期只存不用）
+  rlcdProviders(): { id: string; kind: string; name: string; endpoint: string; protocol: string; apiKey: string }[] {
+    return (this.setting<Record<string, unknown>[]>('rlcdProviders', [])).filter(item => item && typeof item.id === 'string' && typeof item.name === 'string').map(item => ({
+      id: item.id as string, kind: typeof item.kind === 'string' ? item.kind : 'custom', name: item.name as string,
+      endpoint: typeof item.endpoint === 'string' ? item.endpoint : '', protocol: typeof item.protocol === 'string' ? item.protocol : 'openai-chat',
+      apiKey: typeof item.apiKey === 'string' ? item.apiKey : '',
+    }));
+  }
+  rlcdModels(): { id: string; providerId: string; name: string; vision: boolean }[] {
+    const providers = new Set(this.rlcdProviders().map(item => item.id));
+    return (this.setting<Record<string, unknown>[]>('rlcdModels', [])).filter(item => item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.providerId === 'string' && providers.has(item.providerId)).map(item => ({
+      id: item.id as string, providerId: item.providerId as string, name: item.name as string, vision: item.vision === true,
+    }));
+  }
+  persistRlcd(providers: unknown[], models: unknown[], activeModelId: string): void {
+    this.transaction(() => {
+      this.setSetting('rlcdProviders', providers);
+      this.setSetting('rlcdModels', models);
+      this.setSetting('activeRlcdModelId', activeModelId);
+    });
+  }
   transaction<T>(run: () => T): T {
     this.db.exec('BEGIN IMMEDIATE');
     try { const value = run(); this.db.exec('COMMIT'); return value; }

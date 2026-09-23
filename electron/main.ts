@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { Store } from './store';
 import { requestPlan, testConnection, validateEndpoint } from './ai';
 import { generateInsight, insightTasksHash } from './insight';
-import { DOCK_FEATURE_ENABLED, insightTarget, localDay, aiActionSchema, aiConversationTurnSchema, aiProtocolSchema, aiProviderKindSchema, dockIconPresetSchema, mainWindowWidthSchema, type AIAction, type InsightSuggestion, type AIProtocol, type AIProviderKind, type MainWindowWidth, type Proposal, type Settings, type State, type Task, type UpdaterStatus } from '../shared/contracts';
+import { DOCK_FEATURE_ENABLED, insightTarget, localDay, aiActionSchema, aiConversationTurnSchema, aiProtocolSchema, aiProviderKindSchema, dockIconPresetSchema, mainWindowWidthSchema, rlcdProviderKindSchema, type AIAction, type AIModel, type InsightSuggestion, type AIProtocol, type AIProviderKind, type MainWindowWidth, type Proposal, type Settings, type State, type Task, type UpdaterStatus } from '../shared/contracts';
 
 const testMode = !app.isPackaged && process.env.TODO_TEST === '1';
 if (testMode && process.env.TODO_TEST_DATA) app.setPath('userData', process.env.TODO_TEST_DATA);
@@ -84,7 +84,7 @@ const windowIcon = process.platform === 'win32' && existsSync(path.join(app.getA
   : iconPath;
 
 type StoredProvider = { id: string; kind: AIProviderKind; name: string; endpoint: string; protocol: AIProtocol; apiKey: string };
-type StoredModel = { id: string; providerId: string; name: string };
+type StoredModel = { id: string; providerId: string; name: string; vision?: boolean };
 type StoredProfile = { id: string; name: string; endpoint: string; model: string; protocol: AIProtocol; apiKey: string };
 const MAX_PROVIDERS = 8;
 const MAX_MODELS = 8;
@@ -132,10 +132,24 @@ function loadProviders(): StoredProvider[] {
     protocol: aiProtocolSchema.catch('openai-chat').parse(provider.protocol),
   }));
 }
-function loadModels(): StoredModel[] {
+function loadModels(): AIModel[] {
   ensureProviders();
   const providers = new Set(loadProviders().map(provider => provider.id));
-  return (store.setting<StoredModel[]>('aiModels', [])).filter(model => model && typeof model.id === 'string' && typeof model.name === 'string' && providers.has(model.providerId));
+  return (store.setting<StoredModel[]>('aiModels', [])).filter(model => model && typeof model.id === 'string' && typeof model.name === 'string' && providers.has(model.providerId)).map(model => ({ ...model, vision: model.vision === true }));
+}
+function loadRlcdProviders() {
+  return store.rlcdProviders().map(provider => ({ ...provider, kind: rlcdProviderKindSchema.catch('custom').parse(provider.kind), protocol: aiProtocolSchema.catch('openai-chat').parse(provider.protocol) }));
+}
+function loadRlcdModels() {
+  return store.rlcdModels().map(model => ({ ...model, vision: model.vision === true }));
+}
+function publicRlcdProviders(providers = loadRlcdProviders()) {
+  return providers.map(({ apiKey, ...provider }) => ({ ...provider, hasKey: !!apiKey }));
+}
+function persistRlcd(providers: { id: string; kind: string; name: string; endpoint: string; protocol: string; apiKey: string }[], models: { id: string; providerId: string; name: string; vision?: boolean }[], activeModelId: string): void {
+  const validModels = models.filter(model => providers.some(provider => provider.id === model.providerId));
+  const activeModel = validModels.find(model => model.id === activeModelId) ?? validModels[0];
+  store.persistRlcd(providers, validModels, activeModel?.id ?? '');
 }
 function publicProviders(providers = loadProviders()) {
   return providers.map(({ apiKey, ...provider }) => ({ ...provider, hasKey: !!apiKey }));
@@ -161,6 +175,7 @@ function settings(): Settings {
   const profiles = derivedProfiles(providers, models);
   return {
     insight: store.setting<InsightSuggestion | null>('insightSuggestion', null), providers: publicProviders(providers), models, activeModelId: active?.model.id ?? '',
+    rlcdProviders: publicRlcdProviders(), rlcdModels: loadRlcdModels(), activeRlcdModelId: store.setting('activeRlcdModelId', ''),
     profiles, activeProfileId: active?.model.id ?? '',
     endpoint: active?.provider.endpoint ?? '', model: active?.model.name ?? '', protocol: active?.provider.protocol ?? 'openai-chat', hasKey: !!active?.provider.apiKey,
     aiEnabled: store.setting('aiEnabled', false), alwaysOnTop: store.setting('alwaysOnTop', true),
@@ -835,6 +850,13 @@ function checkSender(event: IpcMainInvokeEvent): void {
   const allowed = [win, dockWin, assistantWin].some(target => target && !target.isDestroyed() && event.sender === target.webContents && event.senderFrame === target.webContents.mainFrame);
   if (!allowed) throw new Error('请求来源无效');
 }
+type AskAnswerInput = { id: string; kind: 'option' | 'text' | 'skip'; value?: string };
+let activeAskAnswer: ((input: AskAnswerInput) => boolean) | null = null;
+ipcMain.on('ask:answer', (event, input) => {
+  checkSender(event);
+  const parsed = z.object({ id: z.string().min(1), kind: z.enum(['option', 'text', 'skip']), value: z.string().max(500).optional() }).safeParse(input);
+  if (parsed.success) activeAskAnswer?.(parsed.data);
+});
 function handle(channel: string, fn: (...args: any[]) => unknown): void {
   ipcMain.handle(channel, async (event, ...args) => {
     checkSender(event);
@@ -1003,7 +1025,7 @@ function registerHandlers(): void {
     if (!providers.some(provider => provider.id === data.providerId)) throw new Error('请先保存供应商');
     const models = loadModels();
     const siblings = models.filter(model => model.providerId === data.providerId);
-    let next: StoredModel;
+    let next: AIModel;
     if (data.id) {
       const current = models.find(model => model.id === data.id);
       if (!current || current.providerId !== data.providerId) throw new Error('模型不存在');
@@ -1013,7 +1035,7 @@ function registerHandlers(): void {
     } else {
       if (siblings.length >= MAX_MODELS) throw new Error('每个供应商最多保存8个模型');
       assertUniqueName(siblings, data.name, undefined, '该供应商已有同名模型');
-      next = { id: randomUUID(), providerId: data.providerId, name: data.name };
+      next = { id: randomUUID(), providerId: data.providerId, name: data.name, vision: false };
       models.push(next);
     }
     persistAi(providers, models, store.setting('aiActiveModelId', '') || next.id);
@@ -1029,6 +1051,107 @@ function registerHandlers(): void {
     });
     activeRequest?.abort(); pending = null;
     return changed();
+  });
+  handle('model:vision', input => {
+    const data = z.object({ modelId: z.string().uuid(), vision: z.boolean() }).strict().parse(input);
+    const models = loadModels();
+    const model = models.find(item => item.id === data.modelId);
+    if (!model) throw new Error('模型不存在');
+    model.vision = data.vision;
+    persistAi(loadProviders(), models, store.setting('aiActiveModelId', ''));
+    return changed();
+  });
+  // ── RLCD 决策模型配置（与 LLM 数据隔离；本期纯基础配置，不接任何行为）──
+  handle('rlcd:provider:save', input => {
+    const data = z.object({
+      id: z.union([z.string().uuid(), z.literal('')]).optional(), kind: rlcdProviderKindSchema,
+      name: z.string().trim().min(1, '请填写供应商名称').max(30, '供应商名称最多30字'),
+      endpoint: z.string().max(2000), protocol: aiProtocolSchema,
+      apiKey: z.string().max(4000).optional(), clearKey: z.boolean().optional(),
+    }).strict().parse(input);
+    const endpoint = validateEndpoint(data.endpoint.trim());
+    const providers = loadRlcdProviders();
+    let next;
+    if (data.id) {
+      const current = providers.find(provider => provider.id === data.id);
+      if (!current) throw new Error('供应商不存在');
+      assertUniqueName(providers, data.name, current.id, '已有同名供应商');
+      next = {
+        ...current, kind: data.kind, name: data.name, endpoint, protocol: data.protocol,
+        apiKey: data.clearKey ? '' : data.apiKey ? encryptKey(data.apiKey) : current.apiKey,
+      };
+      providers.splice(providers.findIndex(provider => provider.id === current.id), 1, next);
+    } else {
+      if (providers.length >= MAX_PROVIDERS) throw new Error('最多保存8个供应商');
+      assertUniqueName(providers, data.name, undefined, '已有同名供应商');
+      next = { id: randomUUID(), kind: data.kind, name: data.name, endpoint, protocol: data.protocol, apiKey: data.apiKey ? encryptKey(data.apiKey) : '' };
+      providers.push(next);
+    }
+    persistRlcd(providers, loadRlcdModels(), store.setting('activeRlcdModelId', ''));
+    return changed();
+  });
+  handle('rlcd:provider:remove', id => {
+    const providerId = z.string().uuid().parse(id);
+    const providers = loadRlcdProviders();
+    if (!providers.some(provider => provider.id === providerId)) throw new Error('供应商不存在');
+    persistRlcd(providers.filter(provider => provider.id !== providerId), loadRlcdModels().filter(model => model.providerId !== providerId), store.setting('activeRlcdModelId', ''));
+    return changed();
+  });
+  handle('rlcd:model:save', input => {
+    const data = z.object({
+      id: z.union([z.string().uuid(), z.literal('')]).optional(),
+      providerId: z.string().uuid(),
+      name: z.string().trim().min(1, '请填写模型名称或 ID').max(200, '模型名称最多200字'),
+    }).strict().parse(input);
+    const providers = loadRlcdProviders();
+    if (!providers.some(provider => provider.id === data.providerId)) throw new Error('请先保存供应商');
+    const models = loadRlcdModels();
+    const siblings = models.filter(model => model.providerId === data.providerId);
+    let next;
+    if (data.id) {
+      const current = models.find(model => model.id === data.id);
+      if (!current || current.providerId !== data.providerId) throw new Error('模型不存在');
+      assertUniqueName(siblings, data.name, current.id, '该供应商已有同名模型');
+      next = { ...current, name: data.name };
+      models.splice(models.findIndex(model => model.id === current.id), 1, next);
+    } else {
+      if (siblings.length >= MAX_MODELS) throw new Error('每个供应商最多保存8个模型');
+      assertUniqueName(siblings, data.name, undefined, '该供应商已有同名模型');
+      next = { id: randomUUID(), providerId: data.providerId, name: data.name, vision: false };
+      models.push(next);
+    }
+    persistRlcd(providers, models, store.setting('activeRlcdModelId', '') || next.id);
+    return changed();
+  });
+  handle('rlcd:model:remove', id => {
+    const modelId = z.string().uuid().parse(id);
+    const models = loadRlcdModels();
+    const target = models.find(model => model.id === modelId);
+    if (!target) throw new Error('模型不存在');
+    const remaining = models.filter(model => model.id !== modelId);
+    // 平铺列表以模型行删除为唯一出口：供应商最后一个模型删掉即一并移除，避免留下不可达的空供应商
+    const providers = loadRlcdProviders().filter(provider => provider.id !== target.providerId || remaining.some(model => model.providerId === provider.id));
+    persistRlcd(providers, remaining, store.setting('activeRlcdModelId', ''));
+    return changed();
+  });
+  handle('rlcd:provider:test', async input => {
+    const data = z.object({
+      providerId: z.string().uuid().optional(),
+      endpoint: z.string().max(2000).optional(),
+      protocol: aiProtocolSchema.optional(),
+      apiKey: z.string().max(4000).optional(),
+      model: z.string().trim().min(1, '请填写模型名称或 ID').max(200),
+    }).strict().parse(input);
+    const provider = data.providerId ? loadRlcdProviders().find(item => item.id === data.providerId) : undefined;
+    if (data.providerId && !provider) throw new Error('供应商不存在');
+    const endpoint = data.endpoint?.trim() || provider?.endpoint || '';
+    const protocol = data.protocol ?? provider?.protocol ?? 'openai-chat';
+    const key = data.apiKey || (provider ? decryptKey(provider.apiKey) : '');
+    if (!endpoint) throw new Error('请填写服务地址');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try { return await testConnection({ endpoint, model: data.model, protocol, key }, controller.signal); }
+    finally { clearTimeout(timeout); }
   });
   handle('provider:test', async input => {
     const data = z.object({
@@ -1112,7 +1235,48 @@ function registerHandlers(): void {
       change(entry); emitChat(store.saveChat(latest));
     };
     const controller = new AbortController(); activeRequest = controller;
-    const timeout = setTimeout(() => controller.abort(), 45000);
+    let timeout = setTimeout(() => controller.abort(), 45000);
+    // 分段超时：流式阶段 45s；ask_user 等待用户期间不计时（等的是用户不是网络）
+    const pauseAskTimeout = () => clearTimeout(timeout);
+    const resumeAskTimeout = () => { timeout = setTimeout(() => controller.abort(), 45000); };
+    const pendingAsks = new Map<string, { resolve: (answer: string) => void }>();
+    const askLog = new Map<string, { question: string; answer?: string }>();
+    const composeAnswer = (input: AskAnswerInput): string => input.kind === 'option'
+      ? `用户选择：${input.value ?? ''}（选项回答）`
+      : input.kind === 'text' ? `用户输入：${(input.value ?? '').trim()}`
+        : '用户跳过了这个问题，请按你的判断继续，并在结果中说明假设';
+    const deliverAsk = (ask: import('../shared/contracts').AIAsk): boolean => {
+      let delivered = false;
+      for (const target of [assistantWin, win]) {
+        if (target && !target.isDestroyed() && !target.webContents.isDestroyed() && target.isVisible()) { target.webContents.send('ai:ask', ask); delivered = true; }
+      }
+      return delivered;
+    };
+    const onAskUser = async (ask: import('../shared/contracts').AIAsk): Promise<string> => {
+      pauseAskTimeout();
+      askLog.set(ask.id, { question: ask.question });
+      try {
+        if (!deliverAsk(ask)) await showAssistant(undefined, true, 'main');
+        if (!deliverAsk(ask)) throw new Error('没有可用的提问窗口');
+        return await new Promise<string>(resolve => {
+          pendingAsks.set(ask.id, { resolve });
+          activeAskAnswer = input => {
+            const pending = pendingAsks.get(input.id);
+            if (!pending) return false;
+            pendingAsks.delete(input.id);
+            const answer = composeAnswer(input);
+            const log = askLog.get(input.id);
+            if (log) log.answer = input.kind === 'option' ? input.value ?? '' : input.kind === 'text' ? (input.value ?? '').trim() : '已跳过';
+            pending.resolve(answer);
+            return true;
+          };
+          controller.signal.addEventListener('abort', () => { pendingAsks.delete(ask.id); resolve('用户已取消'); }, { once: true });
+        });
+      } finally {
+        activeAskAnswer = null;
+        resumeAskTimeout();
+      }
+    };
     const tasks = store.all(); const categories = store.categories();
     let deltaTimer: ReturnType<typeof setTimeout> | null = null; let latestDelta = '';
     const pushDelta = (text: string) => {
@@ -1128,9 +1292,10 @@ function registerHandlers(): void {
     try {
       const plan = await requestPlan({ endpoint: connection.provider.endpoint, model: connection.model.name, protocol: connection.provider.protocol, key }, request.text, request.history, tasks, categories, controller.signal, onDelta, tool => updateEntry(entry => {
         const tools = entry.tools ?? []; const index = tools.findIndex(item => item.id === tool.id);
-        if (index < 0) tools.push(tool); else tools[index] = tool;
+        const enriched = tool.name === 'ask_user' ? { ...tool, question: askLog.get(tool.id)?.question, answer: tool.status === 'complete' ? askLog.get(tool.id)?.answer : undefined } : tool;
+        if (index < 0) tools.push(enriched); else tools[index] = enriched;
         entry.tools = tools;
-      }));
+      }), onAskUser);
       if (controller.signal.aborted) throw new Error('已取消生成，输入内容已保留。');
       if (deltaTimer) { clearTimeout(deltaTimer); deltaTimer = null; }
       if (latestDelta) pushDelta(latestDelta);

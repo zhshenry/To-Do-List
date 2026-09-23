@@ -494,9 +494,9 @@ input[type="range"].progress-range::-webkit-slider-thumb { appearance: none; wid
 .model-list li > input { flex: 1; width: auto; }
 .model-list li .category-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .model-list li > button:not(.icon-button):not(.model-test-button) { font-size: 11px; padding: 4px 7px; }
-.model-box .model-test-button { width: 20px; min-height: 20px; }
-.model-list li .icon-button { width: 20px; height: 20px; padding: 2px; }
-.model-list li .icon-button svg { width: 12px; height: 12px; }
+.model-box .model-test-button { width: var(--ctl-xs); min-height: var(--ctl-xs); }
+.model-list li .icon-button { width: var(--ctl-xs); height: var(--ctl-xs); padding: 2px; }
+.model-list li .icon-button svg { width: 15px; height: 15px; }
 .model-test-button { flex-shrink: 0; width: 30px; min-height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .model-test-button.is-ok { color: var(--success); background: var(--success-soft); border-color: var(--success-soft); }
 .model-test-button.is-ok:hover, .model-test-button.is-ok:active { color: var(--success); background: var(--success-soft); }
@@ -522,3 +522,21 @@ input[type="range"].progress-range::-webkit-slider-thumb { appearance: none; wid
 /* Accessibility override must win over component feedback transitions. */
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
 @media (forced-colors: active) { * { scrollbar-color: auto; }.task-check,.timeline-marker { border-color: ButtonText; }.done .task-check { forced-color-adjust: none; background: Highlight; color: HighlightText; }.select-option[aria-selected="true"], .segmented button[aria-checked="true"], .date-grid button.is-selected, .time-col button.is-selected { background: Highlight; color: HighlightText; }.segmented::before { display: none; }.toggle[aria-checked="true"] { background: Highlight; border-color: Highlight; }.settings-tabs::after { background: Highlight; } }
+
+/* ── ask_user 提问卡（展开态，#19）── */
+.ask-card { margin: 0 16px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--white); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 6px 18px #17192314; }
+.ask-card-head { display: flex; align-items: center; gap: 6px; font-size: var(--fs-body-xs); }
+.ask-breath { width: 8px; height: 8px; border-radius: 999px; background: var(--accent); animation: ask-breath 1.6s ease-in-out infinite; }
+@keyframes ask-breath { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ask-breath { animation: none; } }
+.ask-question { margin: 0; font-size: var(--fs-body-sm); font-weight: 600; }
+.ask-options { display: flex; flex-direction: column; gap: 6px; }
+.ask-options button { display: flex; align-items: center; gap: 8px; text-align: left; padding: 8px 10px; border-radius: var(--r-control); }
+.ask-options button:hover { border-color: var(--accent); }
+.ask-radio { flex: 0 0 auto; width: 14px; height: 14px; border-radius: 999px; border: 1.5px solid var(--muted); background: var(--white); }
+.ask-option-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ask-option-label { font-weight: 650; font-size: var(--fs-body-xs); }
+.ask-option-body small { color: var(--muted); font-size: var(--fs-compact); }
+.ask-options em { margin-left: auto; font-style: normal; color: var(--muted); font-size: var(--fs-compact); }
+.ask-foot { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: var(--fs-compact); }
+.ask-converged { margin: 0 16px; align-self: flex-start; max-width: 90%; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: var(--fs-compact); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

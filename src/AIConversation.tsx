@@ -3,6 +3,7 @@ import { ArrowClockwise, ArrowRight, ListChecks, Sparkle } from '@phosphor-icons
 import { newTask, type AIAction, type AIPlan, type AIProposalSelection, type Category, type ChatEntry, type Task } from '../shared/contracts';
 import { dateTimeText } from './ui';
 import { StandaloneAIConversation } from './StandaloneAIConversation';
+import { renderMarkdown } from './markdown';
 
 export type ConversationEntry = ChatEntry;
 
@@ -140,7 +141,7 @@ function CompactAIConversation({ entries, pendingText, busy, error, actionError,
           return <li key={entry.id} className={`chat-message ${entry.role}${entry.proposal?.actions.length ? ' with-proposal' : ''}${entry.streaming ? ' streaming' : ''}`}>
           {!(compact && entry.actionState === 'pending') ? <div className="chat-message-row">
             {entry.role === 'assistant' ? <span className="assistant-avatar" aria-hidden="true"><Sparkle size={15} weight="fill" /></span> : null}
-            <div className="chat-bubble">{entry.content ? <p>{entry.content}</p> : entry.streaming ? <span className="typing-indicator" aria-label="AI 正在生成回复"><i /><i /><i /></span> : <p>{entry.content}</p>}</div>
+            <div className={"chat-bubble" + (entry.role === 'assistant' && entry.content ? ' md' : '')}>{entry.role === 'assistant' && entry.content ? <div className="md-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.content) }} /> : entry.content ? <p>{entry.content}</p> : entry.streaming ? <span className="typing-indicator" aria-label="AI 正在生成回复"><i /><i /><i /></span> : <p>{entry.content}</p>}</div>
           </div> : null}
           {tools.length ? compact ? <div className="chat-tools" aria-label="工具执行过程">{tools.map(tool => <details key={tool.id}><summary>{tool.label}<span>{tool.status === 'running' ? '执行中' : tool.status === 'complete' ? '已完成' : tool.status === 'error' ? '执行失败' : '已中断'}</span></summary><pre className="chat-tool-output">{tool.output || (tool.status === 'running' ? '正在执行…' : '未返回结果')}</pre></details>)}</div> : <div className={`chat-tools assistant-work-rail${entry.streaming || runningTool ? ' is-active' : ''}${failedTools.length ? ' has-error' : interruptedTools.length ? ' is-interrupted' : ''}`} aria-label="工具执行过程">
             <div className="assistant-work-overview">
