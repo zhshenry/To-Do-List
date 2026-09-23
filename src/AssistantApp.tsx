@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { ArrowClockwise, ArrowsOutSimple, CaretDown, CaretLeft, PaperPlaneTilt, Sparkle, Stop, Trash, X } from '@phosphor-icons/react';
 import { createPortal } from 'react-dom';
-import type { AIAction, AIProposalSelection, AssistantAnchor, ChatSession, ChatSummary, State } from '../shared/contracts';
+import type { AIAction, AIProposalSelection, AIAsk, AssistantAnchor, ChatSession, ChatSummary, State } from '../shared/contracts';
 import { AIConversation, type ConversationEntry } from './AIConversation';
 import { IconButton, Modal, Select, errorText } from './ui';
 import './assistant-updates.css';
@@ -87,6 +87,7 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   const [modelOpen, setModelOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [compactComposer, setCompactComposer] = useState(true);
+  const [activeAsk, setActiveAsk] = useState<AIAsk | null>(null);
   const selectedId = useRef('');
   const sending = useRef(false);
   const changingChat = useRef(false);
@@ -136,14 +137,28 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
     });
   }, [api, available, busy, hasPendingAction, chat, compact]);
   useEffect(() => {
+    if (!api) return;
+    return api.onAIAsk(ask => setActiveAsk(ask));
+  }, [api]);
+  useEffect(() => {
+    if (!activeAsk || !chat) return;
+    const record = chat.entries.flatMap(entry => entry.tools ?? []).find(tool => tool.id === activeAsk.id);
+    if (record && record.status !== 'running') setActiveAsk(null);
+  }, [chat, activeAsk]);
+  const answerAsk = (kind: 'option' | 'text' | 'skip', value?: string) => {
+    if (!activeAsk || !api) return;
+    api.answerAsk({ id: activeAsk.id, kind, value });
+    setActiveAsk(null);
+  };
+  useEffect(() => {
     if (!api || compact || !data || !chat || ready.current) return;
     ready.current = true; void api.assistantReady();
   }, [api, data, chat, compact]);
   useEffect(() => {
     if (!api || !compact) return;
-    void api.compactHeight(modelOpen ? 380 : null);
+    void api.compactHeight(modelOpen ? 380 : activeAsk ? 262 : null);
     return () => { if (modelOpen) void api.compactHeight(null); };
-  }, [api, compact, modelOpen]);
+  }, [api, compact, modelOpen, activeAsk]);
   useEffect(() => {
     if (!modelOpen) return;
     requestAnimationFrame(() => {
@@ -228,7 +243,7 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
       inputRef.current?.setSelectionRange(prompt.length, prompt.length);
     });
   }
-  async function send(event: FormEvent) { event.preventDefault(); if (!mutating) await askAI(input); }
+  async function send(event: FormEvent) { event.preventDefault(); if (activeAsk) { const text = input.trim(); if (text) { setInput(''); answerAsk('text', text); } return; } if (!mutating) await askAI(input); }
   function closeModelMenu(restoreFocus = true) {
     setModelOpen(false);
     if (restoreFocus) requestAnimationFrame(() => modelToggleRef.current?.focus());
@@ -272,6 +287,15 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
     </div>, document.body) : null;
     const log = tools.length ? <ol className="mini-ai-log" aria-label="AI 处理记录">{tools.map(tool => <li key={tool.id}><span>{tool.label}</span><small>{tool.status === 'running' ? '执行中' : tool.status === 'complete' ? '已完成' : tool.status === 'error' ? '失败' : '已中断'}</small><i>{tool.status === 'complete' ? '✓' : tool.status === 'running' ? '•' : '!'}</i></li>)}</ol> : <p className="mini-ai-log-empty">本次尚未调用工具</p>;
     if (!data || !chat) return <section className="mini-ai-surface"><div className="mini-ai-loading" role={loadError ? 'alert' : 'status'}>{loadError || '正在读取对话…'}</div></section>;
+    if (activeAsk) return <section className="mini-ai-surface is-asking" aria-live="polite">
+      {compactHeader}
+      <p className="mini-ask-question">{activeAsk.question}</p>
+      <div className="mini-ask-options" role="group" aria-label="回答选项">
+        {activeAsk.options.length ? activeAsk.options.map(option => <button key={option.label} type="button" onClick={() => answerAsk('option', option.label)}><span className="ask-radio" aria-hidden="true" /><span className="mini-ask-label">{option.label}</span>{option.description ? <small>{option.description}</small> : null}</button>) : <p className="mini-ask-free">请在下方输入回答，或直接跳过。</p>}
+      </div>
+      <footer className="mini-ask-foot"><span>已暂停 · 等待回答</span><button type="button" onClick={() => answerAsk('skip')}>跳过</button><IconButton label="取消 AI 请求" onClick={() => void api.cancelAI()}><X size={13} /></IconButton></footer>
+      {modelMenu}
+    </section>;
     if (pendingEntry) return <section className="mini-ai-surface is-result">
       {compactHeader}
       <AIConversation compact entries={[pendingEntry]} pendingText="" busy={false} error={error || loadError} actionError={actionError} tasks={data.tasks} categories={data.categories} aiEnabled={available} configured={configured} mutating={mutating} retry={failedText ? () => void askAI(failedText) : null} openSettings={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))} enable={enableAI} apply={(entry, items) => void apply(entry, items)} discard={entry => void discard(entry)} adjust={adjust} updateAction={updateAction} />
@@ -303,6 +327,13 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   if (!data || !chat) return <AssistantShell><main className="assistant-widget"><header className="assistant-titlebar"><span className="assistant-identity"><span className="assistant-header-avatar" aria-hidden="true"><Sparkle size={20} weight="fill" /></span><span className="assistant-identity-text"><b>AI 助手</b><small>{loadError ? '读取失败' : '正在读取本地对话…'}</small></span></span><span className="assistant-header-controls"><IconButton label="关闭 AI 助手" onClick={() => void api.assistant({ action: 'hide', animate: !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false) })}><X size={18} /></IconButton></span></header><div className={`assistant-loading${loadError ? ' is-error' : ''}`} role={loadError ? 'alert' : 'status'}><span>{loadError || '正在准备你的本地工作区…'}</span>{loadError ? <div className="assistant-loading-actions"><button type="button" onClick={() => { setLoadError(''); setLoadAttempt(attempt => attempt + 1); }}><ArrowClockwise size={15} />重试</button><button type="button" onClick={() => void api.assistant({ action: 'hide', animate: false })}>关闭</button></div> : null}</div></main></AssistantShell>;
   const conversationBody = <>
     <AIConversation entries={conversation} pendingText="" busy={busy} error={error} actionError={actionError} tasks={data.tasks} categories={data.categories} aiEnabled={available} configured={configured} mutating={mutating} retry={failedText && !busy ? () => void askAI(failedText) : null} openSettings={() => void api.openSettings(!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false))} enable={enableAI} apply={(entry, items) => void apply(entry, items)} discard={entry => void discard(entry)} adjust={adjust} updateAction={updateAction} />
+    {activeAsk ? <section className="ask-card" aria-label="AI 提问">
+      <header className="ask-card-head"><span className="ask-breath" aria-hidden="true" /><b>AI 想确认</b></header>
+      <p className="ask-question">{activeAsk.question}</p>
+      {activeAsk.options.length ? <div className="ask-options" role="group" aria-label="回答选项">{activeAsk.options.map((option, index) => <button key={option.label} type="button" onClick={() => answerAsk('option', option.label)}><span className="ask-radio" aria-hidden="true" /><span className="ask-option-body"><span className="ask-option-label">{option.label}</span>{option.description ? <small>{option.description}</small> : null}</span><em>选项 {index + 1}</em></button>)}</div> : null}
+      <footer className="ask-foot"><span>也可直接在下方输入回答</span><button type="button" onClick={() => answerAsk('skip')}>跳过</button></footer>
+    </section> : null}
+    {!activeAsk && (() => { const latestAsk = [...conversation].reverse().flatMap(entry => entry.tools ?? []).find(tool => tool.name === 'ask_user' && tool.status === 'complete' && tool.question); return latestAsk ? <p className="ask-converged" role="status">✓「{latestAsk.question}」 → {latestAsk.answer ?? latestAsk.output}</p> : null; })()}
     {gate && conversation.length ? <div className="ai-gate" role="status"><span>{gate.label}</span><button type="button" ref={gateButtonRef} onClick={gate.onAction}>{gate.action}</button></div> : null}
     <footer className="assistant-footer"><form className="assistant-compose" noValidate onSubmit={send}>
       <span className="assistant-compose-copy">

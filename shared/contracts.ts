@@ -73,7 +73,9 @@ export const AI_PROVIDER_PRESETS: Record<AIProviderKind, { name: string; endpoin
   custom: { name: '', endpoint: '', protocol: 'openai-chat' },
 };
 export interface Proposal extends AIPlan { token: string; }
-export interface AIToolEvent { id: string; name: string; label: string; status: 'running' | 'complete' | 'error' | 'interrupted'; output: string; }
+export interface AIToolEvent { id: string; name: string; label: string; status: 'running' | 'complete' | 'error' | 'interrupted'; output: string; question?: string; answer?: string; }
+export interface AIAskOption { label: string; description?: string; }
+export interface AIAsk { id: string; question: string; options: AIAskOption[]; }
 export interface ChatEntry {
   id: string; role: 'user' | 'assistant'; content: string; proposal?: Proposal;
   actionState?: 'pending' | 'applied' | 'discarded' | 'expired' | 'revised'; streaming?: boolean;
@@ -139,6 +141,8 @@ export interface DesktopAPI {
   chatRemove(id: string): Promise<ChatSession>;
   chatDraft(id: string, text: string): Promise<void>;
   chatAsk(input: { sessionId: string; text: string }): Promise<ChatSession>;
+  onAIAsk(callback: (ask: AIAsk) => void): () => void;
+  answerAsk(input: { id: string; kind: 'option' | 'text' | 'skip'; value?: string }): void;
   onChatUpdate(callback: (session: ChatSession) => void): () => void;
   onChatSelected(callback: (session: ChatSession) => void): () => void;
   updateProposal(input: { token: string; index: number; action: AIAction }): Promise<ChatSession>;
