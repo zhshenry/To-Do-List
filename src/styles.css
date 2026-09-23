@@ -494,8 +494,8 @@ input[type="range"].progress-range::-webkit-slider-thumb { appearance: none; wid
 .model-list li > input { flex: 1; width: auto; }
 .model-list li .category-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .model-list li > button:not(.icon-button):not(.model-test-button) { font-size: 11px; padding: 4px 7px; }
-.model-box .model-test-button { width: 22px; min-height: 22px; }
-.model-list li .icon-button { width: 22px; height: 22px; padding: 2px; }
+.model-box .model-test-button { width: 20px; min-height: 20px; }
+.model-list li .icon-button { width: 20px; height: 20px; padding: 2px; }
 .model-list li .icon-button svg { width: 12px; height: 12px; }
 .model-test-button { flex-shrink: 0; width: 30px; min-height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .model-test-button.is-ok { color: var(--success); background: var(--success-soft); border-color: var(--success-soft); }
