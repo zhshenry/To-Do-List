@@ -8,7 +8,7 @@ const dom = new JSDOM('<!doctype html><body></body></html>');
 (globalThis as any).document = dom.window.document;
 (globalThis as any).Node = dom.window.Node;
 
-const { renderMarkdown } = await import('../src/markdown');
+const { renderMarkdown, markdownToPlainText } = await import('../src/markdown');
 
 test('renderMarkdown renders GFM essentials', () => {
   const html = renderMarkdown('**加粗** 与 `code`');
@@ -42,4 +42,17 @@ test('renderMarkdown forbids style attributes and forms', () => {
 test('renderMarkdown keeps breaks as line breaks (breaks: true)', () => {
   const html = renderMarkdown('第一行\n第二行');
   assert.match(html, /<br/);
+});
+
+test('markdownToPlainText strips markup but keeps text and list structure', () => {
+  const plain = markdownToPlainText('已经读取你的事项，**优先处理**：\n\n- 先跑 `npm run build` 确认产物\n- 再发 **0.5.11** 版本');
+  assert.ok(plain.includes('优先处理'), 'bold text must survive');
+  assert.ok(plain.includes('npm run build'), 'inline code text must survive');
+  assert.ok(!plain.includes('**'), 'md emphasis marks must be gone');
+  assert.ok(!plain.includes('<'), 'no html may leak');
+});
+
+test('markdownToPlainText tolerates empty input', () => {
+  assert.equal(markdownToPlainText(''), '');
+  assert.equal(markdownToPlainText(undefined as unknown as string), '');
 });

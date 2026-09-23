@@ -7,7 +7,9 @@ import createDOMPurify from 'dompurify';
 marked.setOptions({ gfm: true, breaks: true });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const purify: any = typeof window !== 'undefined' ? createDOMPurify(window) : null;
+const dom: any = typeof window !== 'undefined' ? window : null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const purify: any = dom ? createDOMPurify(dom) : null;
 
 if (purify) {
   purify.addHook('afterSanitizeAttributes', (node: Element) => {
@@ -29,8 +31,8 @@ export function renderMarkdown(content: string): string {
 
 // 折叠态降级：渲染后的 HTML 提取纯文本（等价去掉 md 符号），两行截断用
 export function markdownToPlainText(content: string): string {
-  if (!purify) return String(content ?? '');
-  const holder = purify.window.document.createElement('div');
+  if (!dom) return String(content ?? '');
+  const holder = dom.document.createElement('div');
   holder.innerHTML = renderMarkdown(String(content ?? ''));
   return (holder.textContent ?? '').replace(/\s+\n/g, '\n').trim();
 }
