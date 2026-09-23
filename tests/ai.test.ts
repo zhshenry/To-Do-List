@@ -269,7 +269,7 @@ test('requestPlan injects the focused task block with the full untruncated note'
   try {
     const endpoint = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`;
     const note = '完整备注原文，'.repeat(80);
-    const focused = { ...newTask('写周报'), id: 't-1', note };
+    const focused = { ...newTask('写周报'), id: 't-1', createdAt: '2026-09-24T00:00:00.000Z', updatedAt: '2026-09-24T00:00:00.000Z', completedAt: null, notifiedFor: null, deletedAt: null, note } as import('../shared/contracts').Task;
     const plan = await requestPlan({ endpoint, model: 'test', protocol: 'openai-chat', key: 'k' }, '这件事帮我看看', [], [], [], AbortSignal.timeout(15000), undefined, undefined, undefined, focused);
     assert.match(plan.message ?? '', /聚焦/);
     assert.match(seenSystem, /## 用户本轮关联事项/);
