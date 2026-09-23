@@ -26,3 +26,11 @@ export function renderMarkdown(content: string): string {
     FORBID_ATTR: ['style'],
   });
 }
+
+// 折叠态降级：渲染后的 HTML 提取纯文本（等价去掉 md 符号），两行截断用
+export function markdownToPlainText(content: string): string {
+  if (!purify) return String(content ?? '');
+  const holder = purify.window.document.createElement('div');
+  holder.innerHTML = renderMarkdown(String(content ?? ''));
+  return (holder.textContent ?? '').replace(/\s+\n/g, '\n').trim();
+}
