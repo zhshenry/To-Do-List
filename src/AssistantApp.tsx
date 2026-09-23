@@ -202,6 +202,8 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   useEffect(() => {
     const host = document.querySelector('.mini-window');
     if (host) host.classList.toggle('is-asking-window', Boolean(activeAsk || miniPickerOpen));
+    const surface = document.querySelector('.mini-ai-surface') as HTMLElement | null;
+    if (surface) { surface.style.height = miniPickerOpen ? 'auto' : ''; surface.style.overflow = miniPickerOpen ? 'visible' : ''; surface.style.gridTemplateRows = miniPickerOpen ? 'none' : ''; }
     const content = document.querySelector('.mini-content') as HTMLElement | null;
     if (content) { content.style.height = (activeAsk || miniPickerOpen) ? `${Math.max(content.scrollHeight, 124)}px` : ''; content.style.overflow = (activeAsk || miniPickerOpen) ? 'visible' : ''; }
   }, [activeAsk, miniPickerOpen, compact]);
