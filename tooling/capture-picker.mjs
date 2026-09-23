@@ -132,6 +132,8 @@ await page.locator('.mini-ai-compose textarea').waitFor();
 await page.getByRole('button', { name: '关联已有事项' }).click();
 await page.locator('.mini-task-picker').waitFor();
 await page.waitForTimeout(500);
+const probe = await page.evaluate(() => { const win = document.querySelector('.mini-window'); const content = document.querySelector('.mini-content'); return { innerH: window.innerHeight, winH: win?.getBoundingClientRect().height ?? null, winClass: win?.className ?? null, contentH: content?.getBoundingClientRect().height ?? null, computedContentH: content ? getComputedStyle(content).height : null, counts: { windows: document.querySelectorAll('.mini-window').length, contents: document.querySelectorAll('.mini-content').length }, inWinContentH: win ? win.querySelector('.mini-content')?.getBoundingClientRect().height ?? null : null, inWinInline: win ? win.querySelector('.mini-content')?.style?.height ?? null : null, rootChildCount: document.querySelector('.mini-root')?.children.length ?? null, pickerH: document.querySelector('.mini-task-picker')?.getBoundingClientRect().height ?? null }; });
+console.log('MINI PROBE:', JSON.stringify(probe));
 await page.screenshot({ path: path.join(outputDir, '18-picker-mini.png') });
 await page.locator('.mini-task-picker .picker-row', { hasText: '牙医预约' }).click();
 await page.locator('.mini-linked-chip').waitFor();

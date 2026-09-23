@@ -202,6 +202,8 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   useEffect(() => {
     const host = document.querySelector('.mini-window');
     if (host) host.classList.toggle('is-asking-window', Boolean(activeAsk || miniPickerOpen));
+    const content = document.querySelector('.mini-content') as HTMLElement | null;
+    if (content) { content.style.height = (activeAsk || miniPickerOpen) ? `${Math.max(content.scrollHeight, 124)}px` : ''; content.style.overflow = (activeAsk || miniPickerOpen) ? 'visible' : ''; }
   }, [activeAsk, miniPickerOpen, compact]);
   useEffect(() => {
     if (!modelOpen) return;
