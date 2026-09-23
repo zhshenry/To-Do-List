@@ -578,3 +578,11 @@ input[type="range"].progress-range::-webkit-slider-thumb { appearance: none; wid
 .linked-clear { border: 0; background: transparent; color: var(--muted); display: inline-flex; padding: 2px; }
 .linked-clear:hover { color: var(--danger); }
 .slash-menu { position: absolute; z-index: 60; left: 12px; right: 12px; bottom: calc(100% + 4px); border: 1px solid var(--line); border-radius: var(--r-card); background: var(--white); box-shadow: 0 18px 38px #3f352929; overflow: hidden; }
+
+/* ── #18 用户气泡关联引用 chip ── */
+.bubble-ctx { display: flex; margin: 0 0 4px; }
+.b-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 300px; padding: 2px 8px; border: 1px solid var(--line); border-radius: var(--r-control-sm); background: var(--white); font-size: var(--fs-compact); overflow: hidden; }
+.b-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.b-chip .k { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 999px; }
+.b-chip .k.task { background: var(--success); }
+.b-chip .k.meeting { background: #3f6b8f; }

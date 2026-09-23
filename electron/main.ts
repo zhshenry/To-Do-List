@@ -1330,7 +1330,7 @@ function registerHandlers(): void {
       role: entry.role,
       content: `${entry.taskId && focusedTask ? `（此句关联事项：${focusedTask.title}）\n` : ''}${entry.content}${entry.actionState ? `\n[建议状态：${stateText[entry.actionState]}]` : ''}${entry.actionState === 'pending' && entry.proposal ? `\n[待确认建议：${JSON.stringify(entry.proposal.actions)}]` : ''}`.slice(0, 6000),
     }));
-    await ask({ text: request.text, history }, chat.id);
+    await ask({ text: request.text, history }, chat.id, focusedTask);
     return store.chat(chat.id);
   });
   handle('proposal:update', input => {

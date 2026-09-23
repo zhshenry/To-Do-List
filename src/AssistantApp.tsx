@@ -201,8 +201,8 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   }, [api, compact, modelOpen, activeAsk, miniPickerOpen]);
   useEffect(() => {
     const host = document.querySelector('.mini-window');
-    if (host) host.classList.toggle('is-asking-window', Boolean(activeAsk));
-  }, [activeAsk, compact]);
+    if (host) host.classList.toggle('is-asking-window', Boolean(activeAsk || miniPickerOpen));
+  }, [activeAsk, miniPickerOpen, compact]);
   useEffect(() => {
     if (!modelOpen) return;
     requestAnimationFrame(() => {
@@ -432,7 +432,7 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
         {busy ? <button type="button" className="assistant-stop" aria-label="停止并取消 AI 请求" onClick={() => void api.cancelAI()}><Stop size={13} weight="fill" /><span>停止</span></button> : <button className="send-button" type="submit" aria-label="发送给 AI" disabled={!input.trim() || mutating}><PaperPlaneTilt size={16} weight="fill" /></button>}
       </span>
           {linkedTask ? <div className="linked-chip-row"><button type="button" className="linked-chip" aria-label={`已关联 ${linkedTask.title}，点击更换`} onClick={() => { setPlusOpen(true); setPickerOpen(true); }}><i className={`picker-pill ${linkedTask.kind === 'meeting' ? 'is-meeting' : 'is-task'}`} aria-hidden="true" /><span className="linked-title">{linkedTask.title}</span>{(() => { const tag = data.categories.find(category => category.id === linkedTask.categoryId); return tag ? <span className="linked-tag">{tag.name}</span> : null; })()}</button><button type="button" className="linked-clear" aria-label="取消关联" onClick={() => setLinkedTask(null)}><X size={12} /></button></div> : null}
-          {plusOpen ? <div className="plus-root" role="menu"><button type="button" role="menuitem" className={pickerOpen ? 'is-open' : ''} onMouseEnter={() => setPickerOpen(true)} onClick={() => setPickerOpen(value => !value)}><ListMagnifyingGlass size={13} />选择事项<CaretRight size={11} /></button></div> : null}
+          {plusOpen ? <div className="plus-root" role="menu"><button type="button" role="menuitem" className={pickerOpen ? 'is-open' : ''} onMouseEnter={() => setPickerOpen(true)} onClick={() => setPickerOpen(true)}><ListMagnifyingGlass size={13} />选择事项<CaretRight size={11} /></button></div> : null}
           {plusOpen && pickerOpen ? <div className="plus-sub" role="listbox" aria-label="选择事项">
             <div className="picker-search"><ListMagnifyingGlass size={13} /><input autoFocus value={pickerQuery} placeholder="搜索事项或标签" onChange={event => setPickerQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setPlusOpen(false); setPickerOpen(false); setPickerQuery(''); } }} /></div>
             <div className="picker-list">

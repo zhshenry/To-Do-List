@@ -406,3 +406,4 @@
 .mini-task-picker .picker-title { flex: 1; font-size: var(--fs-compact); font-weight: 500; }
 .mini-task-picker .picker-tag { color: var(--muted); font-size: var(--fs-compact-sm); flex: 0 0 auto; }
 .mini-task-picker .picker-check { color: var(--accent); flex: 0 0 auto; }
+.mini-window.is-asking-window .mini-content { height: auto; overflow: visible; }
