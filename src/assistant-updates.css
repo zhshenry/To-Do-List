@@ -649,3 +649,20 @@
   .proposal-check[aria-pressed="true"] { background: Highlight; color: HighlightText; }
   .proposal-card-corners { display: none; }
 }
+
+/* ── 助手气泡 Markdown 渲染（#17 一期）——尺寸取自尺寸阶 ── */
+.chat-bubble .md-body { white-space: normal; font-size: var(--fs-body-sm); line-height: 1.6; display: flex; flex-direction: column; gap: 6px; overflow-wrap: anywhere; }
+.chat-bubble .md-body > :first-child { margin-top: 0; }
+.chat-bubble .md-body > :last-child { margin-bottom: 0; }
+.chat-bubble .md-body p { margin: 0; }
+.chat-bubble .md-body strong { font-weight: 650; }
+.chat-bubble .md-body h3, .chat-bubble .md-body h4 { font-size: var(--fs-body-sm); font-weight: 650; margin: 2px 0 0; }
+.chat-bubble .md-body ul, .chat-bubble .md-body ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+.chat-bubble .md-body ul li::marker { color: var(--accent); }
+.chat-bubble .md-body code { font-family: Consolas, "Cascadia Mono", monospace; font-size: var(--fs-compact); background: var(--subtle); border-radius: var(--r-control-sm); padding: 0 4px; }
+.chat-bubble .md-body pre { margin: 0; background: var(--subtle); border: 1px solid var(--line); border-radius: var(--r-card); padding: 8px 10px; overflow-x: auto; }
+.chat-bubble .md-body pre code { background: transparent; padding: 0; font-size: var(--fs-compact-sm); }
+.chat-bubble .md-body table { border-collapse: collapse; font-size: var(--fs-compact); }
+.chat-bubble .md-body th, .chat-bubble .md-body td { border: 1px solid var(--line); padding: 3px 8px; text-align: left; }
+.chat-bubble .md-body blockquote { margin: 0; padding: 2px 10px; border-left: 2px solid var(--accent); color: var(--muted); }
+.chat-bubble .md-body a { color: var(--accent); }
