@@ -411,7 +411,7 @@ try {
     return { buttons, nameNowrap: nameStyle?.whiteSpace === 'nowrap', nameEllipsis: nameStyle?.textOverflow === 'ellipsis' };
   });
   assert.ok(modelRowMetrics, 'the created model renders a list row');
-  assert.ok(modelRowMetrics.buttons.every(([w, h]) => w === 20 && h === 20), `model row action buttons stay 20x20 (compacted in 0.5.5): ${JSON.stringify(modelRowMetrics.buttons)}`);
+  assert.ok(modelRowMetrics.buttons.every(([w, h]) => w === 22 && h === 22), `model row action buttons stay 22x22 (issue #15 compact buttons): ${JSON.stringify(modelRowMetrics.buttons)}`);
   assert.ok(modelRowMetrics.nameNowrap && modelRowMetrics.nameEllipsis, 'model names stay on one line with an ellipsis');
   await page.getByRole('switch', { name: '启用 AI', exact: true }).click();
   await poll(async () => (await page.evaluate(() => window.desktop.state())).settings.aiEnabled, 'AI switch immediate save');
