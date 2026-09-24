@@ -63,6 +63,7 @@ export function StandaloneAIConversation({ entries, pendingText, busy, error, ac
             {entry.role === 'assistant' ? <span className="assistant-avatar" aria-hidden="true"><Sparkle size={14} weight="fill" /></span> : null}
             <div className="chat-message-column">
               {entry.role === 'assistant' ? <span className="chat-speaker">AI 助手</span> : null}
+              {entry.role === 'user' && entry.taskId && tasks.some(task => task.id === entry.taskId) ? (() => { const linked = tasks.find(task => task.id === entry.taskId)!; return <div className="bubble-ctx"><span className="b-chip"><i className={`k ${linked.kind === 'meeting' ? 'meeting' : 'task'}`} /><span>{linked.title}</span></span></div>; })() : null}
               <div className={"chat-bubble" + (entry.role === 'assistant' && entry.content ? ' md' : '')}>{entry.role === 'assistant' && entry.content ? <div className="md-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.content) }} /> : entry.content ? <p>{entry.content}</p> : entry.streaming ? <span className="typing-indicator" aria-label="AI 正在生成回复"><i /><i /><i /></span> : null}
                 {entry.role === 'assistant' && tools.length ? <ActivityDisclosure tools={tools} active={Boolean(entry.streaming || tools.some(tool => tool.status === 'running'))} /> : null}
                 {entry.error ? <p className="chat-entry-error" role="alert">{entry.error}</p> : null}
