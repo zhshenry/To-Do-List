@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Issue #14 · 展开态固定双区布局提案</title>
+<style>
+  :root { --paper:#faf8f5; --ink:#171923; --muted:#726d67; --accent:#b54f2b; --accent-soft:#f6e2d9; --line:#e4ded6; --success:#3e7d44; --success-soft:#e2efe2; --white:#fff; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--paper); font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif; color:var(--ink); padding:26px 30px; }
+  h1 { font-size:17px; margin-bottom:4px; }
+  .sub { font-size:12px; color:var(--muted); margin-bottom:16px; }
+  .wrap { display:flex; gap:30px; align-items:flex-start; }
+  .left { flex:0 0 430px; }
+  .right { flex:1; }
+
+  .app { position:relative; width:430px; height:640px; background:var(--paper); border:1px solid var(--line); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; }
+  .titlebar { display:flex; align-items:center; gap:9px; padding:12px 14px 8px; }
+  .logo { width:24px; height:24px; border-radius:50%; border:3px solid var(--ink); position:relative; }
+  .logo::after { content:""; position:absolute; top:1px; right:2px; width:5px; height:5px; border-radius:50%; background:var(--accent); }
+  .titlebar b { font-size:14px; }
+  .winbtns { margin-left:auto; display:flex; gap:8px; color:var(--muted); font-size:11px; }
+  .date { text-align:center; color:var(--muted); font-size:11px; margin:4px 0 8px; }
+
+  /* 固定双区：55 / 45，外层不滚动 */
+  .board { flex:1; min-height:0; display:flex; flex-direction:column; padding:0 12px; overflow:hidden; }
+  .sec { display:flex; flex-direction:column; min-height:0; background:var(--white); border:1px solid var(--line); border-radius:12px; padding:9px 12px 6px; margin-bottom:8px; }
+  .sec.todo { flex:11 1 0; }
+  .sec.sched { flex:9 1 0; }
+  .sec-head { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+  .sec-head h3 { font-size:12px; font-weight:650; }
+  .sec-head .tools { margin-left:auto; color:var(--muted); font-size:10px; }
+  .scroll { flex:1; min-height:0; overflow-y:auto; }
+  .scroll::-webkit-scrollbar { width:5px; }
+  .scroll::-webkit-scrollbar-thumb { background:#d8d0c6; border-radius:4px; }
+  .item { display:flex; gap:8px; align-items:flex-start; padding:6px 2px; border-top:1px solid #f1ece6; font-size:11.5px; }
+  .item:first-child { border-top:0; }
+  .ck { flex:0 0 auto; width:13px; height:13px; border-radius:50%; border:1.5px solid #b7b0a6; }
+  .item .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item .tm { color:var(--muted); font-size:10px; }
+  .folder { font-size:10.5px; color:var(--muted); padding:4px 2px; border-top:1px solid #f1ece6; display:flex; justify-content:space-between; }
+  .folder b { color:var(--ink); font-weight:600; }
+
+  .note { font-size:11px; color:var(--muted); line-height:1.85; }
+  .note b { color:var(--ink); }
+  .kbd { background:var(--white); border:1px solid var(--line); border-radius:6px; padding:0 5px; font-size:10px; }
+  h2 { font-size:13px; margin-bottom:10px; }
+  .legend { margin-top:10px; display:flex; gap:10px; font-size:10.5px; color:var(--muted); }
+  .legend i { font-style:normal; display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:4px; }
+</style>
+</head>
+<body>
+<h1>Issue #14 · 展开态「待办 / 日程」固定双区布局（v1 提案）</h1>
+<div class="sub">外层整体滚动取消 → 待办、日程各占固定比例（<b>55 : 45</b>，待办略多），内容在各自卡片内部滚动 · 列表与方块两种模式同样适用</div>
+<div class="wrap">
+  <div class="left">
+    <h2>提案态示意（内部滚动条可见）</h2>
+    <div class="app">
+      <div class="titlebar"><span class="logo"></span><b>To Do List</b><span class="winbtns">钉住 ⚙ ⇩ —</span></div>
+      <div class="date">9月23日 周三</div>
+      <div class="board">
+        <div class="sec todo">
+          <div class="sec-head"><h3>待办</h3><span class="tools">列表 | 方块</span></div>
+          <div class="scroll">
+            <div class="item"><span class="ck"></span><span class="nm">创建一个本项目的自动化问题单处理机制并持续优化</span><span class="tm">9/23 23:54</span></div>
+            <div class="item"><span class="ck"></span><span class="nm">回复邮件</span><span class="tm">9/24</span></div>
+            <div class="item"><span class="ck"></span><span class="nm">整理季度目标</span><span class="tm">9/25</span></div>
+            <div class="item"><span class="ck"></span><span class="nm">预约体检</span><span class="tm">9/26</span></div>
+            <div class="item"><span class="ck"></span><span class="nm">给车做保养</span><span class="tm">9/28</span></div>
+          </div>
+        </div>
+        <div class="sec sched">
+          <div class="sec-head"><h3>日程</h3></div>
+          <div class="scroll">
+            <div class="folder"><b>今天</b><span>2 项</span></div>
+            <div class="item"><span class="nm">项目周会</span><span class="tm">10:00</span></div>
+            <div class="item"><span class="nm">与设计师对稿</span><span class="tm">15:00</span></div>
+            <div class="folder"><b>明天</b><span>1 项</span></div>
+            <div class="item"><span class="nm">牙医复诊</span><span class="tm">09:30</span></div>
+            <div class="folder"><b>近期</b><span>9/24 – 9/29</span></div>
+            <div class="item"><span class="nm">版本发布评审</span><span class="tm">9/26</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legend"><span><i style="background:#e8e2da"></i>各卡片自己的滚动条</span><span><i style="background:#fff;border:1px solid var(--line)"></i>卡片高度固定不随内容变化</span></div>
+  </div>
+  <div class="right">
+    <h2>设计要点</h2>
+    <div class="note">
+      <b>① 比例 55 : 45（待办略多）</b>：两区按 <span class="kbd">flex: 11 / flex: 9</span> 分配剩余高度，随窗口高度等比缩放，但不随内容增减变化——加 10 条待办也只是待办区内部滚动。<br><br>
+      <b>② 各自内部滚动</b>：<span class="kbd">.today-board</span> 由「整体 overflow-y:auto」改为 <span class="kbd">overflow:hidden</span>；两卡的列表/方块/日程分组容器各自 <span class="kbd">flex:1 + overflow-y:auto</span>。卡片标题（待办/日程 + 视图切换、分组标签）固定在卡顶，不随滚动。<br><br>
+      <b>③ 列表 / 方块两种模式通用</b>：方块网格同样在待办卡内部滚动；日程分组（今天/明天/近期/更晚）展开时在日程卡内部滚动（分组内的 168px 小滚动条取消，统一交给日程区滚动，避免嵌套滚动）。<br><br>
+      <b>④ 空态不变</b>：「今天还没有安排」「没有日程」照旧显示在各自卡内。<br><br>
+      <b>改动面</b>：<span class="kbd">src/styles.css</span> 布局约 6-10 行 + <span class="kbd">src/App.tsx</span> 日程分组容器类名微调；不动数据与交互逻辑。冒烟脚本需回归（滚动容器变化可能影响可点性断言，playwright 会自动滚动到元素）。<br><br>
+      <b>开放点（可 /reject 指定）</b>：比例是否要 55:45？也可以 60:40 或对半——批准时说个数即可，默认按 55:45 实现。
+    </div>
+  </div>
+</div>
+</body>
+</html>

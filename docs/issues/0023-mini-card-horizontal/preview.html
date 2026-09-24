@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root { --ink: #33302c; --muted: #8a8178; --line: #e2dbd3; --accent: #bd5532; --accent-soft: #f6e3d8; --white: #fff; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background: #fff; }
+  .shot { display: flex; flex-direction: column; gap: 10px; }
+  .caption { font-size: 13px; color: #555; }
+  .caption b { color: #222; }
+  .frame { position: relative; overflow: hidden; flex-shrink: 0; width: 440px; height: 352px; border-radius: 18px; background: linear-gradient(160deg, #fdf8f3, #f7efe7); box-shadow: 0 8px 28px #3f35291a; }
+  .titlebar { height: 62px; display: flex; align-items: center; gap: 10px; padding: 0 18px; }
+  .logo { width: 44px; height: 44px; border-radius: 50%; border: 4px solid #2e2b28; position: relative; }
+  .logo i { position: absolute; top: 3px; right: 6px; width: 11px; height: 11px; border-radius: 50%; background: #c9552e; }
+  .app-title { font-size: 17px; font-weight: 650; color: #2e2b28; }
+  .titlebar .spacer { flex: 1; }
+  .tb-icons { display: flex; gap: 14px; color: #4a453f; font-size: 15px; }
+  .card { position: absolute; left: 14px; right: 14px; top: 74px; bottom: 10px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(180deg, #fffdfb, #fdf6f0); padding: 10px 12px; display: flex; flex-direction: column; }
+  .ai-head { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid #f0e9e1; }
+  .ai-mark { width: 24px; height: 24px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+  .ai-head b { font-size: 12px; }
+  .ai-head .spacer { flex: 1; }
+  .ai-head .mini-ic { color: var(--muted); font-size: 11px; }
+  .proposal { flex: 1; display: flex; flex-direction: column; gap: 8px; padding-top: 8px; min-height: 0; }
+  .p-title-row { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .p-pill { flex: 0 0 auto; font-size: 10px; font-weight: 650; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 7px; }
+  .p-title { min-width: 0; font-size: 12.5px; font-weight: 650; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .p-meta-row { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--muted); padding-left: 2px; }
+  .p-meta-row .m { display: inline-flex; align-items: center; gap: 3px; min-width: 0; }
+  .p-meta-row .dot { width: 6px; height: 6px; border-radius: 999px; background: #8a5fb0; }
+  .p-meta-row .sep { color: #d8d0c6; }
+  .p-foot { margin-top: auto; display: flex; align-items: center; gap: 7px; padding-top: 8px; border-top: 1px solid #f0e9e1; }
+  .p-foot button { border: 1px solid var(--line); background: var(--white); color: var(--ink); border-radius: 8px; padding: 4px 10px; font-size: 10.5px; }
+  .p-foot button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 650; }
+  .p-foot .model { margin-left: auto; border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; color: var(--muted); font-size: 10px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .before { border: 1px dashed #d8d0c6; border-radius: 14px; padding: 12px; }
+  .before .rows { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .before .r { display: flex; gap: 7px; align-items: center; font-size: 11px; color: #555; }
+  .before .r i.cut { margin-left: auto; color: #b3452e; font-style: normal; font-size: 10px; }
+  .before .clip-line { border-top: 1.5px dashed #b3452e; margin-top: 8px; position: relative; }
+  .before .clip-line span { position: absolute; right: 0; top: -16px; color: #b3452e; font-size: 10px; }
+</style>
+</head>
+<body>
+  <div class="shot">
+    <div class="caption"><b>方案（横排 meta）：</b>「标签」「时间」合并为一条横向 meta 行，随标题行下方单行排布——卡片无需滚动即容纳全部内容。</div>
+    <div class="frame">
+      <div class="titlebar">
+        <div class="logo"><i></i></div>
+        <div class="app-title">To Do List</div>
+        <div class="spacer"></div>
+        <div class="tb-icons">📌 ⚙ ⛛ ▁</div>
+      </div>
+      <div class="card">
+        <div class="ai-head">
+          <span class="ai-mark">✦</span><b>AI 助手</b><span class="spacer"></span><span class="mini-ic">⤢ &nbsp;‹ 返回</span>
+        </div>
+        <div class="proposal">
+          <div class="p-title-row">
+            <span class="p-pill">新增待办</span>
+            <span class="p-title">完成个人工作台初版建设并发布版</span>
+          </div>
+          <div class="p-meta-row">
+            <span class="m"><span class="dot"></span>标签：个人开发</span>
+            <span class="sep">·</span>
+            <span class="m">时间：9/23 23:59</span>
+          </div>
+          <div class="p-foot">
+            <button>放弃建议</button>
+            <button class="primary">应用 1 项</button>
+            <span class="model">deepseek… ▾</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="shot" style="margin-top: 18px;">
+    <div class="caption"><b>现状（对照）：</b>「标签」「时间」各占一行，长标题换行后内容被推出卡片底缘、需滚动。</div>
+    <div class="frame before" style="height: 200px;">
+      <div style="font-size: 12px; font-weight: 650; color: #2e2b28;">✦ AI 助手（确认态卡片）</div>
+      <div class="rows">
+        <div class="r"><span class="p-pill">新增待办</span><span style="font-weight:650">完成个人工作台初版建设并发布版</span></div>
+        <div class="r" style="padding-left: 4px;">标签：个人开发</div>
+        <div class="r" style="padding-left: 4px;">时间：9/23 23:59 <i class="cut">↓ 继续下滚才能看到 footer（放弃/应用）</i></div>
+      </div>
+      <div class="clip-line"><span>卡片底缘（内容被截断）</span></div>
+    </div>
+  </div>
+</body>
+</html>

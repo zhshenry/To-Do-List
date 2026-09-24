@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>日程分组</title>
+<style>
+  :root {
+    --ink: #171923; --muted: #726d67; --line: #e4ded6; --white: #fff;
+    --accent: #b54f2b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 32px 40px; background: #ece7e1; color: var(--ink); font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif; }
+  h1 { margin: 0 0 6px; font-size: 18px; font-weight: 650; }
+  .lead { margin: 0 0 22px; max-width: 820px; color: #4e4944; font-size: 13px; line-height: 1.55; }
+  .board { display: flex; gap: 28px; align-items: flex-start; }
+  figure { margin: 0; width: 392px; }
+  figcaption { margin: 0 0 8px; font-size: 12px; font-weight: 650; }
+  figcaption small { display: block; margin-top: 2px; font-weight: 450; color: var(--muted); }
+  .card { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px 4px; box-shadow: 0 10px 28px #17192310; }
+  .card h2 { margin: 0 0 6px; font-size: 13px; font-weight: 650; }
+  .empty { margin: 0; padding: 4px 2px 8px; color: var(--muted); font-size: 12px; }
+  .row { display: grid; gap: 3px; padding: 8px 0; }
+  .row b { font-size: 14px; font-weight: 600; line-height: 1.4; }
+  .meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .cat { display: flex; align-items: center; gap: 5px; min-width: 0; flex: 1; color: var(--muted); font-size: 11px; }
+  .cat i { width: 7px; height: 7px; border-radius: 50%; background: #b8532f; flex: 0 0 auto; }
+  time { flex-shrink: 0; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  time b { margin-right: 3px; font-size: 11px; font-weight: 600; }
+  .upcoming { border-top: 1px solid var(--line); margin-top: 2px; }
+  .upcoming.bare { border-top: 0; margin-top: 0; }
+  .folder + .folder { border-top: 1px solid var(--line); }
+  .tab { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 0; }
+  .tab h3 { flex: 1; margin: 0; font-size: 13px; font-weight: 400; }
+  .tab h3 small { margin-left: 8px; color: var(--muted); font-size: 11px; font-weight: 400; }
+  .count { min-width: 1.4em; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; }
+  .caret { color: var(--muted); }
+  .open .caret { transform: rotate(180deg); }
+  .body { padding: 0 0 8px 20px; }
+</style>
+</head>
+<body>
+  <h1>日程 · 有内容才分组</h1>
+  <p class="lead">今天、明天、近期、更晚和「日程」标题左对齐，栏目用常规字重。哪一组有日程才出现。展开后的日程名加粗，比栏目再往右收一档。今天是空的就不写「今天没有日程」，也不留空的「今天」栏。今天和后面都没有，整张卡只写「没有日程」。</p>
+  <div class="board">
+    <figure>
+      <figcaption>今天和后面都没有<small>不再铺三行 0</small></figcaption>
+      <section class="card">
+        <h2>日程</h2>
+        <p class="empty">没有日程。</p>
+      </section>
+    </figure>
+    <figure>
+      <figcaption>今天没有，明天和更晚有<small>不写「今天没有日程」，近期也不出现</small></figcaption>
+      <section class="card">
+        <h2>日程</h2>
+        <div class="upcoming bare">
+          <section class="folder open">
+            <div class="tab"><h3>明天<small>9/23</small></h3><span class="count">1</span><svg class="caret" width="12" height="12" viewBox="0 0 12 12"><path d="M2.2 4.4 6 8 9.8 4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="body">
+              <div class="row"><b>产品周会</b><span class="meta"><span class="cat"><i></i>工作</span><time><b>开始时间</b>9/23 10:00</time></span></div>
+            </div>
+          </section>
+          <section class="folder">
+            <div class="tab"><h3>更晚<small>9/30 起</small></h3><span class="count">1</span><svg class="caret" width="12" height="12" viewBox="0 0 12 12"><path d="M2.2 4.4 6 8 9.8 4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </section>
+        </div>
+      </section>
+    </figure>
+    <figure>
+      <figcaption>今天有，后面只有近期<small>今天也是栏目，明天和更晚不出现</small></figcaption>
+      <section class="card">
+        <h2>日程</h2>
+        <div class="upcoming bare">
+          <section class="folder open">
+            <div class="tab"><h3>今天<small>9/22</small></h3><span class="count">1</span><svg class="caret" width="12" height="12" viewBox="0 0 12 12"><path d="M2.2 4.4 6 8 9.8 4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="body">
+              <div class="row"><b>晨会</b><span class="meta"><span class="cat"><i></i>工作</span><time><b>开始时间</b>9/22 09:30</time></span></div>
+            </div>
+          </section>
+          <section class="folder">
+            <div class="tab"><h3>近期<small>9/24 – 9/29</small></h3><span class="count">2</span><svg class="caret" width="12" height="12" viewBox="0 0 12 12"><path d="M2.2 4.4 6 8 9.8 4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </section>
+        </div>
+      </section>
+    </figure>
+  </div>
+</body>
+</html>

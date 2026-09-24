@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>覆盖式 AI 对话</title>
+<style>
+  @property --glow { syntax: "<angle>"; inherits: false; initial-value: 28deg; }
+  :root {
+    color-scheme: light;
+    --ink: #171923; --muted: #726d67; --accent: #b54f2b; --accent-soft: #f6e2d9;
+    --line: #e4ded6; --white: #ffffff; --titlebar: #f2eee8; --paper: #faf8f5;
+    --font: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 70% 40% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e4ddd4; color: var(--ink); font-family: var(--font); font-size: 14px; }
+  .sheet { padding: 32px 40px 48px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -0.03em; }
+  .lead { max-width: 560px; margin: 8px 0 22px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .ph { display: block; }
+
+  .win {
+    position: relative; width: 340px; height: 700px; display: flex; flex-direction: column;
+    border: 1px solid var(--line); border-radius: 18px; background: var(--mesh); overflow: hidden;
+    box-shadow: 0 18px 40px #4c403014;
+  }
+  .titlebar { height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px; }
+  .logo { width: 28px; height: 28px; border: 3px solid #221f1c; border-radius: 50%; position: relative; flex-shrink: 0; }
+  .logo::after { content: ""; position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: #c45a32; }
+  .titlebar b { flex: 1; font-size: 14px; font-weight: 600; }
+  .ib { width: 18px; height: 18px; }
+  .date-row { display: flex; align-items: center; justify-content: space-between; padding: 0 17px 10px; }
+  .date-row h2 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -1px; }
+  .ghost, .solid { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 8px; border-radius: 10px; font-size: 12px; }
+  .ghost { color: var(--muted); }
+  .solid { border: 1px solid var(--line); background: var(--white); }
+  .agenda { padding: 0 17px 16px; }
+  .card { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 10px 10px 4px; margin-bottom: 10px; }
+  .card h3 { margin: 0 2px 4px; font-size: 13px; font-weight: 650; }
+  .task { display: grid; grid-template-columns: 22px minmax(0, 1fr); column-gap: 10px; row-gap: 2px; padding: 7px 2px; }
+  .check { width: 22px; height: 22px; grid-row: 1 / span 2; border: 1.5px solid #b7b0a6; border-radius: 50%; }
+  .task strong { font-size: 14px; font-weight: 600; line-height: 1.35; }
+  .meta { color: var(--muted); font-size: 11px; }
+  .meta i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+  .folder { display: flex; align-items: center; gap: 8px; min-height: 36px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 600; }
+  .folder small { margin-left: 6px; color: var(--muted); font-size: 11px; font-weight: 400; }
+  .folder em { margin-left: auto; color: var(--muted); font-size: 11px; font-style: normal; font-weight: 400; }
+
+  .overlay {
+    position: absolute; z-index: 2; left: 10px; right: 10px; bottom: 10px; height: 318px;
+    border-radius: 16px; background: #fbfaf7;
+    box-shadow: 0 -10px 28px #1719231a;
+  }
+  .overlay::before {
+    content: ""; position: absolute; inset: 0; padding: 1.5px; border-radius: inherit; pointer-events: none;
+    background: conic-gradient(from var(--glow), transparent 0deg 276deg, #bd55320d 292deg, #bd5532a6 315deg, #fff1db 328deg, #bd553247 345deg, transparent 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+    filter: drop-shadow(0 0 2px #bd55324d);
+    animation: glow 3.2s linear infinite;
+  }
+  @keyframes glow { to { --glow: 388deg; } }
+  .overlay-in { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; }
+  .head { display: flex; align-items: center; gap: 6px; min-height: 42px; padding: 8px 6px 0 12px; }
+  .session { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 650; }
+  .session span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .session .ph { width: 11px; height: 11px; color: var(--muted); }
+  .new-chat { min-height: 28px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); color: var(--muted); font-size: 12px; font-weight: 600; }
+  .x { width: 26px; height: 26px; display: grid; place-items: center; }
+  .x .ph { width: 14px; height: 14px; }
+  .thread { padding: 6px 12px 8px; display: flex; flex-direction: column; gap: 8px; }
+  .user { align-self: flex-end; max-width: 92%; padding: 8px 10px; border-radius: 14px 14px 4px 14px; background: color-mix(in srgb, var(--titlebar) 74%, var(--white)); font-size: 13px; line-height: 1.55; }
+  .ai { align-self: flex-start; max-width: 96%; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--muted) 17%, var(--line)); border-radius: 14px 14px 14px 4px; background: var(--white); font-size: 13px; line-height: 1.55; }
+  .compose { margin: auto 8px 8px; display: flex; flex-direction: column; gap: 6px; padding: 8px 8px 7px 10px; border: 1px solid #cec4ba; border-radius: 14px; background: #fff; }
+  .placeholder { color: var(--muted); font-size: 12px; }
+  .row { display: flex; align-items: center; justify-content: space-between; }
+  .model { height: 26px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: #f8f5f1; font-size: 10px; color: #5f5952; }
+  .model .ph { width: 10px; height: 10px; color: var(--muted); }
+  .send { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--accent); color: #fff; }
+  .send .ph { width: 14px; height: 14px; }
+  .note { margin: 12px 0 0; max-width: 340px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-caret" viewBox="0 0 256 256"><path fill="currentColor" d="M216.49,104.49l-80,80a12,12,0,0,1-17,0l-80-80a12,12,0,0,1,17-17L128,159l71.51-71.52a12,12,0,0,1,17,17Z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 256 256"><path fill="currentColor" d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+  <symbol id="i-plane" viewBox="0 0 256 256"><path fill="currentColor" d="M231.4,44.34l-58.2,191.94a15.88,15.88,0,0,1-14,11.51,15.86,15.86,0,0,1-14.42-9.15L107,164.15a4,4,0,0,1,.77-4.58l57.92-57.92a8,8,0,0,0-11.31-11.31L96.43,148.26a4,4,0,0,1-4.58.77L17.08,112.64a16,16,0,0,1,2.49-29.8l191.94-58.2A16,16,0,0,1,231.4,44.34Z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 256 256"><path fill="currentColor" d="M235.33,104l-53.47,53.65c4.56,12.67,6.45,33.89-13.19,60A16,16,0,0,1,157,224a16,16,0,0,1-11.32-4.69L96.29,171,53.66,213.66a8,8,0,0,1-11.32-11.32L85,159.71,36.71,111.4A16,16,0,0,1,38,87.63c25.42-20.51,49.75-16.48,60.4-13.14L152,20.7a16,16,0,0,1,22.63,0l60.69,60.68A16,16,0,0,1,235.33,104Z"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 256 256"><path fill="currentColor" d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128Z"/></symbol>
+</svg>
+<div class="sheet">
+  <h1>对话盖在待办上面</h1>
+  <p class="lead">待办和日程都不挪位置。打开后，对话从底部盖住下面那一段，边框用收起卡同一圈暖色追光，沿边慢慢走。关掉就揭开，下面还是原来的日程。话少时盖住的高度就这么多；话变多再往上盖，待办标题和一条事项仍留在外面。</p>
+  <div class="win">
+    <header class="titlebar"><i class="logo"></i><b>To Do List</b><svg class="ib ph"><use href="#i-pin"/></svg><svg class="ib ph"><use href="#i-minus"/></svg></header>
+    <div class="date-row"><h2>9月22日</h2><div><span class="ghost">事项库</span><span class="solid">+ 新增</span></div></div>
+    <div class="agenda">
+      <section class="card">
+        <h3>待办</h3>
+        <div class="task"><i class="check"></i><strong>完成 DAMA BOOK 学习</strong><span class="meta"><i style="background:#3d6fbf"></i>学习 · 完成时间 9/30</span></div>
+        <div class="task"><i class="check"></i><strong>在自动化处理问题单流程中新增 JEV 审核尝试</strong><span class="meta"><i style="background:#c45c26"></i>个人开发 · 完成时间 9/22</span></div>
+      </section>
+      <section class="card">
+        <h3>日程</h3>
+        <div class="meta" style="padding:2px 2px 8px">今天有 1 个日程。</div>
+        <div class="folder">明天<small>9/23</small><em>1</em></div>
+        <div class="folder">近期<small>9/24 – 9/29</small><em>2</em></div>
+        <div class="folder">更晚<small>9/30 起</small><em>0</em></div>
+      </section>
+    </div>
+    <section class="overlay" aria-label="AI 助手">
+      <div class="overlay-in">
+        <header class="head">
+          <span class="session"><span>问数模板库</span><svg class="ph"><use href="#i-caret"/></svg></span>
+          <span class="new-chat">新对话</span>
+          <span class="x"><svg class="ph"><use href="#i-x"/></svg></span>
+        </header>
+        <div class="thread">
+          <div class="user">我明天下班前要把问数模板库的功能做完</div>
+          <div class="ai">已生成一条修改建议。预览确认后才会写入。</div>
+        </div>
+        <div class="compose">
+          <div class="placeholder">Enter 发送 · Shift + Enter 换行</div>
+          <div class="row"><span class="model">deepseek-v4-flash <svg class="ph"><use href="#i-caret"/></svg></span><span class="send"><svg class="ph"><use href="#i-plane"/></svg></span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <p class="note">追光和收起卡一样，约 3 秒转一圈。系统开了「减弱动态效果」就停住，只留细边。</p>
+</div>
+</body>
+</html>

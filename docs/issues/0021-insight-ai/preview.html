@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>AI 建议 · 真 AI 化 高保真</title>
+<style>
+:root {
+  color-scheme: light;
+  --paper:#faf8f5; --titlebar:#f2eee8; --ink:#171923; --muted:#726d67;
+  --accent:#b54f2b; --accent-hover:#963e20; --accent-soft:#f6e2d9; --line:#e4ded6; --subtle:#efebe6;
+  --danger:#a3312d; --success:#3e7d44; --success-soft:#e2efe2; --white:#ffffff;
+  --font-body:"Segoe UI Variable","Segoe UI","Microsoft YaHei UI","Microsoft YaHei",sans-serif;
+  --radius:18px;
+  --mesh:radial-gradient(ellipse 90% 50% at 100% 0%,#f8efe9 0%,transparent 62%),radial-gradient(ellipse 80% 45% at 0% 100%,#eef2f6 0%,transparent 58%),#fbfaf7;
+  font-family:var(--font-body); font-size:14px; line-height:1.5; color:var(--ink);
+}
+*{box-sizing:border-box}
+h1,h2,h3,p{margin:0}
+button{font:inherit;cursor:pointer;color:inherit;border:1px solid var(--line);background:var(--white);border-radius:10px;padding:9px 13px}
+svg{flex-shrink:0}
+.ic{width:1em;height:1em}
+.board{display:flex;flex-wrap:wrap;gap:44px;padding:44px;background:#e9e3d9;align-items:flex-start}
+.shot{display:flex;flex-direction:column;gap:10px}
+.caption{max-width:420px;font-size:12px;color:#5c554d;line-height:1.6}
+.caption b{display:block;font-size:13px;color:#3c362f;margin-bottom:2px}
+.frame{position:relative;overflow:hidden;flex-shrink:0}
+
+/* ===== 小卡片复刻（mini-card.css with-insight 分支）===== */
+.mini-window{position:relative;width:340px;height:176px;border:1px solid var(--line);border-radius:var(--radius);background:var(--mesh);overflow:hidden;box-shadow:0 10px 26px #1719231f}
+.mini-brand-logo{position:absolute;z-index:5;left:15px;top:5px;width:40px;height:40px;display:inline-flex}
+.mini-titlebar{height:52px;display:flex;align-items:center;gap:10px;padding:0 12px 0 16px;user-select:none}
+.mini-logo-slot{width:40px;height:40px;flex:0 0 auto}
+.mini-app-title{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;font-weight:600}
+.mini-window-actions{display:flex;gap:1px;flex:0 0 auto}
+.mini-window-actions .icon-button{width:30px;height:30px;padding:6px;color:var(--ink)}
+.mini-window-actions .icon-button:hover{background:var(--subtle)}
+.icon-button{border:0;padding:6px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border-radius:7px}
+.mini-content{position:relative;height:124px;padding:9px 12px 11px;overflow:hidden}
+.mini-home-with-insight{height:104px;display:grid;grid-template-rows:22px 77px;gap:5px}
+.mini-home-main{height:77px;display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:8px}
+.mini-task-stack{position:relative;min-width:0;height:77px}
+.mini-stack-sheet{position:absolute;left:4px;right:4px;top:6px;height:62px;border:1px solid var(--line);border-radius:14px;background:#f8f5f1}
+.mini-stack-sheet.back{top:11px;height:66px;background:#f3efea}
+.mini-task-front{position:absolute;z-index:2;inset:0 0 auto;height:70px;display:flex;flex-direction:column;padding:20px 9px 5px;border:1px solid #e1dad1;border-radius:14px;background:#fff;box-shadow:0 5px 14px #4c40310b}
+.front-main{flex:1;min-height:0;display:grid;grid-template-columns:18px minmax(0,1fr);gap:7px;align-items:center}
+.front-main.is-meeting{grid-template-columns:minmax(0,1fr)}
+.corner-badges{position:absolute;top:4px;left:9px;display:flex;gap:4px;z-index:1}
+.mini-pill{font-size:9px;font-weight:650;line-height:1;padding:2px 7px;border-radius:999px}
+.pill-todo{background:var(--success-soft);color:var(--success)}
+.pill-meeting{background:#e3ecf3;color:#3f6b8f}
+.corner-time{position:absolute;top:6px;right:9px;font-size:9px;color:var(--muted);font-variant-numeric:tabular-nums}
+.corner-time .time-label{margin-right:3px;font-weight:600}
+.mini-task-check{width:18px;height:18px;border-radius:50%;border:1.5px solid #b7b0a6;display:grid;place-items:center;padding:0;background:transparent;color:transparent}
+.mini-task-check:hover{border-color:var(--accent);background:var(--accent-soft)}
+.mini-task-open{min-width:0;display:flex;flex-direction:column;gap:2px;padding:0;border:0;background:transparent;text-align:left}
+.mini-task-open:hover{background:transparent}
+.mini-task-open>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:1.2;font-weight:600}
+.front-meta{grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:3px;min-height:13px}
+.meta-cat{display:flex;align-items:center;gap:4px;min-width:0;color:var(--muted);font-size:9px;white-space:nowrap}
+.meta-cat i{width:6px;height:6px;flex:0 0 auto;border-radius:50%}
+.meta-cat>span{flex:0 0 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta-progress{flex:0 0 auto;color:var(--muted);font-size:9px;font-variant-numeric:tabular-nums}
+.mini-deck-pager{margin-left:auto;display:flex;align-items:center;color:var(--muted);font-size:9px;white-space:nowrap;gap:2px;flex:0 0 auto}
+.mini-deck-pager button{width:14px;height:14px;display:grid;place-items:center;padding:0;border:0;border-radius:5px;background:transparent}
+.mini-deck-pager .is-up{transform:rotate(180deg)}
+.mini-quick-actions{height:77px;display:grid;grid-template-rows:1fr 1fr;gap:5px}
+.mini-quick-actions button{display:flex;align-items:center;justify-content:flex-start;gap:7px;min-width:0;padding:0 10px;border-color:#e4ded6;border-radius:12px;background:#fff;font-size:11px;white-space:nowrap}
+.mini-quick-actions button:hover{background:#f5ebe4;color:var(--accent)}
+.mini-quick-actions svg{color:#a66c50}
+
+/* 建议条（现状复刻） */
+.mini-insight{grid-column:1/-1;min-width:0;height:22px;display:flex;align-items:center;gap:5px;padding:0 6px;border:0;border-radius:7px;background:#f8f4ef;text-align:left;
+  transition:background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease}
+.mini-insight:hover{background:#f5e9e2}
+.mini-insight>span{flex:0 0 auto;color:var(--accent);font-size:9px;font-weight:700}
+.mini-insight>b{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+.mini-insight>small{flex:0 0 auto;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:9px}
+.mini-insight>em{margin-left:auto;flex:0 0 auto;color:var(--accent);font-size:9px;font-style:normal;font-weight:650}
+/* NEW · AI 生成的建议（is-ai）：sparkle 图标 + accent 描边浅底，200ms 过渡换入 */
+.mini-insight.is-ai{border:1px solid #ecd9cb;background:linear-gradient(90deg,#fdf4ec,#f8f4ef 72%);padding:0 5px}
+.mini-insight.is-ai:hover{background:#fbece2}
+.mini-insight.is-ai>svg{flex:0 0 auto;color:var(--accent)}
+.mini-insight.is-ai>b{font-weight:650}
+/* 展开预览（现状复刻） */
+.mini-suggestion-preview{height:77px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 9px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.mini-suggestion-preview>span{min-width:0;display:flex;flex-direction:column;gap:3px}
+.mini-suggestion-preview b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.mini-suggestion-preview small{color:var(--muted);font-size:9px;line-height:1.35}
+.mini-suggestion-preview>div{display:flex;gap:4px}
+.mini-suggestion-preview>div button{min-height:26px;padding:4px 7px;border-radius:7px;font-size:9px}
+.mini-suggestion-preview>div .primary{border-color:var(--accent);background:var(--accent);color:#fff}
+.mini-open-row{display:flex;align-items:center;gap:5px;min-width:0}
+.mini-open-row>b{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-open-row>small{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:9px}
+</style>
+</head>
+<body>
+
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-brand" viewBox="0 0 40 40"><circle cx="20" cy="20" r="14.5" fill="none" stroke="#b54f2b" stroke-width="3.4"/><circle cx="31" cy="9" r="4.6" fill="#b54f2b"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 256 256"><path d="M197.58,129.06,146,110l-19-51.62a15.92,15.92,0,0,0-29.88,0L78,110l-51.62,19a15.92,15.92,0,0,0,0,29.88L78,178l19,51.62a15.92,15.92,0,0,0,29.88,0L146,178l51.62-19a15.92,15.92,0,0,0,0-29.88Z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 256 256"><path d="M235.32,81.37,174.63,20.69a16,16,0,0,0-22.63,0L98.37,74.49c-10.66-3.34-35-7.37-60.4,13.14a16,16,0,0,0-1.29,23.78L85,159.71,42.34,202.34a8,8,0,0,0,11.32,11.32L96.29,171l48.29,48.29A16,16,0,0,0,155.9,224c.38,0,.75,0,1.13,0a15.93,15.93,0,0,0,11.64-6.33c19.64-26.1,17.75-47.32,13.19-60L235.33,104A16,16,0,0,0,235.32,81.37Z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 256 256"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm109.94-52.79a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A112.1,112.1,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.62a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.91,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21Z"/></symbol>
+  <symbol id="i-arrows-v" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM101.66,53.66,120,35.31V96a8,8,0,0,0,16,0V35.31l18.34,18.35a8,8,0,0,0,11.32-11.32l-32-32a8,8,0,0,0-11.32,0l-32,32a8,8,0,0,0,11.32,11.32Zm52.68,148.68L136,220.69V160a8,8,0,0,0-16,0v60.69l-18.34-18.35a8,8,0,0,0-11.32,11.32l32,32a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32Z"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128Z"/></symbol>
+  <symbol id="i-caret-up" viewBox="0 0 256 256"><path d="M213.66,154.34l-80-80a8,8,0,0,0-11.32,0l-80,80A8,8,0,0,0,53.66,165.66L128,91.31l74.34,74.35a8,8,0,0,0,11.32-11.32Z"/></symbol>
+  <symbol id="i-caret-down" viewBox="0 0 256 256"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 256 256"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></symbol>
+</svg>
+
+<main class="board">
+
+  <!-- ═══ 1 · 本地规则兜底（现状，基线） ═══ -->
+  <section class="shot" id="s-local">
+    <div class="caption"><b>1 · 本地兜底（标签改为「建议」）</b>本地规则算出的建议不再叫「AI 建议」——诚实，也把「AI 建议」这个名字让给真正的 AI 生成（画板 2）。样式与其余行为不变。</div>
+    <div class="frame" style="width:340px;height:176px">
+      <div class="mini-window">
+        <span class="mini-brand-logo"><svg style="width:40px;height:40px"><use href="#i-brand"/></svg></span>
+        <header class="mini-titlebar"><span class="mini-logo-slot"></span><span class="mini-app-title">To Do List</span>
+          <div class="mini-window-actions">
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-pin"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-gear"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-arrows-v"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:20px"><use href="#i-minus"/></svg></button>
+          </div>
+        </header>
+        <div class="mini-content">
+          <div class="mini-home-with-insight">
+            <button type="button" class="mini-insight" aria-expanded="false">
+              <span>建议</span><b>牙医预约</b><small>留出会前准备 · 距开始约 45 分钟</small><em>查看</em>
+            </button>
+            <div class="mini-home-main">
+              <div class="mini-task-stack">
+                <span class="mini-stack-sheet"></span><span class="mini-stack-sheet back"></span>
+                <article class="mini-task-front is-meeting">
+                  <span class="corner-badges"><span class="mini-pill pill-meeting">日程</span></span>
+                  <span class="corner-time"><span class="time-label">出发</span>15:30</span>
+                  <div class="front-main is-meeting">
+                    <button type="button" class="mini-task-open"><b>牙医预约</b></button>
+                    <div class="front-meta"><span class="meta-cat"><i style="background:#4a7ba6"></i><span>生活</span></span><span class="mini-deck-pager"><button class="is-up"><svg class="ic" style="width:9px"><use href="#i-caret-up"/></svg></button><span>1 / 3</span><button><svg class="ic" style="width:9px"><use href="#i-caret-down"/></svg></button></span></div>
+                  </div>
+                </article>
+              </div>
+              <nav class="mini-quick-actions">
+                <button type="button"><svg class="ic" style="width:18px"><use href="#i-plus"/></svg><span>新增事项</span></button>
+                <button type="button"><svg class="ic" style="width:18px"><use href="#i-sparkle"/></svg><span>AI 助手</span></button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 2 · AI 建议就位（is-ai 高亮） ═══ -->
+  <section class="shot" id="s-ai">
+    <div class="caption"><b>2 · AI 建议就位（✦ 图标 + 「AI 建议」文字 + accent 描边浅底）</b>AI 选择了规则不会选的目标（日程例行，真正紧的是演示稿）；「距截止约 85 分钟」由本地现算、数字永不过期。后台生成完成后 200ms 过渡换入。</div>
+    <div class="frame" style="width:340px;height:176px">
+      <div class="mini-window">
+        <span class="mini-brand-logo"><svg style="width:40px;height:40px"><use href="#i-brand"/></svg></span>
+        <header class="mini-titlebar"><span class="mini-logo-slot"></span><span class="mini-app-title">To Do List</span>
+          <div class="mini-window-actions">
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-pin"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-gear"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-arrows-v"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:20px"><use href="#i-minus"/></svg></button>
+          </div>
+        </header>
+        <div class="mini-content">
+          <div class="mini-home-with-insight">
+            <button type="button" class="mini-insight is-ai" aria-expanded="false" aria-label="AI 生成的建议">
+              <svg class="ic" style="width:11px"><use href="#i-sparkle"/></svg><span>AI 建议</span><b>整理演示稿大纲</b><small>距截止约 85 分钟</small><em>查看</em>
+            </button>
+            <div class="mini-home-main">
+              <div class="mini-task-stack">
+                <span class="mini-stack-sheet"></span><span class="mini-stack-sheet back"></span>
+                <article class="mini-task-front is-meeting">
+                  <span class="corner-badges"><span class="mini-pill pill-meeting">日程</span></span>
+                  <span class="corner-time"><span class="time-label">出发</span>15:30</span>
+                  <div class="front-main is-meeting">
+                    <button type="button" class="mini-task-open"><b>牙医预约</b></button>
+                    <div class="front-meta"><span class="meta-cat"><i style="background:#4a7ba6"></i><span>生活</span></span><span class="mini-deck-pager"><button class="is-up"><svg class="ic" style="width:9px"><use href="#i-caret-up"/></svg></button><span>1 / 3</span><button><svg class="ic" style="width:9px"><use href="#i-caret-down"/></svg></button></span></div>
+                  </div>
+                </article>
+              </div>
+              <nav class="mini-quick-actions">
+                <button type="button"><svg class="ic" style="width:18px"><use href="#i-plus"/></svg><span>新增事项</span></button>
+                <button type="button"><svg class="ic" style="width:18px"><use href="#i-sparkle"/></svg><span>AI 助手</span></button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 3 · AI 建议展开预览 ═══ -->
+  <section class="shot" id="s-ai-open">
+    <div class="caption"><b>3 · AI 建议展开（点「查看」）</b>预览文案改成人话：说清「点生成方案会发生什么」——AI 针对「整理演示稿大纲」给处理建议，改动先出建议卡、确认后才写入；「生成方案」携带 AI 起草的个性化提问（主进程追加安全后缀）进入 AI 对话。</div>
+    <div class="frame" style="width:340px;height:176px">
+      <div class="mini-window">
+        <span class="mini-brand-logo"><svg style="width:40px;height:40px"><use href="#i-brand"/></svg></span>
+        <header class="mini-titlebar"><span class="mini-logo-slot"></span><span class="mini-app-title">To Do List</span>
+          <div class="mini-window-actions">
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-pin"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-gear"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-arrows-v"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:20px"><use href="#i-minus"/></svg></button>
+          </div>
+        </header>
+        <div class="mini-content">
+          <div style="display:grid;grid-template-rows:22px 77px;gap:5px">
+            <button type="button" class="mini-insight is-ai" aria-expanded="true">
+              <svg class="ic" style="width:11px"><use href="#i-sparkle"/></svg><span>AI 建议</span><b>整理演示稿大纲</b><small>距截止约 85 分钟</small><em>收起</em>
+            </button>
+            <section class="mini-suggestion-preview" aria-label="AI 建议预览">
+              <span><b>让 AI 助手处理这条建议</b><small>会针对「整理演示稿大纲」给出处理建议；改动先出建议卡，确认后才写入。</small></span>
+              <div><button type="button">忽略</button><button type="button">调整</button><button type="button" class="primary">生成方案</button></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 4 · AI 未配置引导（现状不变） ═══ -->
+  <section class="shot" id="s-off">
+    <div class="caption"><b>4 · AI 未配置 / 未启用（标签同步改为「建议」）</b>引导语义不变、入口不变；AI 配置好之后，第一次后台生成完成即无声升级为画板 2 形态。降级链：AI 就位 →（生成中：显示画板 1）→ 失败：静默停留画板 1 → 未配置：本画板。</div>
+    <div class="frame" style="width:340px;height:176px">
+      <div class="mini-window">
+        <span class="mini-brand-logo"><svg style="width:40px;height:40px"><use href="#i-brand"/></svg></span>
+        <header class="mini-titlebar"><span class="mini-logo-slot"></span><span class="mini-app-title">To Do List</span>
+          <div class="mini-window-actions">
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-pin"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-gear"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-arrows-v"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:20px"><use href="#i-minus"/></svg></button>
+          </div>
+        </header>
+        <div class="mini-content">
+          <div class="mini-home-with-insight">
+            <button type="button" class="mini-insight" aria-label="建议：配置 AI 后可获得个性化建议">
+              <span>建议</span><b>配置 AI 后可获得个性化建议</b><em>配置</em>
+            </button>
+            <div class="mini-home-main">
+              <div class="mini-task-stack">
+                <span class="mini-stack-sheet"></span><span class="mini-stack-sheet back"></span>
+                <article class="mini-task-front">
+                  <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+                  <span class="corner-time"><span class="time-label">截止</span>17:00</span>
+                  <div class="front-main">
+                    <button type="button" class="mini-task-check" aria-label="完成：整理演示稿大纲"></button>
+                    <button type="button" class="mini-task-open"><b>整理演示稿大纲</b></button>
+                    <div class="front-meta"><span class="meta-cat"><i style="background:#8a5fb0"></i><span>工作</span></span><span class="meta-progress">40%</span><span class="mini-deck-pager"><button class="is-up"><svg class="ic" style="width:9px"><use href="#i-caret-up"/></svg></button><span>2 / 3</span><button><svg class="ic" style="width:9px"><use href="#i-caret-down"/></svg></button></span></div>
+                  </div>
+                </article>
+              </div>
+              <nav class="mini-quick-actions">
+                <button type="button"><svg class="ic" style="width:18px"><use href="#i-plus"/></svg><span>新增事项</span></button>
+                <button type="button"><svg class="ic" style="width:18px"><use href="#i-sparkle"/></svg><span>AI 助手</span></button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

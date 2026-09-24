@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "issue": 15,
+    "type": "功能",
+    "ui": true,
+    "impact": "结构",
+    "archive": "0015-rlcd-config",
+    "title": "AI模型新增单独的RLCD模型配置区域"
+  },
+  "deterministic": {
+    "ui": true,
+    "build": "pass",
+    "smoke": "pass"
+  },
+  "evidence": {
+    "summary": "RLCD 决策模型配置区（e561038，11 文件 +393/−42）：①设置 AI 页分「LLM 模型（对话用）/ RLCD 模型（决策用 · 实验）」双区块；②RLCD 独立存储（Store.rlcdProviders/rlcdModels/persistRlcd，与 aiProviders/aiModels 零共享，脏行清洗+孤儿过滤）+ 6 个隔离 IPC（不触碰 aiEnabled/LLM 端点镜像）；③模型行视觉（多模态）开关钮（vision 字段持久化，仅 LLM 行）；④模型行动作钮 20→22（--ctl-xs 尺寸阶）+ 15px 图标；⑤ProviderCard surface 泛化复用。验证：tsc 清零 · test 38/38（新增 RLCD 存储往返）· build · ux-smoke passed（22×22 断言同步）· 真机双图（capture-rlcd.mjs 入库，含存储隔离与数值断言）。CHANGELOG [未发布] 两条。"
+  }
+}

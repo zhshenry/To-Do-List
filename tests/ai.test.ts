@@ -2,9 +2,25 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { mapAiError, parsePlan, piApi, planFromReply, requestPlan, testConnection, validateEndpoint } from '../electron/ai';
+import { chatHistory, mapAiError, parsePlan, piApi, planFromReply, requestPlan, testConnection, validateEndpoint } from '../electron/ai';
 import { newTask } from '../shared/contracts';
-import type { AIToolEvent } from '../shared/contracts';
+import type { AIToolEvent, ChatSession, Task } from '../shared/contracts';
+
+test('chat history labels each earlier message with its own linked task', () => {
+  const first = { ...newTask('事项 A'), id: 'a' } as Task;
+  const second = { ...newTask('事项 B'), id: 'b' } as Task;
+  const chat: ChatSession = {
+    id: 'chat', title: '测试', updatedAt: '', draft: '', entries: [
+      { id: 'one', role: 'user', content: '先看这件', taskId: first.id },
+      { id: 'two', role: 'assistant', content: '好的' },
+      { id: 'three', role: 'user', content: '再看另一件', taskId: second.id },
+    ],
+  };
+  assert.deepEqual(chatHistory(chat, [first, second]).map(turn => turn.content), [
+    '（此句关联事项：事项 A）\n先看这件', '好的', '（此句关联事项：事项 B）\n再看另一件',
+  ]);
+  assert.equal(chatHistory(chat, [first]).at(-1)?.content, '再看另一件');
+});
 
 test('Pi exposes real tool execution events without forwarding reasoning or credentials', async () => {
   const server = createServer(async (req, res) => {

@@ -1,6 +1,6 @@
 import { _electron as electron } from 'playwright';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import path from 'node:path';
@@ -146,10 +146,10 @@ try {
 
   await main.getByRole('button', { name: '收起为卡片' }).click();
   await main.locator('.mini-root').waitFor();
-  const configureAI = main.getByRole('button', { name: 'AI建议：请先配置AI大模型', exact: true });
+  const configureAI = main.getByRole('button', { name: '建议：配置 AI 后可获得个性化建议，打开 AI 配置', exact: true });
   await configureAI.waitFor();
-  assert.equal(await configureAI.locator('span').textContent(), 'AI建议：');
-  assert.equal(await configureAI.locator('b').textContent(), '请先配置AI大模型');
+  assert.equal(await configureAI.locator('span').textContent(), '建议：');
+  assert.equal(await configureAI.locator('b').textContent(), '配置 AI 后可获得个性化建议');
   const emptyTask = await main.locator('.mini-task-front.is-empty').boundingBox();
   const compactHome = await main.locator('.mini-home-main').boundingBox();
   assert.ok(emptyTask && compactHome && emptyTask.y + emptyTask.height <= compactHome.y + compactHome.height, 'unconfigured AI prompt keeps the empty task card inside the compact home');
@@ -209,7 +209,13 @@ try {
   const dateTime = await main.locator('.corner-time').textContent();
   assert.doesNotMatch(dateTime, /\d{1,2}:\d{2}/);
   await poll(async () => await main.locator('.meta-progress').textContent() === '0%', 'maintained zero progress stays visible');
+  const checkBox = await main.locator('.mini-task-check').boundingBox();
+  const pagerBox = await main.getByRole('button', { name: '下一项', exact: true }).boundingBox();
+  assert.ok(checkBox?.width >= 22 && checkBox.height >= 22, 'compact task check has a 22px click area');
+  assert.ok(pagerBox?.width >= 22 && pagerBox.height >= 22, 'compact pager has a 22px click area');
   await main.getByRole('button', { name: '完成 完成项目报告', exact: true }).click();
+  const confirmBox = await main.getByRole('button', { name: '确认完成', exact: true }).boundingBox();
+  assert.ok(confirmBox?.height >= 22, 'compact confirmation has a 22px click area');
   assert.equal(await main.locator('.meta-progress').textContent(), '0%', 'percentage stays beside the category while confirming');
   assert.equal((await main.evaluate(() => window.desktop.state())).tasks.find(task => task.title === '完成项目报告').status, 'todo', 'first click only arms the confirmation');
   await main.getByRole('button', { name: '取消完成 完成项目报告', exact: true }).click();
@@ -270,6 +276,7 @@ try {
   const compactKindSwitch = main.getByRole('radiogroup', { name: '新增类型', exact: true });
   assert.deepEqual(await compactKindSwitch.getByRole('radio').allTextContents(), ['待办', '日程']);
   assert.equal(await compactKindSwitch.evaluate(element => getComputedStyle(element, '::after').width), '1px', 'compact type switch keeps the center divider');
+  assert.ok((await compactKindSwitch.getByRole('radio', { name: '待办' }).boundingBox()).height >= 22, 'compact type switch has a 22px click area');
   await capture('add-kind-switch');
   await main.getByLabel('事项标题', { exact: true }).fill('正式版新增事项');
   const timeButton = main.getByRole('button', { name: /^时间安排：/ });
@@ -278,6 +285,7 @@ try {
   await datetimePanel.waitFor();
   assert.equal((await windows()).main.bounds.height, 526);
   await capture('add-datetime');
+  assert.ok((await datetimePanel.locator('.mini-calendar button').first().boundingBox()).height >= 22, 'calendar dates have a 22px click area');
   const datetimeLayout = await datetimePanel.evaluate(panel => ({
     reminder: panel.querySelector('.mini-reminder-options').getBoundingClientRect().toJSON(),
     footer: panel.querySelector('.mini-selector-footer').getBoundingClientRect().toJSON(),
@@ -291,6 +299,7 @@ try {
   await timeOptions.getByRole('option', { name: '12:30', exact: true }).click();
   await main.getByRole('button', { name: '自定义', exact: true }).click();
   await main.getByRole('dialog', { name: '自定义提醒' }).waitFor();
+  assert.ok((await main.getByRole('dialog', { name: '自定义提醒' }).getByRole('button', { name: '时', exact: true }).boundingBox()).height >= 22, 'reminder units have a 22px click area');
   await main.getByRole('dialog', { name: '自定义提醒' }).getByRole('button', { name: '时', exact: true }).click();
   await capture('add-reminder-custom');
   await main.getByRole('dialog', { name: '自定义提醒' }).getByRole('button', { name: '完成', exact: true }).click();
@@ -343,6 +352,7 @@ try {
   const morePanel = main.getByLabel('更多设置设置');
   await morePanel.waitFor();
   assert.equal(await morePanel.getByLabel('事项进度').count(), 0, 'progress slider is hidden by default');
+  assert.ok(await morePanel.getByRole('switch').evaluate(element => element.offsetHeight >= 24), 'progress switch has a 24px click area');
   await morePanel.getByRole('switch').click();
   const progressSlider = morePanel.getByLabel('事项进度');
   assert.equal(await progressSlider.getAttribute('class'), 'progress-range', 'compact creation uses the shared progress slider style');
@@ -396,16 +406,18 @@ try {
   await main.emulateMedia({ reducedMotion: 'no-preference' });
   checks.push('visible warm AI border glow with reduced-motion fallback');
   const modelButton = main.getByRole('button', { name: /^切换模型，当前为/ });
+  const modelButtonBox = await modelButton.boundingBox();
+  assert.ok(modelButtonBox?.height >= 22, 'compact model selector has a 22px click area');
   await modelButton.click();
   const modelMenu = main.getByRole('menu', { name: '按供应商选择模型' });
   await modelMenu.waitFor();
   assert.equal((await windows()).main.bounds.height, 380);
   assert.equal(await modelMenu.getByRole('group', { name: 'OpenAI 测试' }).count(), 1);
   assert.equal(await modelMenu.getByRole('group', { name: 'DeepSeek 测试' }).count(), 1);
+  await capture('ai-model-menu');
   const menuBox = await modelMenu.boundingBox();
   const buttonBox = await modelButton.boundingBox();
   assert.ok(menuBox.y >= buttonBox.y + buttonBox.height - 1, 'model menu opens downward from its trigger');
-  await capture('ai-model-menu');
   await modelButton.click();
   await modelMenu.waitFor({ state: 'detached' });
   assert.equal((await windows()).main.bounds.height, 176);
@@ -473,11 +485,14 @@ try {
   checks.push('settings-selected 340 px layout and 176 px collapsed state persist; expansion restores the prior height without shifting the brand logo');
 
   assert.deepEqual(errors, []);
-  await writeFile(path.join(output, 'report.json'), JSON.stringify({ checks, errors, profile }, null, 2));
+  await writeFile(path.join(output, 'report.json'), JSON.stringify({ checks, errors }, null, 2));
   console.log(JSON.stringify({ checks, errors }, null, 2));
 } finally {
   releaseToolFollowup?.();
-  if (app) await app.close();
-  server.closeAllConnections();
-  server.close();
+  try { if (app) await app.close(); }
+  finally {
+    server.closeAllConnections();
+    server.close();
+    await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
 }

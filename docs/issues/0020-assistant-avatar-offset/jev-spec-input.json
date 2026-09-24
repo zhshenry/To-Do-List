@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "issue": 20,
+    "type": "缺陷",
+    "ui": true,
+    "impact": "参数",
+    "archive": "0020-assistant-avatar-offset",
+    "title": "AI助手对话框中，左侧AI助手的图标错位了",
+    "body": "AI助手对话框中，左侧AI助手的图标错位了，显示在上一轮对话AI答复对话的底端，而不是这一轮对话的AI答复的顶端"
+  },
+  "spec": "缺陷修复：src/styles.css:222 的 .chat-message-row { align-items: flex-end } 使 28px 头像在长回复时沉底，视觉脱离本轮答复顶端。修复：新增 .chat-message.assistant .chat-message-row { align-items: flex-start; }（用户行不动，用户气泡无头像）。数值验收标准：真机长回复（四段）场景下，.assistant-avatar 的 boundingRect.top 与本轮 .chat-bubble 的 boundingRect.top 差值绝对值 ≤ 4px；短回复场景不回归。验证：npm test + build + smoke + 真机对比截图。"
+}

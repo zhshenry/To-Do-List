@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "issue": 20,
+    "type": "缺陷",
+    "ui": true,
+    "impact": "参数",
+    "archive": "0020-assistant-avatar-offset",
+    "title": "AI助手对话框中，左侧AI助手的图标错位了",
+    "body": "AI助手对话框中，左侧AI助手的图标错位了，显示在上一轮对话AI答复对话的底端，而不是这一轮对话的AI答复的顶端"
+  },
+  "deterministic": {
+    "ui": true,
+    "build": "pass",
+    "smoke": "pass"
+  },
+  "evidence": {
+    "summary": "一行 CSS 修复（45d5bf9）：.chat-message.assistant .chat-message-row { align-items: flex-start } —— 助手头像与本人答复行顶部对齐（含「AI 助手」说话人标签），不再沉底；用户行保持底对齐不受影响。数值验收：头像 top 与本轮答复行 top 偏差 ≤4px（真机断言通过，20-avatar-fixed.png）；修复前现场 20-avatar-defect.png 留档对比。53/53 + build + smoke。"
+  }
+}

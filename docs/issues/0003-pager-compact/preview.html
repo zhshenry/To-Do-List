@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Issue #3 · 翻页区紧凑化 · 提案</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #faf8f5; --ink: #171923; --muted: #726d67;
+    --accent: #b54f2b; --accent-soft: #f6e2d9; --line: #e4ded6;
+    --danger: #a3312d; --success: #3e7d44; --success-soft: #e2efe2; --white: #ffffff;
+    --font-body: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 80% 45% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
+    font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: var(--ink);
+    font-synthesis: none; text-rendering: optimizeLegibility;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--mesh); padding: 34px 44px 44px; }
+  .sheet-head { max-width: 1240px; margin: 0 auto 6px; }
+  .sheet-head h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+  .sheet-head p { margin: 5px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  h2.clip { max-width: 1240px; margin: 26px auto 10px; font-size: 13px; font-weight: 650; }
+  h2.clip small { font-weight: 400; color: var(--muted); font-size: 11.5px; margin-left: 8px; }
+  .row { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: repeat(2, 380px); gap: 26px; align-items: start; }
+  .row.trio { grid-template-columns: repeat(3, 300px); }
+  .cell { display: flex; flex-direction: column; gap: 7px; }
+  .caption { font-size: 11px; color: var(--muted); line-height: 1.6; padding-left: 2px; }
+  .caption b { color: var(--accent); }
+  .caption em { font-style: normal; color: var(--ink); font-weight: 600; }
+  .zoombox { border: 1px dashed var(--line); border-radius: 10px; background: var(--white); padding: 10px 14px; display: flex; justify-content: flex-end; }
+
+  .mini-window { position: relative; width: 340px; height: 176px; border: 1px solid var(--line); border-radius: 18px; background: var(--mesh); overflow: hidden; box-shadow: 0 12px 30px #4c403115; }
+  .mini-titlebar { height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 16px; user-select: none; }
+  .mini-logo { width: 40px; height: 40px; flex: 0 0 auto; display: grid; place-items: center; }
+  .mini-logo i { width: 26px; height: 26px; border: 3.5px solid #221f1c; border-radius: 50%; position: relative; display: block; }
+  .mini-logo i::after { content: ''; position: absolute; top: -2px; right: -2px; width: 9px; height: 9px; border-radius: 50%; background: #c66a42; }
+  .mini-app-title { min-width: 0; flex: 1; font-size: 16px; font-weight: 600; }
+  .mini-content { position: relative; height: 124px; padding: 9px 12px 11px; }
+  .mini-home-main { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 8px; height: 104px; }
+  .mini-task-stack { position: relative; min-width: 0; height: 104px; }
+  .mini-stack-sheet { position: absolute; left: 4px; right: 4px; top: 8px; height: 90px; border: 1px solid var(--line); border-radius: 14px; background: #f8f5f1; }
+  .mini-stack-sheet.back { left: 8px; right: 8px; top: 14px; z-index: 0; background: #f3efea; box-shadow: 0 3px 8px #453a2e0b; }
+  .mini-task-front { position: absolute; z-index: 2; inset: 0 0 auto; height: 92px; display: flex; flex-direction: column; padding: 26px 10px 8px; border: 1px solid #e1dad1; border-radius: 14px; background: white; box-shadow: 0 5px 14px #4c40310b; }
+  .front-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 9px; align-items: center; }
+  .corner-badges { position: absolute; top: 8px; left: 10px; display: flex; gap: 4px; z-index: 1; }
+  .mini-pill { font-size: 9.5px; font-weight: 650; line-height: 1; padding: 3px 8px; border-radius: 999px; }
+  .mini-pill.pill-todo { background: var(--success-soft); color: var(--success); }
+  .corner-time { position: absolute; top: 10px; right: 10px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .corner-time .time-label { margin-right: 3px; font-weight: 600; }
+  .mini-task-check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #b7b0a6; display: grid; place-items: center; background: transparent; }
+  .mini-task-open > b { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 1.25; font-weight: 600; }
+  .front-meta { display: flex; align-items: flex-end; }
+  .meta-cat { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 10px; }
+  .meta-cat i { width: 6px; height: 6px; border-radius: 50%; background: #365f73; }
+  .mini-deck-pager { margin-left: auto; display: flex; align-items: center; color: var(--muted); font-size: 10px; white-space: nowrap; }
+  .mini-deck-pager > span { font-variant-numeric: tabular-nums; }
+  .mini-deck-pager button { display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
+  .mini-deck-pager button:hover { background: var(--accent-soft); color: var(--accent); }
+  .mini-deck-pager .is-up svg { transform: rotate(180deg); }
+  .mini-deck-pager svg { width: 10px; height: 10px; }
+  /* 现状参数 */
+  .is-current .mini-deck-pager { gap: 2px; }
+  .is-current .mini-deck-pager > span { padding-right: 3px; }
+  .is-current .mini-deck-pager button { width: 18px; height: 18px; }
+  /* 紧凑参数（提案终版：再紧一档） */
+  .is-compact .mini-deck-pager { gap: 0; }
+  .is-compact .mini-deck-pager > span { padding-right: 0; }
+  .is-compact .mini-deck-pager button { width: 14px; height: 14px; }
+  .is-compact .mini-deck-pager svg { width: 9px; height: 9px; }
+</style>
+</head>
+<body>
+  <div class="sheet-head">
+    <h1>Issue #3 · 翻页区紧凑化</h1>
+    <p>红框区域（页数 + 上下翻页钮）按用户意见<b>再紧一档</b>：翻页钮 <strong>18px → 14px</strong>，按钮间距 <strong>2px → 0</strong>，计数与按钮间距 <strong>3px → 0</strong>，箭头 <strong>10px → 9px</strong>。字号 10px 不变；三元素连成一体呈步进器形态，整块宽度约省 14px。</p>
+  </div>
+
+  <h2 class="clip">现状 → 紧凑（真实比例）<small>叠层卡 1:1 复刻</small></h2>
+  <div class="row">
+    <div class="cell">
+      <div class="mini-window">
+        <div class="mini-titlebar"><span class="mini-logo"><i></i></span><span class="mini-app-title">To Do List</span></div>
+        <div class="mini-content"><div class="mini-home-main">
+          <div class="mini-task-stack">
+            <span class="mini-stack-sheet back"></span>
+            <article class="mini-task-front is-current">
+              <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+              <span class="corner-time"><span class="time-label">完成时间</span>9/30 23:59</span>
+              <div class="front-main"><span class="mini-task-check"></span><span class="mini-task-open"><b>完成 DAMA BOOK 学习</b></span></div>
+              <div class="front-meta"><span class="meta-cat"><i></i>学习</span><div class="mini-deck-pager"><span>2 / 2</span><button><svg class="is-up" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button><button><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button></div></div>
+            </article>
+          </div>
+        </div></div>
+      </div>
+      <div class="caption"><em>现状</em>：按钮 18px、间距 2px、计数留白 3px</div>
+    </div>
+    <div class="cell">
+      <div class="mini-window">
+        <div class="mini-titlebar"><span class="mini-logo"><i></i></span><span class="mini-app-title">To Do List</span></div>
+        <div class="mini-content"><div class="mini-home-main">
+          <div class="mini-task-stack">
+            <span class="mini-stack-sheet back"></span>
+            <article class="mini-task-front is-compact">
+              <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+              <span class="corner-time"><span class="time-label">完成时间</span>9/30 23:59</span>
+              <div class="front-main"><span class="mini-task-check"></span><span class="mini-task-open"><b>完成 DAMA BOOK 学习</b></span></div>
+              <div class="front-meta"><span class="meta-cat"><i></i>学习</span><div class="mini-deck-pager"><span>2 / 2</span><button><svg class="is-up" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button><button><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button></div></div>
+            </article>
+          </div>
+        </div></div>
+      </div>
+      <div class="caption"><em>紧凑（提案终版）</em>：按钮 14px、间距 0、计数留白 0、箭头 9px——<b>步进器形态，右缘齐整</b></div>
+    </div>
+  </div>
+
+  <h2 class="clip">翻页区放大对比<small>4× 放大，看间距差异</small></h2>
+  <div class="row trio">
+    <div class="cell"><div class="zoombox"><div class="mini-deck-pager is-current" style="zoom: 4;"><span>2 / 2</span><button><svg class="is-up" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button><button><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button></div></div><div class="caption"><em>现状 4×</em>：间隙明显，块面松散</div></div>
+    <div class="cell"><div class="zoombox"><div class="mini-deck-pager is-compact" style="zoom: 4;"><span>2 / 2</span><button><svg class="is-up" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button><button><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button></div></div><div class="caption"><em>紧凑 4×</em>：计数与双钮连成一体</div></div>
+  </div>
+</body>
+</html>

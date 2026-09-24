@@ -1,0 +1,46 @@
+{
+  "model": "typesafe/jev-1.13",
+  "policy_version": 3,
+  "question_version": 3,
+  "note": "SDD 流水线关卡策略 v3（2026-09-23 快车道版，用户批准）。相对 v2：①类型白名单放行「优化」；②UI 在 spec 门仍硬拒（mockup-first 人工回路），accept 门新增快车道例外——参数型优化满足全部机械条件时不拒，携机器核验证据进 Jev；③文档型命题适配（A5 不再适用于文档，新增 D1/D2）；④校准首次复盘 n≥50→20、仅 spec 门。命题极性统一：概率越高越安全。改此文件即改流程；引擎自动记录本文件 sha256 进每次决策。",
+  "thresholds": {
+    "spec": { "auto": 0.9, "retry": 0.1 },
+    "accept": { "auto": 0.9, "retry": 0.1 }
+  },
+  "calibration": {
+    "first_review_n": 20,
+    "first_review_scope": "spec",
+    "note": "首次复盘：真咨询（进入 Jev 的裁决）攒满 20 条即复盘，且只调 spec 门阈值；accept 门阈值维持到数据更充分。复盘依据 docs/issues/jev-ledger.jsonl。"
+  },
+  "max_loops_per_round": 2,
+  "max_diff_chars": 12000,
+  "run_tests_in_engine": ["npm test"],
+  "deny": {
+    "types_allowed": ["缺陷", "工程", "文档", "优化"],
+    "ui_denied_gates": ["spec"],
+    "ui_note": "spec 门：UI 一律人工（mockup-first 是用户设计回路）。accept 门：UI 默认仍人工，唯一例外见 fast_lane（2026-09-23 用户批准）。",
+    "sensitive_globs": ["electron/main.ts", "electron/store.ts"],
+    "sensitive_note": "accept 门由引擎按实际 git diff --name-only 代码判定；spec 门按 spec 声明的实现要点关键词判定，最终以 accept 门实测为准"
+  },
+  "fast_lane": {
+    "note": "验收快车道（2026-09-23 用户批准）：参数型 UI 优化免人工验收。spec 数值即合同——用户批准时给出的参数必须写入 spec「数值验收标准」小节；真机断言脚本须断言这些数值。用户否决口：spec 批准时声明保留人工验收（state.meta.hold_human_accept=true），即退出快车道。全部条件由引擎机械核验（档案 PNG/断言脚本存在性由引擎直接读主仓 docs/issues/<archive>/，不采信 agent 转述）。",
+    "types": ["优化"],
+    "impact": "参数",
+    "max_changed_files": 3,
+    "max_diff_insertions": 40,
+    "requires_spec_numeric_criteria": "数值验收标准",
+    "requires_archive_png_and_script": true
+  },
+  "propositions": [
+    { "id": "S1_covers_issue", "gate": "spec", "on_bad": "revise", "instructions": "The proposal in state.spec addresses every requirement stated in state.issue.body." },
+    { "id": "S2_criteria_testable", "gate": "spec", "on_bad": "revise", "instructions": "Every acceptance criterion in state.spec can be verified objectively by a test, a build, or captured evidence." },
+    { "id": "S3_no_unresolved_human_decision", "gate": "spec", "on_bad": "human", "instructions": "state.spec contains no unresolved options or parameter choices that await the user's personal selection before implementation." },
+    { "id": "S4_scope_contained", "gate": "spec", "on_bad": "revise", "instructions": "The proposed changes in state.spec stay within the scope of state.issue and contain no unrelated refactoring." },
+    { "id": "A2_matches_spec", "gate": "accept", "on_bad": "retry", "instructions": "The delivered change shown in state.evidence.diff matches all decisions approved in state.spec, including every numeric criterion in the spec's 数值验收标准 section if present." },
+    { "id": "A5_regression_covered", "gate": "accept", "types": ["缺陷", "功能", "工程", "优化"], "on_bad": "retry", "instructions": "The tests added or modified in state.evidence.diff genuinely exercise the behavior required by state.issue.body; for parameter-only changes (state.issue.impact is 参数), machine-verified real-app assertions against the spec's numeric criteria count as this coverage." },
+    { "id": "A6_scope_contained", "gate": "accept", "on_bad": "retry", "instructions": "The file changes listed in state.evidence.changed_files stay within the implementation points declared in state.spec." },
+    { "id": "A8_evidence_sufficient", "gate": "accept", "types": ["优化"], "on_bad": "retry", "instructions": "state.evidence contains before-and-after comparison data or screenshots that demonstrate the claimed improvement." },
+    { "id": "D1_links_valid", "gate": "accept", "types": ["文档"], "on_bad": "retry", "instructions": "All links and file paths referenced in the delivered documentation changes are valid and resolvable." },
+    { "id": "D2_content_consistent", "gate": "accept", "types": ["文档"], "on_bad": "retry", "instructions": "The delivered documentation stays consistent with the current code and version facts, with no stale version numbers or statements contradicted by the repository." }
+  ]
+}

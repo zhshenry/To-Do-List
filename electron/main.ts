@@ -6,8 +6,8 @@ import { mkdirSync, writeFileSync, appendFileSync, existsSync, readFileSync } fr
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { Store } from './store';
-import { requestPlan, testConnection, validateEndpoint } from './ai';
-import { generateInsight, insightTasksHash } from './insight';
+import { chatHistory, requestPlan, testConnection, validateEndpoint } from './ai';
+import { currentInsight, generateInsight, insightCacheKey } from './insight';
 import { DOCK_FEATURE_ENABLED, insightTarget, localDay, aiActionSchema, aiConversationTurnSchema, aiProtocolSchema, aiProviderKindSchema, dockIconPresetSchema, mainWindowWidthSchema, rlcdProviderKindSchema, type AIAction, type AIModel, type InsightSuggestion, type AIProtocol, type AIProviderKind, type MainWindowWidth, type Proposal, type Settings, type State, type Task, type UpdaterStatus } from '../shared/contracts';
 
 const testMode = !app.isPackaged && process.env.TODO_TEST === '1';
@@ -220,27 +220,26 @@ function state(): State { return { tasks: store.all(true), categories: store.cat
 // ── AI 建议（#21）：主进程单次补全 + 三层防刷（哈希 / 防抖 / 退避），失败静默回退本地规则 ──
 let insightRunning = false;
 let insightLastAttempt = 0;
-let insightLastHash = "";
 let insightFailures = 0;
 const insightBackoff = () => (insightFailures >= 2 ? 15 * 60 * 1000 : insightFailures === 1 ? 5 * 60 * 1000 : 0);
-async function refreshInsight(force = false): Promise<void> {
-  if (insightRunning) return;
+async function refreshInsight(): Promise<void> {
   const today = localDay();
   const tasks = store.all().filter(task => !task.deletedAt && task.status !== 'done' && task.plannedDate === today);
-  const hash = insightTasksHash(tasks);
-  const stored = store.setting<InsightSuggestion | null>('insightSuggestion', null);
+  const connection = activeConnection();
+  const cacheKey = insightCacheKey(tasks, connection?.model.id ?? '');
+  let stored = store.setting<InsightSuggestion | null>('insightSuggestion', null);
+  if (stored && !currentInsight(stored, cacheKey, tasks)) {
+    store.setSetting('insightSuggestion', null);
+    stored = null;
+    emitChanged();
+  }
+  if (insightRunning) return;
   const generatedAt = stored?.generatedAt ? Date.parse(stored.generatedAt) : 0;
   const stale = !stored || Date.now() - generatedAt > 60 * 60 * 1000 || localDay(new Date(generatedAt)) !== today;
   const blocked = Date.now() < insightLastAttempt + insightBackoff();
-  if (!force) {
-    if (blocked) return;
-    if (Date.now() - insightLastAttempt < 90 * 1000) return;
-    if (!stale && hash === insightLastHash) return;
-    if (!stale && stored) return;
-  }
-  const connection = activeConnection();
+  if (blocked || Date.now() - insightLastAttempt < 90 * 1000 || !stale) return;
   if (!store.setting('aiEnabled', false) || !connection || !tasks.length) return;
-  insightRunning = true; insightLastAttempt = Date.now(); insightLastHash = hash;
+  insightRunning = true; insightLastAttempt = Date.now();
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
@@ -252,18 +251,24 @@ async function refreshInsight(force = false): Promise<void> {
     clearTimeout(timeout);
     if (!ai) { insightFailures++; return; }
     insightFailures = 0;
-    const task = tasks.find(item => item.id === ai!.taskId)!;
+    const currentTasks = store.all().filter(task => !task.deletedAt && task.status !== 'done' && task.plannedDate === localDay());
+    if (insightCacheKey(currentTasks, activeConnection()?.model.id ?? '') !== cacheKey) return;
+    const task = currentTasks.find(item => item.id === ai.taskId);
+    if (!task) return;
     const suggestion: InsightSuggestion = {
-      title: task.title, context: ai!.context,
-      prompt: `${ai!.prompt}如需新增或修改事项，请只生成等待我确认的建议。`,
-      source: 'ai', generatedAt: new Date().toISOString(), taskId: task.id, dueAt: task.dueAt,
+      title: task.title, context: ai.context,
+      prompt: `${ai.prompt}如需新增或修改事项，请只生成等待我确认的建议。`,
+      source: 'ai', generatedAt: new Date().toISOString(), taskId: task.id, dueAt: task.dueAt, cacheKey,
     };
     store.setSetting('insightSuggestion', suggestion);
     changed();
   } finally { insightRunning = false; }
 }
-function changed(): State {
+function emitChanged(): void {
   for (const target of [win, dockWin, assistantWin]) if (target && !target.isDestroyed() && !target.webContents.isDestroyed()) target.webContents.send('changed');
+}
+function changed(): State {
+  emitChanged();
   void refreshInsight();
   return state();
 }
@@ -792,7 +797,7 @@ function displayNotification(tasks: Task[]): void {
   try { notification.show(); } catch { release(); }
   setTimeout(release, 15000).unref();
 }
-function tick(): void { displayNotification(store.due()); }
+function tick(): void { displayNotification(store.due()); if (!testMode) void refreshInsight(); }
 function notifyUpdate(title: string, body: string, action?: () => void): void {
   if (!Notification.isSupported()) return;
   const notification = new Notification({ title, body, icon: iconPath, timeoutType: 'default' });
@@ -1325,11 +1330,7 @@ function registerHandlers(): void {
     const chat = store.chat(request.sessionId);
     const focusedTask = request.taskId ? store.all().find(task => task.id === request.taskId && !task.deletedAt) ?? null : null;
     if (request.taskId && !focusedTask) throw new Error('关联的事项不存在或已删除，请重新选择');
-    const stateText = { pending: '等待用户确认', applied: '用户已应用', discarded: '用户已放弃', expired: '已过期，未应用', revised: '已被后续对话更新' } as const;
-    const history = chat.entries.filter(entry => !entry.streaming && !entry.error && entry.content.trim()).slice(-12).map(entry => ({
-      role: entry.role,
-      content: `${entry.taskId && focusedTask ? `（此句关联事项：${focusedTask.title}）\n` : ''}${entry.content}${entry.actionState ? `\n[建议状态：${stateText[entry.actionState]}]` : ''}${entry.actionState === 'pending' && entry.proposal ? `\n[待确认建议：${JSON.stringify(entry.proposal.actions)}]` : ''}`.slice(0, 6000),
-    }));
+    const history = chatHistory(chat, store.all(true));
     await ask({ text: request.text, history }, chat.id, focusedTask);
     return store.chat(chat.id);
   });

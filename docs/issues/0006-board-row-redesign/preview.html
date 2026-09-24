@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Issue #6 · 展开态待办行重设计 · 提案</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #faf8f5; --ink: #171923; --muted: #726d67;
+    --accent: #b54f2b; --accent-hover: #963e20; --accent-soft: #f6e2d9; --line: #e4ded6; --subtle: #efebe6;
+    --danger: #a3312d; --success: #3e7d44; --success-soft: #e2efe2; --white: #ffffff; --completed: #6d675f;
+    --font-body: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 80% 45% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
+    font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: var(--ink);
+    font-synthesis: none; text-rendering: optimizeLegibility;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--mesh); padding: 34px 44px 44px; }
+  .sheet-head { max-width: 1240px; margin: 0 auto 6px; }
+  .sheet-head h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+  .sheet-head p { margin: 5px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  h2.clip { max-width: 1240px; margin: 26px auto 10px; font-size: 13px; font-weight: 650; }
+  h2.clip small { font-weight: 400; color: var(--muted); font-size: 11.5px; margin-left: 8px; }
+  .duo { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: start; }
+  .card { border: 1px solid var(--line); border-radius: 18px; background: var(--white); padding: 14px 16px 16px; box-shadow: 0 10px 26px #4c40310d; }
+  .card h3 { margin: 0 0 10px; font-size: 14px; font-weight: 650; }
+  .caption { font-size: 11px; color: var(--muted); line-height: 1.7; margin-top: 8px; }
+  .caption b { color: var(--accent); }
+  .caption em { font-style: normal; color: var(--ink); font-weight: 600; }
+
+  /* ===== 真实样式：现状（src/styles.css 摘录） ===== */
+  .plan-item { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 6px; }
+  .plan-item.is-current { background: #fbf4f0; border-radius: 10px; }
+  .plan-item.is-done b { text-decoration: line-through; color: var(--completed); }
+  .task-check { width: 28px; height: 28px; margin: 0; padding: 0; border: 1.5px solid var(--muted); border-radius: 7px; background: transparent; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--white); cursor: pointer; }
+  .task-check.is-done-demo { background: var(--completed); border-color: var(--completed); }
+  .plan-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0; border: 0; background: transparent; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+  .plan-task-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .plan-task-copy b { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .plan-category { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; }
+  .plan-dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; }
+  .plan-progress { width: 64px; height: 4px; border-radius: 999px; background: var(--subtle); overflow: hidden; flex: 0 0 auto; }
+  .plan-progress span { display: block; height: 100%; background: var(--accent); }
+  .plan-main time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+
+  /* ===== 新设计（提案） ===== */
+  .plan-item.v2 .task-check { border-radius: 50%; border-color: #b7b0a6; transition: border-color 120ms, background-color 120ms; }
+  .plan-item.v2 .task-check:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .plan-item.v2 .task-check.armed { background: var(--accent); border-color: var(--accent); color: var(--white); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .plan-item.v2 .task-check svg { width: 12px; height: 12px; }
+  .plan-item.v2 .plan-progress-num { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+  .plan-item.v2 .plan-main time { font-weight: 500; }
+  .plan-item.v2 .plan-main time.overdue { color: var(--danger); font-weight: 600; }
+  .confirm-bar { margin-left: auto; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .confirm-btn { display: inline-flex; align-items: center; gap: 4px; min-height: 22px; padding: 2px 10px; font-size: 11px; font-weight: 600; border-radius: 999px; background: var(--accent); color: var(--white); border: 1px solid var(--accent); cursor: pointer; white-space: nowrap; }
+  .confirm-cancel { min-height: 22px; padding: 2px 9px; font-size: 11px; border-radius: 999px; background: var(--white); color: var(--muted); border: 1px solid var(--line); cursor: pointer; }
+  svg.tick { width: 10px; height: 10px; }
+</style>
+</head>
+<body>
+  <div class="sheet-head">
+    <h1>Issue #6 · 展开态待办行重设计（对齐收起卡片）</h1>
+    <p>四点诉求：① 勾选框改<strong>圆框</strong>（与收起卡一致）；② 完成<strong>双步确认</strong>（首次点击进入待确认态，再次点击才写入，4 秒超时自动解除——与收起卡同参数）；③ 时间统一<strong>日期 + 时间</strong>（M/D HH:mm，逾期转红）；④ 行样式整体向收起卡看齐（圆框、粗标题、右侧日期时间）。恢复（已完成 → 待办）保持单击直接恢复，不加确认。</p>
+  </div>
+
+  <h2 class="clip">现状 vs 新设计<small>同一组事项 1:1 复刻（含进度条、逾期、完成划线各态）</small></h2>
+  <div class="duo">
+    <div class="cell-block">
+      <div class="card">
+        <h3>现状</h3>
+        <div class="plan-item is-current">
+          <button class="task-check"></button>
+          <button class="plan-main">
+            <span class="plan-task-copy"><b>创建一个本项目的自动化问题单</b><span class="plan-category"><i class="plan-dot" style="background:#c45c26"></i>个人开发</span></span>
+            <span class="plan-progress"><span style="width:35%"></span></span>
+            <time>23:59</time>
+          </button>
+        </div>
+        <div class="plan-item">
+          <button class="task-check"></button>
+          <button class="plan-main">
+            <span class="plan-task-copy"><b>完成 DAMA BOOK 学习</b><span class="plan-category"><i class="plan-dot" style="background:#365f73"></i>学习 · 2026-09-20</span></span>
+            <time>23:59</time>
+          </button>
+        </div>
+        <div class="plan-item">
+          <button class="task-check is-done-demo"><svg class="tick" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 6.5 L5 9 L9.5 3.5"/></svg></button>
+          <button class="plan-main">
+            <span class="plan-task-copy"><b style="text-decoration:line-through;color:var(--completed)">完成 TO-DO-LIST 0.5.5 开发</b><span class="plan-category"><i class="plan-dot" style="background:#c45c26"></i>个人开发</span></span>
+            <time>23:59</time>
+          </button>
+        </div>
+      </div>
+      <div class="caption"><em>现状问题</em>：① 方形勾选框 ② 单击立即完成、易误触 ③ 只有 23:59 没有日期 ④ 行风格与收起卡割裂</div>
+    </div>
+    <div class="cell-block">
+      <div class="card">
+        <h3>新设计（提案）</h3>
+        <div class="plan-item v2 is-current">
+          <button class="task-check"></button>
+          <button class="plan-main">
+            <span class="plan-task-copy"><b>创建一个本项目的自动化问题单</b><span class="plan-category"><i class="plan-dot" style="background:#c45c26"></i>个人开发</span></span>
+            <span class="plan-progress"><span style="width:35%"></span></span>
+            <span class="plan-progress-num">35%</span>
+            <time>9/21 23:59</time>
+          </button>
+        </div>
+        <div class="plan-item v2">
+          <button class="task-check"></button>
+          <button class="plan-main">
+            <span class="plan-task-copy"><b>完成 DAMA BOOK 学习</b><span class="plan-category"><i class="plan-dot" style="background:#365f73"></i>学习</span></span>
+            <time>9/30 23:59</time>
+          </button>
+        </div>
+        <div class="plan-item v2">
+          <button class="task-check armed"><svg class="tick" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 6.5 L5 9 L9.5 3.5"/></svg></button>
+          <span class="plan-main">
+            <span class="plan-task-copy"><b>整理书架</b><span class="plan-category"><i class="plan-dot" style="background:#365f73"></i>家务</span></span>
+            <span class="confirm-bar"><button class="confirm-btn">确认完成</button><button class="confirm-cancel">取消</button></span>
+          </span>
+        </div>
+        <div class="plan-item v2 is-done">
+          <button class="task-check is-done-demo" style="border-radius:50%"><svg class="tick" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 6.5 L5 9 L9.5 3.5"/></svg></button>
+          <button class="plan-main">
+            <span class="plan-task-copy"><b style="text-decoration:line-through;color:var(--completed)">完成 TO-DO-LIST 0.5.5 开发</b><span class="plan-category"><i class="plan-dot" style="background:#c45c26"></i>个人开发</span></span>
+            <time style="color:var(--completed)">9/21 23:59</time>
+          </button>
+        </div>
+      </div>
+      <div class="caption"><em>新设计</em>：① 圆框（悬停转品牌色软底）② 第三行为 <b>armed 双步确认态</b>——品牌色实心圆框内白色对勾 + 行内「确认完成/取消」条。逻辑与收起卡同源：点圆框 → armed；<b>再次点击圆框 = 取消</b>（不写入）；写入仅通过「确认完成」按钮；4 秒无操作自动解除（收起卡同款机制）。③ 时间统一「M/D HH:mm」，逾期转红 ④ 完成行划线灰、圆框灰底对勾。恢复（已完成→待办）单击直接恢复。进度条右侧显示百分比。</div>
+    </div>
+  </div>
+</body>
+</html>

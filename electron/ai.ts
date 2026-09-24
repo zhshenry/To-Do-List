@@ -12,7 +12,7 @@ import {
   SettingsManager,
   defineTool,
 } from '@earendil-works/pi-coding-agent';
-import { aiPlanSchema, categoryInputSchema, categoryPatchSchema, localDay, newTask, taskFields, taskPatchSchema, type AIConversationTurn, type AIPlan, type AIProtocol, type Category, type Task, type TaskInput } from '../shared/contracts';
+import { aiPlanSchema, categoryInputSchema, categoryPatchSchema, localDay, newTask, taskFields, taskPatchSchema, type AIConversationTurn, type AIPlan, type AIProtocol, type Category, type ChatSession, type Task, type TaskInput } from '../shared/contracts';
 
 const providerId = 'todolist';
 const emptyUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } };
@@ -123,6 +123,18 @@ function historyMessages(history: AIConversationTurn[], model: string) {
   return history.map(turn => turn.role === 'user'
     ? { role: 'user' as const, content: [{ type: 'text' as const, text: turn.content }], timestamp: Date.now() }
     : { role: 'assistant' as const, content: [{ type: 'text' as const, text: turn.content }], api: 'openai-completions' as const, provider: providerId, model, usage: emptyUsage, stopReason: 'stop' as const, timestamp: Date.now() });
+}
+
+export function chatHistory(chat: ChatSession, tasks: Task[]): AIConversationTurn[] {
+  const titles = new Map(tasks.map(task => [task.id, task.title]));
+  const stateText = { pending: '等待用户确认', applied: '用户已应用', discarded: '用户已放弃', expired: '已过期，未应用', revised: '已被后续对话更新' } as const;
+  return chat.entries.filter(entry => !entry.streaming && !entry.error && entry.content.trim()).slice(-12).map(entry => {
+    const linkedTitle = entry.taskId ? titles.get(entry.taskId) : undefined;
+    return {
+      role: entry.role,
+      content: `${linkedTitle ? `（此句关联事项：${linkedTitle}）\n` : ''}${entry.content}${entry.actionState ? `\n[建议状态：${stateText[entry.actionState]}]` : ''}${entry.actionState === 'pending' && entry.proposal ? `\n[待确认建议：${JSON.stringify(entry.proposal.actions)}]` : ''}`.slice(0, 6000),
+    };
+  });
 }
 
 function statusOf(error: unknown): number | undefined {

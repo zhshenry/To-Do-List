@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>AI 窗口三种摆法</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #171923; --muted: #726d67; --accent: #b54f2b; --accent-soft: #f6e2d9;
+    --line: #e4ded6; --white: #ffffff; --titlebar: #f2eee8; --paper: #faf8f5;
+    --font: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 70% 40% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
+    --panel: #fbfaf7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e4ddd4; color: var(--ink); font-family: var(--font); font-size: 14px; }
+  .sheet { padding: 32px 36px 48px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -0.03em; }
+  .lead { max-width: 720px; margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .lead b { color: var(--ink); font-weight: 650; }
+  .grid { display: flex; flex-direction: column; gap: 28px; margin-top: 24px; width: fit-content; }
+  figure { margin: 0; }
+  figcaption { margin: 0 0 8px; font-size: 13px; font-weight: 650; }
+  figcaption small { display: block; margin-top: 2px; font-weight: 400; color: var(--muted); font-size: 12px; line-height: 1.55; }
+  .ph { display: block; }
+
+  .scene { position: relative; height: 390px; background: transparent; }
+  .beside { width: 560px; }
+  .over { width: 400px; }
+  .main {
+    position: absolute; top: 0; bottom: 0; width: 220px;
+    border: 1px solid var(--line); border-radius: 18px; background: var(--mesh); overflow: hidden;
+  }
+  .beside .main { right: 0; }
+  .over .main { left: 40px; width: 320px; }
+  .bar { height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+  .logo { width: 26px; height: 26px; border: 3px solid #221f1c; border-radius: 50%; position: relative; flex-shrink: 0; }
+  .logo::after { content: ""; position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: #c45a32; }
+  .bar b { font-size: 14px; font-weight: 600; }
+  .date { margin: 4px 16px 0; font-size: 22px; font-weight: 700; letter-spacing: -0.8px; }
+  .card { margin: 12px 16px 0; height: 120px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; }
+  .star {
+    position: absolute; right: 12px; bottom: 12px; z-index: 4;
+    width: 44px; height: 44px; display: grid; place-items: center;
+    border-radius: 12px; background: var(--accent-soft); color: var(--accent);
+  }
+  .star .ph { width: 22px; height: 22px; }
+
+  .panel {
+    position: absolute; z-index: 2; width: 312px; display: flex; flex-direction: column;
+    border: 1px solid var(--line); border-radius: 18px; background: var(--panel);
+    box-shadow: 0 14px 32px #17192318;
+  }
+  .beside .panel { left: 0; bottom: 0; }
+  .over .panel { left: 28px; bottom: 68px; }
+  .caret-scene .panel { left: 28px; bottom: 72px; }
+  .head { display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 8px 8px 2px 12px; }
+  .head.is-slim { min-height: 44px; padding-top: 10px; }
+  .avatar { position: relative; width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+  .avatar .ph { width: 15px; height: 15px; }
+  .online { position: absolute; right: 0; bottom: 0; width: 8px; height: 8px; border: 2px solid var(--panel); border-radius: 50%; background: #3d9a62; }
+  .who { display: flex; flex-direction: column; line-height: 1.15; flex-shrink: 0; }
+  .who b { font-size: 13px; font-weight: 650; }
+  .who small { color: var(--muted); font-size: 10px; }
+  .session { flex: 1; min-width: 0; display: flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; }
+  .session span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .session .ph { width: 11px; height: 11px; color: var(--muted); }
+  .new-chat { flex-shrink: 0; min-height: 28px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--white) 88%, var(--paper)); color: var(--muted); font-size: 12px; font-weight: 600; }
+  .x { width: 26px; height: 26px; display: grid; place-items: center; }
+  .x .ph { width: 14px; height: 14px; }
+  .thread { padding: 4px 12px 8px; display: flex; flex-direction: column; gap: 8px; }
+  .user { align-self: flex-end; max-width: 88%; padding: 8px 10px; border-radius: 14px 14px 4px 14px; background: color-mix(in srgb, var(--titlebar) 74%, var(--white)); font-size: 13px; line-height: 1.55; }
+  .ai { align-self: flex-start; max-width: 92%; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--muted) 17%, var(--line)); border-radius: 14px 14px 14px 4px; background: color-mix(in srgb, var(--white) 92%, transparent); font-size: 13px; line-height: 1.55; }
+  .foot { padding: 0 10px 10px; }
+  .compose { display: flex; flex-direction: column; gap: 6px; padding: 8px 8px 7px 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--white); }
+  .placeholder { color: var(--muted); font-size: 12px; }
+  .meta { display: flex; align-items: center; justify-content: space-between; }
+  .model { height: 26px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: #f7f1ea; font-size: 10px; }
+  .model .ph { width: 10px; height: 10px; color: var(--muted); }
+  .send { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+  .send .ph { width: 14px; height: 14px; }
+  .caret { position: absolute; right: 46px; bottom: -9px; width: 18px; height: 10px; }
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-spark" viewBox="0 0 256 256"><path fill="currentColor" d="M208,144a15.78,15.78,0,0,1-10.42,14.94L146,178l-19,51.62a15.92,15.92,0,0,1-29.88,0L78,178l-51.62-19a15.92,15.92,0,0,1,0-29.88L78,110l19-51.62a15.92,15.92,0,0,1,29.88,0L146,110l51.62,19A15.78,15.78,0,0,1,208,144ZM152,48h16V64a8,8,0,0,0,16,0V48h16a8,8,0,0,0,0-16H184V16a8,8,0,0,0-16,0V32H152a8,8,0,0,0,0,16Zm88,32h-8V72a8,8,0,0,0-16,0v8h-8a8,8,0,0,0,0,16h8v8a8,8,0,0,0,16,0V96h8a8,8,0,0,0,0-16Z"/></symbol>
+  <symbol id="i-caret" viewBox="0 0 256 256"><path fill="currentColor" d="M216.49,104.49l-80,80a12,12,0,0,1-17,0l-80-80a12,12,0,0,1,17-17L128,159l71.51-71.52a12,12,0,0,1,17,17Z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 256 256"><path fill="currentColor" d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+  <symbol id="i-plane" viewBox="0 0 256 256"><path fill="currentColor" d="M231.4,44.34s0,.1,0,.15l-58.2,191.94a15.88,15.88,0,0,1-14,11.51q-.69.06-1.38.06a15.86,15.86,0,0,1-14.42-9.15L107,164.15a4,4,0,0,1,.77-4.58l57.92-57.92a8,8,0,0,0-11.31-11.31L96.43,148.26a4,4,0,0,1-4.58.77L17.08,112.64a16,16,0,0,1,2.49-29.8l191.94-58.2.15,0A16,16,0,0,1,231.4,44.34Z"/></symbol>
+</svg>
+<div class="sheet">
+  <h1>AI 窗口怎么摆</h1>
+  <p class="lead">三版都不再把整扇窗口装成对话气泡。话少时只包住标题、这两句和输入框；变长再往上长，最高 620。顶栏和输入框沿用已经定过的内容。<b>我建议用方案 1</b>：它和待办并排，不互相遮挡。</p>
+  <div class="grid">
+    <figure>
+      <figcaption>方案 1 · 外侧同伴<small>贴在主窗口左边，底边和星形按钮对齐，中间留一条缝。没有尾巴。</small></figcaption>
+      <div class="scene beside">
+        <div class="main"><div class="bar"><i class="logo"></i><b>To Do List</b></div><div class="date">9月22日</div><div class="card"></div><span class="star"><svg class="ph"><use href="#i-spark"/></svg></span></div>
+        <section class="panel">
+          <header class="head">
+            <span class="avatar"><svg class="ph"><use href="#i-spark"/></svg><i class="online"></i></span>
+            <span class="who"><b>AI 助手</b><small>可用</small></span>
+            <span class="session"><span>问数模板库</span><svg class="ph"><use href="#i-caret"/></svg></span>
+            <span class="new-chat">新对话</span>
+            <span class="x"><svg class="ph"><use href="#i-x"/></svg></span>
+          </header>
+          <div class="thread">
+            <div class="user">我明天下班前要把问数模板库的功能做完</div>
+            <div class="ai">已生成一条修改建议。预览确认后才会写入。</div>
+          </div>
+          <footer class="foot"><div class="compose"><div class="placeholder">Enter 发送 · Shift + Enter 换行</div><div class="meta"><span class="model">deepseek-v4-flash <svg class="ph"><use href="#i-caret"/></svg></span><span class="send"><svg class="ph"><use href="#i-plane"/></svg></span></div></div></footer>
+        </section>
+      </div>
+    </figure>
+    <figure>
+      <figcaption>方案 2 · 按钮上方留缝<small>仍盖在待办上，但和星形按钮隔开一条缝，不画尾巴。</small></figcaption>
+      <div class="scene over">
+        <div class="main"><div class="bar"><i class="logo"></i><b>To Do List</b></div><div class="date">9月22日</div><div class="card"></div><span class="star"><svg class="ph"><use href="#i-spark"/></svg></span></div>
+        <section class="panel">
+          <header class="head">
+            <span class="avatar"><svg class="ph"><use href="#i-spark"/></svg><i class="online"></i></span>
+            <span class="who"><b>AI 助手</b><small>可用</small></span>
+            <span class="session"><span>问数模板库</span><svg class="ph"><use href="#i-caret"/></svg></span>
+            <span class="new-chat">新对话</span>
+            <span class="x"><svg class="ph"><use href="#i-x"/></svg></span>
+          </header>
+          <div class="thread">
+            <div class="user">我明天下班前要把问数模板库的功能做完</div>
+            <div class="ai">已生成一条修改建议。预览确认后才会写入。</div>
+          </div>
+          <footer class="foot"><div class="compose"><div class="placeholder">Enter 发送 · Shift + Enter 换行</div><div class="meta"><span class="model">deepseek-v4-flash <svg class="ph"><use href="#i-caret"/></svg></span><span class="send"><svg class="ph"><use href="#i-plane"/></svg></span></div></div></footer>
+        </section>
+      </div>
+    </figure>
+    <figure>
+      <figcaption>方案 3 · 小尖角<small>从按钮上长出来。头像和「可用」收掉，只留会话、新对话和关闭。</small></figcaption>
+      <div class="scene over caret-scene">
+        <div class="main"><div class="bar"><i class="logo"></i><b>To Do List</b></div><div class="date">9月22日</div><div class="card"></div><span class="star"><svg class="ph"><use href="#i-spark"/></svg></span></div>
+        <section class="panel">
+          <header class="head is-slim">
+            <span class="session"><span>问数模板库</span><svg class="ph"><use href="#i-caret"/></svg></span>
+            <span class="new-chat">新对话</span>
+            <span class="x"><svg class="ph"><use href="#i-x"/></svg></span>
+          </header>
+          <div class="thread">
+            <div class="user">我明天下班前要把问数模板库的功能做完</div>
+            <div class="ai">已生成一条修改建议。预览确认后才会写入。</div>
+          </div>
+          <footer class="foot"><div class="compose"><div class="placeholder">Enter 发送 · Shift + Enter 换行</div><div class="meta"><span class="model">deepseek-v4-flash <svg class="ph"><use href="#i-caret"/></svg></span><span class="send"><svg class="ph"><use href="#i-plane"/></svg></span></div></div></footer>
+          <svg class="caret" viewBox="0 0 18 10" aria-hidden="true"><path d="M1 1 H17 L9 9 Z" fill="#fbfaf7" stroke="#e4ded6" stroke-linejoin="round"/><path d="M2 1.2 H16" stroke="#fbfaf7" stroke-width="2"/></svg>
+        </section>
+      </div>
+    </figure>
+  </div>
+</div>
+</body>
+</html>

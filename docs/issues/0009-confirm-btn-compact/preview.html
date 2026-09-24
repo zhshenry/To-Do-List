@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Issue #9 · 确认完成按钮紧凑化 A/B</title>
+<style>
+  :root {
+    --paper: #faf8f5; --ink: #171923; --muted: #726d67;
+    --accent: #b54f2b; --accent-hover: #963e20; --accent-soft: #f6e2d9;
+    --line: #e4ded6; --success: #3e7d44; --success-soft: #e2efe2; --white: #ffffff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--paper); font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; color: var(--ink); padding: 26px 30px; }
+  h1 { font-size: 17px; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+  .panels { display: flex; gap: 34px; align-items: flex-start; }
+  .panel { flex: 1; }
+  .panel h2 { font-size: 13px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .tag { font-size: 10px; font-weight: 700; border-radius: 999px; padding: 2px 9px; }
+  .tag.a { background: #f9e9e7; color: #a3312d; }
+  .tag.b { background: var(--success-soft); color: var(--success); }
+
+  /* ── 收起卡 1:1 复刻 ── */
+  .app { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px 16px; }
+  .titlebar { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
+  .logo { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--ink); position: relative; }
+  .logo::after { content: ""; position: absolute; top: 1px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .titlebar b { font-size: 15px; }
+  .card { position: relative; background: var(--white); border-radius: 14px; box-shadow: 0 6px 18px rgba(23,25,35,.08); padding: 12px 14px 11px; }
+  .pill { display: inline-block; font-size: 9.5px; font-weight: 650; line-height: 1; padding: 3px 8px; border-radius: 999px; background: var(--success-soft); color: var(--success); }
+  .corner { position: absolute; top: 10px; right: 12px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .corner b { color: var(--ink); font-weight: 600; margin-right: 3px; }
+  .row { display: flex; gap: 9px; margin-top: 9px; align-items: flex-start; }
+  .check { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--accent); background: var(--accent); color: var(--white); display: grid; place-items: center; font-size: 11px; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .body { min-width: 0; flex: 1; }
+  .body b { display: block; font-size: 12.5px; line-height: 1.3; }
+  .foot { display: flex; align-items: center; margin-top: 8px; }
+  .cat { font-size: 10.5px; color: var(--muted); }
+  .bar { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .btn { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: var(--white); white-space: nowrap; }
+  .cancel { border-color: var(--line); background: var(--white); color: var(--muted); font-weight: 500; }
+
+  /* A：现状——min-height 20 + padding 2/10 + 10.5px（实测渲染高约 26.5px） */
+  .a .btn, .a .cancel { min-height: 20px; padding: 2px 10px; font-size: 10.5px; }
+  /* B：提案——min-height 17 + padding 1/8 + 10px（渲染高约 19px），取消同高 */
+  .b .btn, .b .cancel { min-height: 17px; padding: 1px 8px; font-size: 10px; }
+  .b .cancel { padding: 1px 7px; }
+
+  .dim { margin-top: 10px; font-size: 11px; color: var(--muted); line-height: 1.7; }
+  .dim b { color: var(--ink); }
+  .kbd { background: var(--white); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; font-size: 10px; }
+</style>
+</head>
+<body>
+<h1>Issue #9 · 收起状态确认完成按钮过大 —— 紧凑化 A/B</h1>
+<div class="sub">现状真机截图见 <span class="kbd">armed-current.png</span>（0.5.9 起：确认条独占底行，与标题不再重叠；遗留问题是确认 pill 视觉过重）· 变更仅 <span class="kbd">.confirm-btn / .confirm-cancel</span> 两行 CSS</div>
+<div class="panels">
+  <div class="panel a">
+    <h2><span class="tag a">A · 现状</span>确认 pill 渲染高约 26.5px</h2>
+    <div class="app">
+      <div class="titlebar"><span class="logo"></span><b>To Do List</b></div>
+      <div class="card">
+        <span class="pill">待办</span>
+        <span class="corner"><b>完成时间</b>9/22</span>
+        <div class="row">
+          <span class="check">✓</span>
+          <div class="body"><b>创建一个本项目的自动化问题单处理机制并持续优化</b></div>
+        </div>
+        <div class="foot">
+          <span class="cat">优先级 · 中</span>
+          <span class="bar">
+            <button class="btn">✓ 确认完成</button>
+            <button class="cancel">取消</button>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="dim">· pill 高 <b>≈26.5px</b>，是底行「优先级 · 中」（10.5px 文字）的 2.5 倍<br>· 横向 padding 10px，两枚按钮合计宽 <b>136px</b>，挤压左侧分类文字<br>· 加粗白字 + 实心大色块，视觉权重盖过卡片主体</div>
+  </div>
+  <div class="panel b">
+    <h2><span class="tag b">B · 提案</span>压扁压窄：pill 高约 19px，取消同高</h2>
+    <div class="app">
+      <div class="titlebar"><span class="logo"></span><b>To Do List</b></div>
+      <div class="card">
+        <span class="pill">待办</span>
+        <span class="corner"><b>完成时间</b>9/22</span>
+        <div class="row">
+          <span class="check">✓</span>
+          <div class="body"><b>创建一个本项目的自动化问题单处理机制并持续优化</b></div>
+        </div>
+        <div class="foot">
+          <span class="cat">优先级 · 中</span>
+          <span class="bar">
+            <button class="btn">✓ 确认完成</button>
+            <button class="cancel">取消</button>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="dim">· <span class="kbd">min-height 20→17px</span> · <span class="kbd">padding 2/10→1/8</span> · <span class="kbd">font 10.5→10px</span>，pill 高 <b>≈19px</b>（−28%）<br>· 两枚按钮合计宽约 <b>112px</b>（−24px），底行呼吸感恢复<br>· 取消按钮 <span class="kbd">min-height 同步 17px</span> 与确认按钮严格同高（诉求②）<br>· 样式语义不变：确认仍为实心 accent、取消仍为白底描边</div>
+  </div>
+</div>
+</body>
+</html>

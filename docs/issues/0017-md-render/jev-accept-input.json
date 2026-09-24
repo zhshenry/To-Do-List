@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "issue": 17,
+    "type": "功能",
+    "ui": true,
+    "impact": "行为",
+    "archive": "0017-md-render",
+    "title": "AI 助手回复 Markdown 渲染（展开态渲染 + 折叠态降级/悬浮预览）"
+  },
+  "deterministic": {
+    "ui": true,
+    "build": "pass",
+    "smoke": "pass"
+  },
+  "evidence": {
+    "summary": "两期+交付缺陷修复（7ffaa1d / e84506b / b328282）：①src/markdown.ts marked(GFM+breaks)→DOMPurify 净化唯一出口，markdownToPlainText 以模块捕获 window 提取纯文本（修复 dompurify 3.x 无 .window 实例导致的整树崩溃）；②AIConversation/StandaloneAIConversation 助手气泡接入 .md-body 渲染（用户气泡纯文本不变）；③AssistantApp compact 结果态：降级两行截断 + 悬停 300ms 浮层（portal 至 body，top≥8 且 maxHeight 视口自适应，修复迷你窗首行裁切）+ 展开全文›打开独立助手窗；④tests/markdown.test.ts 7 条（jsdom 装配），全套 44/44；⑤ux-smoke passed；⑥真机三图证据见档案 17-mini-degraded / 17-hover-pop / 17-expanded-md（capture-hover.mjs 随 b328282 入库）。CHANGELOG [未发布] 已记一条。"
+  }
+}

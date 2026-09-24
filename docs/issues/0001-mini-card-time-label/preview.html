@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Issue #1 · 收起卡片时间标签 · 提案</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #faf8f5; --titlebar: #f2eee8; --ink: #171923; --muted: #726d67;
+    --accent: #b54f2b; --accent-hover: #963e20; --accent-soft: #f6e2d9; --line: #e4ded6; --subtle: #efebe6;
+    --danger: #a3312d; --success: #3e7d44; --success-soft: #e2efe2; --white: #ffffff; --completed: #6d675f;
+    --font-body: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --card-radius: 14px; --control-radius: 10px;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 80% 45% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
+    font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: var(--ink);
+    font-synthesis: none; text-rendering: optimizeLegibility;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--mesh); padding: 36px 44px 44px; }
+  .sheet-head { max-width: 1240px; margin: 0 auto 24px; }
+  .sheet-head h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+  .sheet-head p { margin: 5px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .sheet-head .meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  h2.clip { max-width: 1240px; margin: 30px auto 10px; font-size: 13px; font-weight: 650; color: var(--ink); }
+  h2.clip small { font-weight: 400; color: var(--muted); font-size: 11.5px; margin-left: 8px; }
+  .row { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 236px); gap: 22px; align-items: start; }
+  .cell { display: flex; flex-direction: column; gap: 8px; }
+  .caption { font-size: 11px; color: var(--muted); padding-left: 2px; line-height: 1.6; }
+  .caption b { color: var(--accent); font-weight: 600; }
+  .caption em { font-style: normal; color: var(--ink); font-weight: 600; }
+
+  /* ===== 以下为 src/mini-card.css 真实样式摘录（收起卡片叠层） ===== */
+  .mini-task-stack { position: relative; min-width: 0; height: 104px; width: 212px; }
+  .mini-stack-sheet { position: absolute; left: 4px; right: 4px; top: 8px; height: 90px; border: 1px solid var(--line); border-radius: 14px; background: #f8f5f1; }
+  .mini-stack-sheet.back { left: 8px; right: 8px; top: 14px; z-index: 0; padding: 0; background: #f3efea; box-shadow: 0 3px 8px #453a2e0b; }
+  .mini-task-front { position: absolute; z-index: 2; inset: 0 0 auto; height: 92px; display: flex; flex-direction: column; padding: 26px 10px 8px; border: 1px solid #e1dad1; border-radius: 14px; background: white; box-shadow: 0 5px 14px #4c40310b; }
+  .front-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 9px; align-items: center; }
+  .corner-badges { position: absolute; top: 8px; left: 10px; display: flex; gap: 4px; z-index: 1; }
+  .mini-pill { font-size: 9.5px; font-weight: 650; line-height: 1; padding: 3px 8px; border-radius: 999px; }
+  .mini-pill.pill-todo { background: var(--success-soft); color: var(--success); }
+  .mini-pill.pill-meeting { background: #e3ecf3; color: #3f6b8f; }
+  .mini-pill.pill-overdue { background: #f9e9e7; color: var(--danger); }
+  .corner-time { position: absolute; top: 10px; right: 10px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .corner-time .time-label { margin-right: 3px; }
+  .corner-time .time-label.bold { font-weight: 600; }
+  .corner-time.overdue { color: var(--danger); font-weight: 600; }
+  .mini-task-check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #b7b0a6; color: transparent; display: grid; place-items: center; }
+  .mini-kind-button { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #d9c5ba; background: #faf1ec; color: var(--accent); display: grid; place-items: center; }
+  .mini-task-open { min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+  .mini-task-open > b { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 1.25; font-weight: 600; }
+  .mini-deck-pager { margin-left: auto; display: flex; align-items: center; gap: 2px; color: var(--muted); font-size: 10px; white-space: nowrap; }
+  .mini-deck-pager > span { padding-right: 3px; font-variant-numeric: tabular-nums; }
+  .mini-deck-pager button { width: 18px; height: 18px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted); }
+  .front-foot { display: flex; align-items: flex-end; justify-content: flex-end; }
+  svg.caret { width: 10px; height: 10px; }
+  svg.vid { width: 11px; height: 11px; }
+</style>
+</head>
+<body>
+  <div class="sheet-head">
+    <h1>Issue #1 · 收起状态卡片时间标签</h1>
+    <p>右上角时间实为当前事项的<strong>截止时间</strong>（截图核对：未完成待办「完成 DAMA BOOK 学习」，截止 9/30 23:59）。提案在时间前加「完成时间」前缀，字号与时间一致（10px），可加粗。以下卡片为收起态叠层 1:1 复刻。</p>
+    <p class="meta">提案日期 2026-09-21 · 状态 spec待审 · 审批后实现</p>
+  </div>
+
+  <h2 class="clip">主决策<small>现状 → 方案 A（前缀加粗）→ 方案 B（前缀不加粗）</small></h2>
+  <div class="row">
+    <div class="cell">
+      <div class="mini-task-stack">
+        <div class="mini-stack-sheet back"></div>
+        <div class="mini-task-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+          <span class="corner-time">9/30 23:59</span>
+          <div class="front-main">
+            <span class="mini-task-check"></span>
+            <span class="mini-task-open"><b>完成 DAMA BOOK 学习</b></span>
+          </div>
+          <div class="front-foot"><div class="mini-deck-pager"><span>2 / 2</span><button><svg class="caret" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button></div></div>
+        </div>
+      </div>
+      <div class="caption">现状：只有裸时间，不知道是什么时间</div>
+    </div>
+    <div class="cell">
+      <div class="mini-task-stack">
+        <div class="mini-stack-sheet back"></div>
+        <div class="mini-task-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+          <span class="corner-time"><span class="time-label bold">完成时间</span>9/30 23:59</span>
+          <div class="front-main">
+            <span class="mini-task-check"></span>
+            <span class="mini-task-open"><b>完成 DAMA BOOK 学习</b></span>
+          </div>
+          <div class="front-foot"><div class="mini-deck-pager"><span>2 / 2</span><button><svg class="caret" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button></div></div>
+        </div>
+      </div>
+      <div class="caption"><em>方案 A（推荐）</em>：「完成时间」<b>加粗</b>，时间保持常规字重，前缀与数字拉开节奏</div>
+    </div>
+    <div class="cell">
+      <div class="mini-task-stack">
+        <div class="mini-stack-sheet back"></div>
+        <div class="mini-task-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+          <span class="corner-time"><span class="time-label">完成时间</span>9/30 23:59</span>
+          <div class="front-main">
+            <span class="mini-task-check"></span>
+            <span class="mini-task-open"><b>完成 DAMA BOOK 学习</b></span>
+          </div>
+          <div class="front-foot"><div class="mini-deck-pager"><span>2 / 2</span><button><svg class="caret" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button></div></div>
+        </div>
+      </div>
+      <div class="caption"><em>方案 B</em>：前缀不加粗，整体更轻，但标签存在感弱</div>
+    </div>
+  </div>
+
+  <h2 class="clip">边界情形<small>超期态 / 日程卡 / 无具体时间的待办（均按方案 A 渲染）</small></h2>
+  <div class="row">
+    <div class="cell">
+      <div class="mini-task-stack">
+        <div class="mini-stack-sheet back"></div>
+        <div class="mini-task-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span><span class="mini-pill pill-overdue">已超期</span></span>
+          <span class="corner-time overdue"><span class="time-label">完成时间</span>9/20 08:30</span>
+          <div class="front-main">
+            <span class="mini-task-check"></span>
+            <span class="mini-task-open"><b>整理书架</b></span>
+          </div>
+          <div class="front-foot"><div class="mini-deck-pager"><span>1 / 3</span><button><svg class="caret" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button></div></div>
+        </div>
+      </div>
+      <div class="caption"><em>超期待办</em>：沿用红色加粗整体态，前缀跟随，不新增样式</div>
+    </div>
+    <div class="cell">
+      <div class="mini-task-stack">
+        <div class="mini-stack-sheet back"></div>
+        <div class="mini-task-front">
+          <span class="corner-badges"><span class="mini-pill pill-meeting">日程</span></span>
+          <span class="corner-time">9/22 10:00</span>
+          <div class="front-main">
+            <span class="mini-kind-button"><svg class="vid" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.1"><rect x="1" y="3" width="7" height="6" rx="1.4"/><path d="M8 5.2 L11 4 V8 L8 6.8"/></svg></span>
+            <span class="mini-task-open"><b>周会：数据复盘</b></span>
+          </div>
+          <div class="front-foot"><div class="mini-deck-pager"><span>1 / 1</span></div></div>
+        </div>
+      </div>
+      <div class="caption"><em>日程卡（建议）</em>：<b>不加</b>前缀——它显示的是开始时间，标「完成时间」语义错</div>
+    </div>
+    <div class="cell">
+      <div class="mini-task-stack">
+        <div class="mini-stack-sheet back"></div>
+        <div class="mini-task-front">
+          <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+          <span class="corner-time"><span class="time-label bold">完成时间</span>10/8</span>
+          <div class="front-main">
+            <span class="mini-task-check"></span>
+            <span class="mini-task-open"><b>续签护照</b></span>
+          </div>
+          <div class="front-foot"><div class="mini-deck-pager"><span>1 / 1</span></div></div>
+        </div>
+      </div>
+      <div class="caption"><em>无具体时间待办（建议）</em>：只显日期时前缀保持一致，读作「完成期限 10/8」</div>
+    </div>
+  </div>
+</body>
+</html>

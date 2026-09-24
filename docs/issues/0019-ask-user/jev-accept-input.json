@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "issue": 19,
+    "type": "功能",
+    "ui": true,
+    "impact": "行为",
+    "archive": "0019-ask-user",
+    "title": "AI 助手澄清提问工具 ask_user（循环中途向用户提问）"
+  },
+  "deterministic": {
+    "ui": true,
+    "build": "pass",
+    "smoke": "pass"
+  },
+  "evidence": {
+    "summary": "ask_user 澄清提问工具（bf9432f + de330e3，10 文件 +230/−14）：①ai.ts 自定义 ask_user 工具（question ≤200 + 2–4 可选带说明选项），onAskUser 桥接入 agent 循环，系统提示词歧义指引升级；②main.ts ai:ask/ask:answer 往返（活动面投递 assistantWin>win，全隐藏自动弹出），分段 45s 超时（提问挂起不计时），abort 落「用户已取消」，回答按 option/text/skip 组词并连同 question 写入 ChatEntry.tools 持久化；③三面 UI：展开态「AI 想确认」卡片（radio 选项/跳过/输入即回答）+ 收敛单行持久化、折叠态 is-asking 视图（300px 扩展 + 跳过/取消）；④tests/ai.test.ts 新增循环往返 + abort 分支，全套 39/39。真机三图证据（capture-ask.mjs 入库）：19-ask-expanded / 19-ask-answered / 19-ask-mini，含持久化断言。CHANGELOG [未发布] 一条。"
+  }
+}

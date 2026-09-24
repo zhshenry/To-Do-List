@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Issue #12 · 展开态 AI 助手：流光边框提案（①②核验说明）</title>
+<style>
+  @property --demo-glow-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+  :root {
+    --paper: #faf8f5; --ink: #171923; --muted: #726d67;
+    --accent: #b54f2b; --accent-soft: #f6e2d9; --line: #e4ded6; --titlebar: #f2eee8; --white: #ffffff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--paper); font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; color: var(--ink); padding: 26px 30px; }
+  h1 { font-size: 17px; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+  .wrap { display: flex; gap: 30px; align-items: flex-start; }
+  .left { flex: 0 0 470px; }
+  .right { flex: 1; }
+
+  /* ── 展开态主窗 1:1 缩略 ── */
+  .app { position: relative; width: 470px; height: 560px; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .titlebar { display: flex; align-items: center; gap: 9px; padding: 12px 14px 8px; }
+  .logo { width: 24px; height: 24px; border-radius: 50%; border: 3px solid var(--ink); position: relative; }
+  .logo::after { content: ""; position: absolute; top: 1px; right: 2px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  .titlebar b { font-size: 14px; }
+  .winbtns { margin-left: auto; display: flex; gap: 8px; color: var(--muted); font-size: 11px; }
+  .date { text-align: center; color: var(--muted); font-size: 11px; margin: 6px 0 10px; }
+  .section { margin: 0 14px 10px; background: var(--white); border-radius: 12px; box-shadow: 0 4px 14px rgba(23,25,35,.06); padding: 10px 12px; }
+  .section h3 { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .task { font-size: 12px; padding: 5px 0; border-top: 1px solid #f1ece6; }
+  .task:first-of-type { border-top: 0; }
+
+  /* ── AI 助手 overlay（提案态）── */
+  .overlay { position: absolute; z-index: 6; left: 10px; right: 10px; bottom: 10px; height: 300px; display: flex; flex-direction: column; border-radius: 16px; background: #fbfaf7; box-shadow: 0 -8px 24px rgba(23,25,35,.08); overflow: hidden; isolation: isolate; contain: layout paint;
+    /* 提案：mini-ai-surface 同款 conic 流光边（移植） */
+  }
+  .overlay::before { content: ''; position: absolute; z-index: 3; inset: 0; padding: 1.5px; border-radius: inherit; background: conic-gradient(from var(--demo-glow-angle), transparent 0deg 276deg, #bd55320d 292deg, #bd5532a6 315deg, #fff1db 328deg, #bd553247 345deg, transparent 360deg); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; filter: drop-shadow(0 0 2px #bd55324d); animation: demo-border-glow 3.2s linear infinite; pointer-events: none; }
+  @keyframes demo-border-glow { to { --demo-glow-angle: 360deg; } }
+  .ohead { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 8px 6px 12px; border-bottom: 1px solid #cfc6bc; }
+  .ohead b { font-size: 12px; }
+  .ohead .session { font-size: 10px; color: var(--muted); }
+  .ohead .x { margin-left: auto; color: var(--muted); font-size: 11px; }
+  .omsg { margin: 10px 12px 0; font-size: 11px; line-height: 1.6; color: var(--ink); background: var(--white); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .omsg.you { background: var(--accent-soft); border-color: transparent; margin-left: 60px; }
+  .oinput { margin: auto 12px 10px; display: flex; gap: 6px; }
+  .oinput span { flex: 1; display: block; height: 26px; border: 1px solid var(--line); border-radius: 9px; background: var(--white); font-size: 10px; color: #b6afa6; padding: 6px 9px; }
+  .oinput i { font-style: normal; width: 26px; height: 26px; border-radius: 9px; background: var(--accent); color: var(--white); text-align: center; line-height: 26px; font-size: 11px; }
+
+  .note { font-size: 11px; color: var(--muted); line-height: 1.8; margin-top: 12px; }
+  .note b { color: var(--ink); }
+  .kbd { background: var(--white); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; font-size: 10px; }
+  .ok { color: var(--success, #3e7d44); font-weight: 650; }
+  h2 { font-size: 13px; margin-bottom: 10px; }
+  code { font-family: Consolas, monospace; font-size: 10.5px; background: var(--white); border: 1px solid var(--line); border-radius: 5px; padding: 0 4px; }
+</style>
+</head>
+<body>
+<h1>Issue #12 · 展开态 AI 助手：三个子诉求的处理</h1>
+<div class="sub">①②经勘察为你 0.5.9 已重做的部分（需重启应用到新版核验）· ③流光边为本单新增实现——移植折叠卡 <span class="kbd">mini-ai-surface</span> 同款 conic-gradient 旋转流光（无横扫残线问题）</div>
+<div class="wrap">
+  <div class="left">
+    <h2>提案态：展开窗内 AI 助手面板（带流光边）</h2>
+    <div class="app">
+      <div class="titlebar"><span class="logo"></span><b>To Do List</b><span class="winbtns">钉住 ⚙ ⇩ —</span></div>
+      <div class="date">9月22日 周二</div>
+      <div class="section"><h3>待办</h3><div class="task">创建一个本项目的自动化问题单处理机制并持续优化</div><div class="task">回复邮件</div></div>
+      <div class="section"><h3>日程</h3><div class="task" style="color:#b6afa6">没有日程</div></div>
+      <div class="overlay">
+        <div class="ohead"><b>AI 助手</b><span class="session">新对话</span><span class="x">✕</span></div>
+        <div class="omsg you">帮我给明天的待办排个优先级</div>
+        <div class="omsg">好的——根据截止时间，建议先处理「自动化问题单处理机制」，它还有约 45 分钟到期；「回复邮件」可以放到明天上午。</div>
+        <div class="oinput"><span>输入消息…</span><i>➤</i></div>
+      </div>
+    </div>
+    <div class="note"><span class="ok">① 开启动效</span>：0.5.9 已有 <code>assistant-overlay-in 240ms</code> 自下而上滑入（与收起 180ms 对称）——请重启应用到 0.5.9 后核验；<br><span class="ok">② 主页面抖动</span>：0.5.9 已把面板改为绝对定位覆盖（<code>position:absolute</code> + <code>contain:layout paint</code>），主内容零参与布局——同样请重启后核验；<br><span class="ok">③ 流光边（本单实现）</span>：面板边框加 3.2s/圈旋转的 conic 流光（上右示意即实际效果）。</div>
+  </div>
+  <div class="right">
+    <h2>实现说明（③ 的做法与取舍）</h2>
+    <div class="note" style="margin-top:0">
+      <b>为什么不复用 0.5.9 之前的流光</b>：旧实现是「横扫光 + 线性流光边」，扫过会留下残线（你在 0.5.9 里因此移除）。<br><br>
+      <b>新方案移植自折叠卡</b>（<code>mini-ai-surface::before</code>，已在线上稳定运行、无残线报告）：<br>
+      · <code>@property --glow-angle</code> 注册角度变量 → <code>conic-gradient</code> 亮弧沿边框旋转；<br>
+      · <code>mask-composite: xor</code> 只留 1.5px 边框环，圆角完美贴合；<br>
+      · <code>filter: drop-shadow</code> 一点微光，<code>pointer-events:none</code> 不挡交互；<br>
+      · 跟随系统「减弱动态效果」时静止为静态亮边。<br><br>
+      <b>改动面</b>：<code>src/assistant-updates.css</code>（<code>.assistant-overlay::before</code> + @property + keyframes + 减弱动态效果媒体查询）——单文件纯样式，不动布局与逻辑。<br><br>
+      <b>①②的核验路径</b>：你的截图可能摄于旧构建（应用单实例常驻，0.5.9 需重启生效）。请先重启确认；若抖动/动效仍异常，<code>/reject</code> 附现象描述，我把①②重新立项排查。
+    </div>
+  </div>
+</div>
+</body>
+</html>

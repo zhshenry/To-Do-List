@@ -5,7 +5,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { z } from 'zod';
 import { createAgentSession, DefaultResourceLoader, ModelRuntime, SessionManager, SettingsManager } from '@earendil-works/pi-coding-agent';
-import type { Task } from '../shared/contracts';
+import type { InsightSuggestion, Task } from '../shared/contracts';
 import { assistantText } from './ai';
 
 export const aiInsightSchema = z.object({
@@ -18,9 +18,18 @@ export type AiInsight = z.infer<typeof aiInsightSchema> & { taskId: string };
 
 export function insightTasksHash(tasks: Task[]): string {
   return tasks
-    .map(t => [t.id, t.status, t.dueAt ?? '', t.plannedDate, t.title].join('|'))
+    .map(t => [t.id, t.kind, t.status, t.dueAt ?? '', t.plannedDate, t.title].join('|'))
     .sort()
     .join('\n');
+}
+
+export function insightCacheKey(tasks: Task[], modelId: string): string {
+  return `${modelId}\n${insightTasksHash(tasks)}`;
+}
+
+export function currentInsight(suggestion: InsightSuggestion | null, cacheKey: string, tasks: Task[]): boolean {
+  return suggestion?.source === 'ai' && suggestion.cacheKey === cacheKey
+    && !!suggestion.taskId && tasks.some(task => task.id === suggestion.taskId);
 }
 
 export function parseInsightReply(text: string, allowedTaskIds: Set<string>): AiInsight | null {

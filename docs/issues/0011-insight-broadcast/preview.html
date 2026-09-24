@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Issue #11 · AI 建议广播化与内容可读 A/B</title>
+<style>
+  :root {
+    --paper: #faf8f5; --ink: #171923; --muted: #726d67;
+    --accent: #b54f2b; --accent-soft: #f6e2d9; --line: #e4ded6;
+    --success: #3e7d44; --success-soft: #e2efe2; --white: #ffffff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--paper); font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; color: var(--ink); padding: 26px 30px; }
+  h1 { font-size: 17px; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+  .panels { display: flex; gap: 34px; align-items: flex-start; }
+  .panel { flex: 1; }
+  .panel h2 { font-size: 13px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .tag { font-size: 10px; font-weight: 700; border-radius: 999px; padding: 2px 9px; }
+  .tag.a { background: #f9e9e7; color: #a3312d; }
+  .tag.b { background: var(--success-soft); color: var(--success); }
+
+  .app { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px 16px; }
+  .titlebar { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
+  .logo { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--ink); position: relative; }
+  .logo::after { content: ""; position: absolute; top: 1px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .titlebar b { font-size: 15px; }
+
+  /* AI 建议条 */
+  .insight { height: 22px; display: flex; align-items: center; gap: 5px; padding: 0 6px; border-radius: 7px; background: #f8f4ef; margin-bottom: 9px; }
+  .insight > span { flex: 0 0 auto; color: var(--accent); font-size: 9px; font-weight: 700; }
+  .insight > b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+  .insight > small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 9px; }
+  .insight > em { margin-left: auto; flex: 0 0 auto; color: var(--accent); font-size: 9px; font-style: normal; font-weight: 650; }
+
+  /* 卡片 */
+  .card { position: relative; background: var(--white); border-radius: 14px; box-shadow: 0 6px 18px rgba(23,25,35,.08); padding: 12px 14px 11px; }
+  .pill { display: inline-block; font-size: 9.5px; font-weight: 650; line-height: 1; padding: 3px 8px; border-radius: 999px; background: var(--success-soft); color: var(--success); }
+  .corner { position: absolute; top: 10px; right: 12px; font-size: 10px; color: var(--muted); }
+  .corner b { color: var(--ink); font-weight: 600; margin-right: 3px; }
+  .row { display: flex; gap: 9px; margin-top: 9px; align-items: flex-start; }
+  .check { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #b7b0a6; }
+  .body b { display: block; font-size: 12.5px; line-height: 1.3; }
+  .foot { display: flex; align-items: center; margin-top: 8px; }
+  .cat { font-size: 10.5px; color: var(--muted); }
+  .pager { margin-left: auto; display: flex; align-items: center; gap: 3px; color: var(--muted); font-size: 10px; }
+  .dim { margin-top: 10px; font-size: 11px; color: var(--muted); line-height: 1.7; }
+  .dim b { color: var(--ink); }
+  .kbd { background: var(--white); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; font-size: 10px; }
+  .ghost { opacity: .45; }
+</style>
+</head>
+<body>
+<h1>Issue #11 · 收起卡 AI 建议：广播化 + 内容可读</h1>
+<div class="sub">诉求①看不出内容 → 建议条改为「目标事项名 + 动作」两段式，事项名为主；诉求②切卡即消失 → 建议改为全局计算（今日事项里挑最紧急目标），不随翻页变化（广播式）· 变更集中在 MiniCard.tsx 建议计算与建议条内容，样式微调</div>
+<div class="panels">
+  <div class="panel a">
+    <h2><span class="tag a">A · 现状</span>内容嵌在长句里截断；切到第 2 张卡建议直接消失</h2>
+    <div class="app">
+      <div class="titlebar"><span class="logo"></span><b>To Do List</b></div>
+      <div class="insight"><span>AI 建议</span><b>先拆出「创建一个本项目的自动化问题单处理机制并持…</b><small>距截止约 45 分钟</small><em>查看</em></div>
+      <div class="card">
+        <span class="pill">待办</span><span class="corner"><b>完成时间</b>9/22 18:30</span>
+        <div class="row"><span class="check"></span><div class="body"><b>创建一个本项目的自动化问题单处理机制并持续优化</b></div></div>
+        <div class="foot"><span class="cat">优先级 · 中</span><span class="pager">1 / 2 ∧ ∨</span></div>
+      </div>
+      <div class="dim" style="margin-top:8px">切到第 2 张卡（无临近截止）后：</div>
+      <div class="app ghost" style="margin-top:6px">
+        <div class="titlebar"><span class="logo"></span><b>To Do List</b></div>
+        <div class="card">
+          <span class="pill">待办</span><span class="corner"><b>完成时间</b>9/24</span>
+          <div class="row"><span class="check"></span><div class="body"><b>回复邮件</b></div></div>
+          <div class="foot"><span class="cat">优先级 · 中</span><span class="pager">2 / 2 ∧ ∨</span></div>
+        </div>
+      </div>
+      <div class="dim">· 建议按「当前卡」计算（<span class="kbd">insightFor(current,…)</span>），翻页即失 <br>· 事项名嵌在「先拆出『…』的下一步」长句中部，单行截断后看不出指向</div>
+    </div>
+  </div>
+  <div class="panel b">
+    <h2><span class="tag b">B · 提案</span>广播式：任何一张卡上都显示同一条建议；事项名为主、动作为辅</h2>
+    <div class="app">
+      <div class="titlebar"><span class="logo"></span><b>To Do List</b></div>
+      <div class="insight"><span>AI 建议</span><b>创建一个本项目的自动化问题单处理机制并持续优化</b><small>先拆出下一步 · 距截止约 45 分钟</small><em>查看</em></div>
+      <div class="card">
+        <span class="pill">待办</span><span class="corner"><b>完成时间</b>9/22 18:30</span>
+        <div class="row"><span class="check"></span><div class="body"><b>创建一个本项目的自动化问题单处理机制并持续优化</b></div></div>
+        <div class="foot"><span class="cat">优先级 · 中</span><span class="pager">1 / 2 ∧ ∨</span></div>
+      </div>
+      <div class="dim" style="margin-top:8px">切到第 2 张卡后建议保持不变：</div>
+      <div class="app" style="margin-top:6px">
+        <div class="titlebar"><span class="logo"></span><b>To Do List</b></div>
+        <div class="insight"><span>AI 建议</span><b>创建一个本项目的自动化问题单处理机制并持续优化</b><small>先拆出下一步 · 距截止约 45 分钟</small><em>查看</em></div>
+        <div class="card">
+          <span class="pill">待办</span><span class="corner"><b>完成时间</b>9/24</span>
+          <div class="row"><span class="check"></span><div class="body"><b>回复邮件</b></div></div>
+          <div class="foot"><span class="cat">优先级 · 中</span><span class="pager">2 / 2 ∧ ∨</span></div>
+        </div>
+      </div>
+      <div class="dim">· 建议目标从「今日全部未完成事项」里挑：<b>最紧急的有截止日程（≤60 分钟）</b> → <b>最紧急的有截止待办（≤90 分钟）</b> → 事项 ≥3 项时给排序建议；均无则不显示<br>· 内容两段式：<b>粗体 = 目标事项名</b>（1 行截断），灰字 = 动作 + 时间；「查看/生成方案」仍针对该目标事项<br>· 悬停/展开/忽略交互全部不变</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Issue #2 · 收起卡片翻页滚动动效 · 交互提案</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #faf8f5; --titlebar: #f2eee8; --ink: #171923; --muted: #726d67;
+    --accent: #b54f2b; --accent-hover: #963e20; --accent-soft: #f6e2d9; --line: #e4ded6; --subtle: #efebe6;
+    --danger: #a3312d; --success: #3e7d44; --success-soft: #e2efe2; --white: #ffffff; --completed: #6d675f;
+    --font-body: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --card-radius: 14px;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 80% 45% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
+    font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: var(--ink);
+    font-synthesis: none; text-rendering: optimizeLegibility;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--mesh); padding: 34px 44px 44px; }
+  .sheet-head { max-width: 1240px; margin: 0 auto 6px; }
+  .sheet-head h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+  .sheet-head p { margin: 5px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .stage { max-width: 1240px; margin: 18px auto 0; display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 30px; align-items: start; }
+  .demo-note { font-size: 12px; color: var(--muted); line-height: 1.9; }
+  .demo-note b { color: var(--ink); }
+  .demo-note .kbd { display: inline-block; padding: 1px 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--white); font-size: 11px; }
+  h2.clip { max-width: 1240px; margin: 30px auto 10px; font-size: 13px; font-weight: 650; }
+  h2.clip small { font-weight: 400; color: var(--muted); font-size: 11.5px; margin-left: 8px; }
+  .frames { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 380px); gap: 22px; }
+  .frame { display: flex; flex-direction: column; gap: 7px; }
+  .frame .cap { font-size: 11px; color: var(--muted); line-height: 1.6; }
+  .frame .cap b { color: var(--accent); }
+
+  /* ===== 收起卡片真实样式（src/mini-card.css 摘录）===== */
+  .mini-window { position: relative; width: 340px; height: 176px; border: 1px solid var(--line); border-radius: 18px; background: var(--mesh); overflow: hidden; box-shadow: 0 12px 30px #4c403115; }
+  .mini-titlebar { height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 16px; user-select: none; }
+  .mini-logo { width: 40px; height: 40px; flex: 0 0 auto; display: grid; place-items: center; }
+  .mini-logo i { width: 26px; height: 26px; border: 3.5px solid #221f1c; border-radius: 50%; position: relative; display: block; }
+  .mini-logo i::after { content: ''; position: absolute; top: -2px; right: -2px; width: 9px; height: 9px; border-radius: 50%; background: #c66a42; }
+  .mini-app-title { min-width: 0; flex: 1; font-size: 16px; font-weight: 600; }
+  .mini-actions { display: flex; gap: 8px; color: var(--ink); }
+  .mini-actions svg { width: 17px; height: 17px; }
+  .mini-content { position: relative; height: 124px; padding: 9px 12px 11px; }
+  .mini-home-main { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 8px; height: 104px; }
+  .mini-task-stack { position: relative; min-width: 0; height: 104px; }
+  .mini-stack-sheet { position: absolute; left: 4px; right: 4px; top: 8px; height: 90px; border: 1px solid var(--line); border-radius: 14px; background: #f8f5f1; }
+  .mini-stack-sheet.back { left: 8px; right: 8px; top: 14px; z-index: 0; background: #f3efea; box-shadow: 0 3px 8px #453a2e0b; }
+  .mini-task-front { position: absolute; z-index: 2; inset: 0 0 auto; height: 92px; display: flex; flex-direction: column; padding: 26px 10px 8px; border: 1px solid #e1dad1; border-radius: 14px; background: white; box-shadow: 0 5px 14px #4c40310b; }
+  .front-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 9px; align-items: center; }
+  .front-main.is-meeting { grid-template-columns: minmax(0, 1fr); }
+  .corner-badges { position: absolute; top: 8px; left: 10px; display: flex; gap: 4px; z-index: 1; }
+  .mini-pill { font-size: 9.5px; font-weight: 650; line-height: 1; padding: 3px 8px; border-radius: 999px; }
+  .mini-pill.pill-todo { background: var(--success-soft); color: var(--success); }
+  .mini-pill.pill-meeting { background: #e3ecf3; color: #3f6b8f; }
+  .mini-pill.pill-overdue { background: #f9e9e7; color: var(--danger); }
+  .corner-time { position: absolute; top: 10px; right: 10px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .corner-time .time-label { margin-right: 3px; font-weight: 600; }
+  .corner-time.overdue { color: var(--danger); font-weight: 600; }
+  .mini-task-check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #b7b0a6; display: grid; place-items: center; background: transparent; }
+  .mini-task-open { min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+  .mini-task-open > b { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 1.25; font-weight: 600; }
+  .front-meta { display: flex; align-items: flex-end; }
+  .meta-cat { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--muted); }
+  .meta-cat i { width: 6px; height: 6px; border-radius: 50%; }
+  .mini-deck-pager { margin-left: auto; display: flex; align-items: center; gap: 2px; color: var(--muted); font-size: 10px; }
+  .mini-deck-pager > span { padding-right: 3px; font-variant-numeric: tabular-nums; }
+  .mini-deck-pager button { width: 18px; height: 18px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
+  .mini-deck-pager button:hover { background: var(--accent-soft); color: var(--accent); }
+  .mini-deck-pager .is-up svg { transform: rotate(180deg); }
+  .mini-deck-pager svg { width: 10px; height: 10px; }
+  .mini-quick-actions { display: grid; grid-template-rows: 1fr 1fr; gap: 8px; }
+  .mini-quick-actions button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px solid #e1dad1; border-radius: 14px; background: var(--white); font-size: 11.5px; color: var(--ink); cursor: pointer; }
+  .mini-quick-actions svg { width: 18px; height: 18px; color: var(--accent); }
+
+  /* ===== 本提案：翻页滚动动效 ===== */
+  .mini-task-stack.is-rolling .mini-stack-sheet.back { animation: sheet-dim 260ms cubic-bezier(.16, 1, .3, 1) both; }
+  @keyframes sheet-dim { 50% { opacity: .35; } }
+  .deck-layer { position: absolute; inset: 0 0 auto; height: 92px; }
+  .deck-layer.is-incoming { z-index: 1; }
+  .deck-layer.is-outgoing { z-index: 3; pointer-events: none; }
+  .stack-next .deck-layer.is-outgoing { animation: deck-out-next 260ms cubic-bezier(.16, 1, .3, 1) both; }
+  .stack-next .deck-layer.is-incoming { animation: deck-in-next 260ms cubic-bezier(.16, 1, .3, 1) both; }
+  .stack-prev .deck-layer.is-outgoing { animation: deck-out-prev 260ms cubic-bezier(.16, 1, .3, 1) both; }
+  .stack-prev .deck-layer.is-incoming { animation: deck-in-prev 260ms cubic-bezier(.16, 1, .3, 1) both; }
+  @keyframes deck-out-next { from { transform: none; opacity: 1; } to { transform: translateY(11px) scale(.93); opacity: 0; } }
+  @keyframes deck-in-next { from { transform: translateY(11px) scale(.93); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes deck-out-prev { from { transform: none; opacity: 1; } to { transform: translateY(-13px) scale(.93); opacity: 0; } }
+  @keyframes deck-in-prev { from { transform: translateY(-13px) scale(.93); opacity: 0; } to { transform: none; opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .mini-task-stack * { animation: none !important; } }
+</style>
+</head>
+<body>
+  <div class="sheet-head">
+    <h1>Issue #2 · 收起卡片翻页滚动动效</h1>
+    <p>点「下一项」：当前卡<strong>下沉后退</strong>（隐入背板位），下一张从背板位<strong>升起进前</strong>——正是卡片叠层的空间隐喻；点「上一项」反向滚动。260ms，沿用仓库动效曲线 <code>cubic-bezier(.16, 1, .3, 1)</code>，跟随系统「减弱动态效果」自动关闭。</p>
+  </div>
+
+  <div class="stage">
+    <div class="mini-window">
+      <div class="mini-titlebar">
+        <span class="mini-logo"><i></i></span>
+        <span class="mini-app-title">To Do List</span>
+        <span class="mini-actions">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3h5v5M17 3l-6 6M8 17H3v-5M3 17l6-6"/></svg>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="6.5"/><path d="M10 6v4l3 2"/></svg>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h12M4 13h12"/></svg>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 4v12M4 10h12"/></svg>
+        </span>
+      </div>
+      <div class="mini-content">
+        <div class="mini-home-main">
+          <div class="mini-task-stack" id="stack">
+            <span class="mini-stack-sheet back"></span>
+            <div id="layers"></div>
+          </div>
+          <nav class="mini-quick-actions">
+            <button type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 4v12M4 10h12"/></svg><span>新增事项</span></button>
+            <button type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 2l1.8 4.6L16 8l-4.2 1.4L10 14l-1.8-4.6L4 8l4.2-1.4L10 2zM15.5 12.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/></svg><span>AI 助手</span></button>
+          </nav>
+        </div>
+      </div>
+    </div>
+    <div class="demo-note">
+      <b>可交互演示</b>——右侧卡片就是真机样式复刻，直接点击翻页按钮（或背板）体验滚动动效：<br>
+      · <span class="kbd">下一项</span>：当前卡下沉后退、下一张升起进前（下方进入方向感与叠层背板一致）<br>
+      · <span class="kbd">上一项</span>：反向滚动<br>
+      · 滚轮 / 点背板 同样触发（与真机一致）<br>
+      · 完成待办确认后的自动翻页也走同一次「下一项」滚动<br>
+      · 系统「减弱动态效果」开启时直接瞬切（仓库既有全局熔断）
+    </div>
+  </div>
+
+  <h2 class="clip">动效分解<small>以「下一项」为例 · 260ms · 三阶段（storyboard，实现为连续动画）</small></h2>
+  <div class="frames">
+    <div class="frame"><div class="mini-window">
+      <div class="mini-titlebar"><span class="mini-logo"><i></i></span><span class="mini-app-title">To Do List</span></div>
+      <div class="mini-content"><div class="mini-home-main">
+        <div class="mini-task-stack">
+          <span class="mini-stack-sheet back"></span>
+          <div class="deck-layer"><article class="mini-task-front">
+            <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+            <span class="corner-time"><span class="time-label">完成时间</span>9/30 23:59</span>
+            <div class="front-main"><span class="mini-task-check"></span><span class="mini-task-open"><b>完成 DAMA BOOK 学习</b></span></div>
+            <div class="front-meta"><span class="meta-cat"><i style="background:#365f73"></i>学习</span><div class="mini-deck-pager"><span>1 / 3</span><button><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" class="is-up"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button><button><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button></div></div>
+          </article></div>
+        </div>
+        <nav class="mini-quick-actions"><button type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 4v12M4 10h12"/></svg><span>新增事项</span></button><button type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 2l1.8 4.6L16 8l-4.2 1.4L10 14l-1.8-4.6L4 8l4.2-1.4L10 2zM15.5 12.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/></svg><span>AI 助手</span></button></nav>
+      </div></div>
+    </div><div class="cap"><b>t=0</b> · 静止：点击「下一项」的瞬间</div></div>
+    <div class="frame"><div class="mini-window">
+      <div class="mini-titlebar"><span class="mini-logo"><i></i></span><span class="mini-app-title">To Do List</span></div>
+      <div class="mini-content"><div class="mini-home-main">
+        <div class="mini-task-stack">
+          <div class="deck-layer is-incoming" style="opacity:.35; transform: translateY(6px) scale(.96);"><article class="mini-task-front">
+            <span class="corner-badges"><span class="mini-pill pill-meeting">日程</span></span>
+            <span class="corner-time"><span class="time-label">开始时间</span>10/8 10:00</span>
+            <div class="front-main is-meeting"><span class="mini-task-open"><b>季度评审会</b></span></div>
+            <div class="front-meta"><span class="meta-cat"><i style="background:#365f73"></i>工作</span><div class="mini-deck-pager"><span>2 / 3</span><button><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" class="is-up"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button><button><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button></div></div>
+          </article></div>
+          <div class="deck-layer is-outgoing" style="animation:none; transform: translateY(6px) scale(.955); opacity:.5;"><article class="mini-task-front">
+            <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+            <span class="corner-time"><span class="time-label">完成时间</span>9/30 23:59</span>
+            <div class="front-main"><span class="mini-task-check"></span><span class="mini-task-open"><b>完成 DAMA BOOK 学习</b></span></div>
+            <div class="front-meta"><span class="meta-cat"><i style="background:#365f73"></i>学习</span><div class="mini-deck-pager"><span>1 / 3</span></div></div>
+          </article></div>
+        </div>
+        <nav class="mini-quick-actions"><button type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 4v12M4 10h12"/></svg><span>新增事项</span></button><button type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 2l1.8 4.6L16 8l-4.2 1.4L10 14l-1.8-4.6L4 8l4.2-1.4L10 2zM15.5 12.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/></svg><span>AI 助手</span></button></nav>
+      </div></div>
+    </div><div class="cap"><b>t≈130ms（中点）</b> · 当前卡下沉变淡，下一张从背板位升起，两层交错</div></div>
+    <div class="frame"><div class="mini-window">
+      <div class="mini-titlebar"><span class="mini-logo"><i></i></span><span class="mini-app-title">To Do List</span></div>
+      <div class="mini-content"><div class="mini-home-main">
+        <div class="mini-task-stack">
+          <span class="mini-stack-sheet back"></span>
+          <div class="deck-layer"><article class="mini-task-front">
+            <span class="corner-badges"><span class="mini-pill pill-meeting">日程</span></span>
+            <span class="corner-time"><span class="time-label">开始时间</span>10/8 10:00</span>
+            <div class="front-main is-meeting"><span class="mini-task-open"><b>季度评审会</b></span></div>
+            <div class="front-meta"><span class="meta-cat"><i style="background:#365f73"></i>工作</span><div class="mini-deck-pager"><span>2 / 3</span><button><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" class="is-up"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button><button><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></button></div></div>
+          </article></div>
+        </div>
+        <nav class="mini-quick-actions"><button type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 4v12M4 10h12"/></svg><span>新增事项</span></button><button type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 2l1.8 4.6L16 8l-4.2 1.4L10 14l-1.8-4.6L4 8l4.2-1.4L10 2zM15.5 12.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/></svg><span>AI 助手</span></button></nav>
+      </div></div>
+    </div><div class="cap"><b>t=260ms（终了）</b> · 新卡落位，恢复静止叠层</div></div>
+  </div>
+
+<script>
+  const items = [
+    { pill: 'todo', pillText: '待办', label: '完成时间', stamp: '9/30 23:59', title: '完成 DAMA BOOK 学习', cat: '学习', kind: 'task' },
+    { pill: 'meeting', pillText: '日程', label: '开始时间', stamp: '10/8 10:00', title: '季度评审会', cat: '工作', kind: 'meeting' },
+    { pill: 'todo', pillText: '待办', overdue: true, label: '完成时间', stamp: '9/20 08:30', title: '整理书架', cat: '家务', kind: 'task' },
+  ];
+  let index = 0, rolling = false;
+  const stack = document.getElementById('stack');
+  const layers = document.getElementById('layers');
+  const caret = '<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg>';
+  function card(item, counter) {
+    return `<article class="mini-task-front">
+      <span class="corner-badges"><span class="mini-pill pill-${item.pill}">${item.pillText}</span>${item.overdue ? '<span class="mini-pill pill-overdue">已超期</span>' : ''}</span>
+      <span class="corner-time${item.overdue ? ' overdue' : ''}"><span class="time-label">${item.label}</span>${item.stamp}</span>
+      <div class="front-main${item.kind === 'meeting' ? ' is-meeting' : ''}">${item.kind === 'task' ? '<span class="mini-task-check"></span>' : ''}<span class="mini-task-open"><b>${item.title}</b></span></div>
+      <div class="front-meta"><span class="meta-cat"><i style="background:#365f73"></i>${item.cat}</span><div class="mini-deck-pager"><span>${counter}</span><button class="pager-prev" aria-label="上一项">${caret.replace('<svg', '<svg class="is-up"')}</button><button class="pager-next" aria-label="下一项">${caret}</button></div></div>
+    </article>`;
+  }
+  function renderStatic() { layers.innerHTML = `<div class="deck-layer">${card(items[index], `${index + 1} / ${items.length}`)}</div>`; }
+  function page(delta) {
+    if (rolling || items.length < 2) return;
+    rolling = true;
+    const dir = delta > 0 ? 'next' : 'prev';
+    const target = (index + delta + items.length) % items.length;
+    stack.classList.add('is-rolling', `stack-${dir}`);
+    layers.innerHTML = `<div class="deck-layer is-incoming">${card(items[target], `${target + 1} / ${items.length}`)}</div><div class="deck-layer is-outgoing">${card(items[index], `${index + 1} / ${items.length}`)}</div>`;
+    index = target;
+    setTimeout(() => { stack.classList.remove('is-rolling', 'stack-next', 'stack-prev'); renderStatic(); rolling = false; }, 270);
+  }
+  layers.addEventListener('click', event => {
+    if (event.target.closest('.pager-next')) page(1);
+    else if (event.target.closest('.pager-prev')) page(-1);
+  });
+  stack.addEventListener('wheel', event => { event.preventDefault(); page(event.deltaY > 0 ? 1 : -1); }, { passive: false });
+  stack.addEventListener('dblclick', event => { if (event.target.closest('.mini-stack-sheet.back')) page(1); });
+  renderStatic();
+</script>
+</body>
+</html>

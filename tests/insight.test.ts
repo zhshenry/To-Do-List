@@ -2,8 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { insightTarget, newTask, renderInsightContext, type Task } from '../shared/contracts';
-import { insightTasksHash, parseInsightReply } from '../electron/insight';
+import { insightTarget, newTask, renderInsightContext, type InsightSuggestion, type Task } from '../shared/contracts';
+import { currentInsight, insightCacheKey, insightTasksHash, parseInsightReply } from '../electron/insight';
 
 const mk = (title: string): Task => ({ ...newTask(title), id: title, createdAt: '2026-09-23T00:00:00.000Z', updatedAt: '2026-09-23T00:00:00.000Z', completedAt: null, notifiedFor: null, deletedAt: null });
 
@@ -37,9 +37,26 @@ test('insightTasksHash is order-insensitive but change-sensitive', () => {
   void randomUUID;
 });
 
+test('AI suggestion cache expires when tasks or the active model change', () => {
+  const item = mk('任务A');
+  const key = insightCacheKey([item], 'model-a');
+  const suggestion: InsightSuggestion = { title: item.title, context: '下一步', prompt: '帮我看看', source: 'ai', taskId: item.id, cacheKey: key };
+  assert.equal(currentInsight(suggestion, key, [item]), true);
+  assert.equal(currentInsight(suggestion, insightCacheKey([], 'model-a'), []), false);
+  assert.equal(currentInsight(suggestion, insightCacheKey([{ ...item, title: '任务B' }], 'model-a'), [{ ...item, title: '任务B' }]), false);
+  assert.equal(currentInsight(suggestion, insightCacheKey([{ ...item, kind: 'meeting' }], 'model-a'), [{ ...item, kind: 'meeting' }]), false);
+  assert.equal(currentInsight(suggestion, insightCacheKey([item], 'model-b'), [item]), false);
+});
+
 test('local fallback still picks soonest meeting within 60 minutes', () => {
   const meeting = { ...mk('周会'), kind: 'meeting' as const, dueAt: '2026-09-23T10:30:00+08:00' };
   const suggestion = insightTarget([meeting], new Date('2026-09-23T10:00:00+08:00'));
   assert.equal(suggestion?.title, '周会');
   assert.match(suggestion?.context ?? '', /距开始约 30 分钟/);
+});
+
+test('local fallback skips an overdue meeting before choosing an upcoming meeting', () => {
+  const overdue = { ...mk('昨天的会'), kind: 'meeting' as const, dueAt: '2026-09-22T10:00:00+08:00' };
+  const upcoming = { ...mk('半小时后的会'), kind: 'meeting' as const, dueAt: '2026-09-23T10:30:00+08:00' };
+  assert.equal(insightTarget([overdue, upcoming], new Date('2026-09-23T10:00:00+08:00'))?.title, upcoming.title);
 });

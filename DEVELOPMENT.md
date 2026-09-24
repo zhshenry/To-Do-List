@@ -12,7 +12,7 @@ npm run setup:runtime
 npm run dev
 ```
 
-仓库自带 `.npmrc`（`omit=`），防止部分环境的 `omit=dev` 配置把构建依赖剪掉；不要删除。若 electron 二进制下载超时，设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后重跑 `npm run setup:runtime`。
+仓库自带 `.npmrc`（`include=dev`），确保构建所需的开发依赖不会被 `omit=dev` 配置剪掉；不要删除。若 electron 二进制下载超时，设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后重跑 `npm run setup:runtime`。
 
 修改主进程或 preload 后重启开发进程；React/CSS 支持热更新。
 

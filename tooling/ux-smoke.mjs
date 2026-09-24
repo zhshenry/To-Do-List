@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import path from 'node:path';
@@ -411,13 +411,22 @@ try {
     return { buttons, nameNowrap: nameStyle?.whiteSpace === 'nowrap', nameEllipsis: nameStyle?.textOverflow === 'ellipsis' };
   });
   assert.ok(modelRowMetrics, 'the created model renders a list row');
-  assert.ok(modelRowMetrics.buttons.every(([w, h]) => w === 22 && h === 22), `model row action buttons stay 22x22 (issue #15 compact buttons): ${JSON.stringify(modelRowMetrics.buttons)}`);
+  assert.ok(modelRowMetrics.buttons.every(([w, h]) => w === 24 && h === 24), `model row action buttons use the 24px standard inline size: ${JSON.stringify(modelRowMetrics.buttons)}`);
   assert.ok(modelRowMetrics.nameNowrap && modelRowMetrics.nameEllipsis, 'model names stay on one line with an ellipsis');
   await page.getByRole('switch', { name: '启用 AI', exact: true }).click();
   await poll(async () => (await page.evaluate(() => window.desktop.state())).settings.aiEnabled, 'AI switch immediate save');
   await screenshot('settings-ai');
-  await page.getByRole('button', { name: '保存', exact: true }).last().click();
+  await page.getByRole('button', { name: '完成', exact: true }).last().click();
   checks.push('fixed-size two-tab settings, persisted standard/narrow width presets, immediate persistence, advanced disclosure, local connection test and missing-model validation');
+
+  await page.evaluate(() => window.desktop.assistant({ action: 'show', source: 'tray', animate: false }));
+  await poll(async () => app.windows().some(window => window.url().includes('window=assistant')), 'standalone assistant window');
+  const floatingAssistant = app.windows().find(window => window.url().includes('window=assistant'));
+  await floatingAssistant.getByLabel('AI 对话输入', { exact: true }).waitFor();
+  await poll(async () => await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some(window => window.webContents.getURL().includes('window=assistant') && window.isVisible())), 'standalone assistant visible');
+  await screenshot('assistant-standalone', floatingAssistant);
+  await page.evaluate(() => window.desktop.assistant({ action: 'hide', animate: false }));
+  checks.push('standalone tray assistant renders with the shared typography and composer');
 
   await openAssistant();
   await assistant.getByText('可以连续聊一件事', { exact: true }).waitFor();
@@ -526,12 +535,15 @@ try {
   checks.push('pending proposal expires safely after restart without applying');
   await resize(340, 480);
   await wait(300);
+  await page.locator('.plan-today .plan-list, .plan-today .plan-tiles').evaluate(element => { element.scrollTop = 0; });
   const overlayFit = await page.evaluate(() => {
     const overlay = document.querySelector('.assistant-overlay')?.getBoundingClientRect();
     const todo = document.querySelector('.plan-today')?.getBoundingClientRect();
-    return { overlayTop: overlay?.top, overlayHeight: overlay?.height, overlayBottom: overlay?.bottom, todoTop: todo?.top, inner: innerHeight };
+    const firstTodo = document.querySelector('.plan-today .plan-item')?.getBoundingClientRect();
+    const conversation = document.querySelector('.assistant-overlay .ai-conversation')?.getBoundingClientRect();
+    return { overlayTop: overlay?.top, overlayHeight: overlay?.height, overlayBottom: overlay?.bottom, todoTop: todo?.top, firstTodoBottom: firstTodo?.bottom, conversationHeight: conversation?.height, inner: innerHeight };
   });
-  assert.ok(overlayFit.overlayHeight <= 520 && overlayFit.overlayBottom <= overlayFit.inner + 1 && overlayFit.todoTop < overlayFit.overlayTop, JSON.stringify(overlayFit));
+  assert.ok(overlayFit.overlayHeight <= 520 && overlayFit.overlayBottom <= overlayFit.inner + 1 && overlayFit.firstTodoBottom + 4 <= overlayFit.overlayTop && overlayFit.conversationHeight >= 40, JSON.stringify(overlayFit));
   const overlayChrome = await page.locator('.assistant-overlay').evaluate(element => {
     const head = element.querySelector('.assistant-overlay-head');
     const date = document.querySelector('.date-heading h1');
@@ -577,7 +589,7 @@ try {
   await poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some(w => /index.html/.test(w.webContents.getURL()) && !w.webContents.getURL().includes('window=') && w.isVisible())), 'show main without Dock');
   checks.push('narrow editor, unsaved draft recovery and shipping Dock feature kept offline');
   assert.deepEqual(errors, []);
-  const result = { result: 'passed', checks, dataDir, screenshots: output };
+  const result = { result: 'passed', checks, screenshots: output };
   await writeFile(path.join(output, 'result.json'), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result, null, 2));
 } catch (error) {
@@ -589,4 +601,5 @@ try {
   releaseStream?.();
   if (app) await app.close().catch(() => {});
   server.closeAllConnections(); server.close();
+  await rm(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }

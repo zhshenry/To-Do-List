@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "issue": 23,
+    "type": "优化",
+    "ui": true,
+    "impact": "参数",
+    "archive": "0023-mini-card-horizontal",
+    "hold_human_accept": false,
+    "title": "折叠状态下的AI应用卡片的下面标签、时间等卡片内容是往下滚动的",
+    "body": "折叠状态下的AI应用卡片的下面标签、时间等卡片内容是往下滚动的，我希望右侧还有空白，是不是可以横向排布，争取不用滚动"
+  },
+  "spec": "## 方案（mockup 见 [23-horizontal-proposal.png](./23-horizontal-proposal.png)；现状对照 [23-current-compare.png](./23-current-compare.png)）\n\n- **横排 meta 行**：「标签：个人开发」「时间：9/23 23:59」合并为一条横向 meta 行（`标签 · 时间` 同行、muted 弱化、`·` 分隔），置于标题行正下方；\n- 确认态卡片纵向只占 标题行 + meta 行 + footer 三段，**无需滚动**；长标题仍换行（标题行 max 2 行，超出省略）；\n- 仅改折叠卡确认态的 meta 排布，展开态与其他视图不动。\n\n**数值验收标准**（快车道契约）：\n\n- 确认态卡片内容总高 ≤ 卡片可用高（footer 完整可见、页面 scrollHeight 无纵向溢出，实测差值 = 0px）；\n- meta 行为单行（`标签：…` 与 `时间：…` 同行，高度 = 一行文字 ≈ 15px ± 3px）；\n- 长标题（≥20 字）场景标题行最多 2 行，第三行省略号截断。",
+  "deterministic": {
+    "ui": true,
+    "build": "pass",
+    "smoke": "pass"
+  }
+}

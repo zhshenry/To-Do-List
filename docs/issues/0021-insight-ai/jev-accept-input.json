@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "issue": 21,
+    "type": "功能",
+    "ui": true,
+    "impact": "行为",
+    "archive": "0021-insight-ai",
+    "title": "AI 建议真 AI 化（折叠卡建议条 · 渐进式增强）"
+  },
+  "deterministic": {
+    "ui": true,
+    "build": "pass",
+    "smoke": "pass"
+  },
+  "evidence": {
+    "summary": "AI 建议真 AI 化（beb97bb + 472516e 后续捕获脚本）：electron/insight.ts 单次补全 + zod 严格校验 + 未知 taskId 回退；main.ts 调度（90s 防抖/60min TTL/跨天/退避 5-15min/单飞/重试1次）失败静默回退 insightTarget；MiniCard AI 版建议条（✦ AI 建议 + is-ai + {min} 本地替换），本地兜底标「建议」；tests/insight.test.ts 4 条（解析/回退/占位/哈希），全套 41/41；build/smoke passed；真机四态证据（guide/AI/AI-open/local fallback + 安全后缀断言）。CHANGELOG [未发布] 一条。"
+  }
+}

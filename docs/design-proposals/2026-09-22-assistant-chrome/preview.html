@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>AI 助手顶栏与历史</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #171923; --muted: #726d67; --accent: #b54f2b; --accent-hover: #963e20;
+    --accent-soft: #f6e2d9; --line: #e4ded6; --subtle: #efebe6; --danger: #a3312d;
+    --white: #ffffff; --titlebar: #f2eee8; --paper: #faf8f5;
+    --font: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 80% 45% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e8e2da; color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+  .sheet { padding: 32px 40px 44px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -0.03em; }
+  .lead { max-width: 640px; margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .stage { display: flex; gap: 28px; align-items: flex-start; margin-top: 22px; }
+  figure { margin: 0; }
+  figcaption { margin: 0 0 8px; font-size: 13px; font-weight: 650; }
+  figcaption small { display: block; margin-top: 2px; font-weight: 400; color: var(--muted); font-size: 12px; line-height: 1.55; }
+  .ph { display: block; width: 16px; height: 16px; }
+
+  .win { width: 380px; height: 560px; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 22px; background: var(--mesh); overflow: hidden; box-shadow: 0 18px 40px #4c403014; }
+  .titlebar { height: 64px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px; background: var(--white); border-bottom: 1px solid var(--line); }
+  .avatar { position: relative; width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+  .avatar .ph { width: 18px; height: 18px; }
+  .dot { position: absolute; right: 0; bottom: 0; width: 9px; height: 9px; border: 2px solid var(--white); border-radius: 50%; background: #3d9a62; }
+  .who { display: flex; flex-direction: column; line-height: 1.2; flex-shrink: 0; }
+  .who b { font-size: 14px; font-weight: 650; letter-spacing: -0.2px; }
+  .who small { margin-top: 1px; color: var(--muted); font-size: 10.5px; }
+  .session { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; height: 32px; padding: 0 8px; border-radius: 8px; color: var(--ink); font-size: 12px; font-weight: 600; }
+  .session span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .session .ph { width: 12px; height: 12px; color: var(--muted); flex-shrink: 0; transform: rotate(180deg); }
+  .new-chat { flex-shrink: 0; min-height: 32px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--white) 88%, var(--paper)); color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .x { width: 30px; height: 30px; display: grid; place-items: center; flex-shrink: 0; }
+  .x .ph { width: 16px; height: 16px; }
+
+  .body { position: relative; flex: 1; min-height: 0; padding: 16px 14px 8px; }
+  .user { margin-left: auto; max-width: 84%; padding: 11px 13px; border-radius: 15px 15px 5px 15px; background: color-mix(in srgb, var(--titlebar) 74%, var(--white)); font-size: 13px; line-height: 1.7; }
+  .menu { position: absolute; z-index: 2; left: 118px; right: 14px; top: 8px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--white); box-shadow: 0 8px 20px #1719231a; }
+  .row { display: flex; align-items: center; gap: 4px; min-height: 32px; padding: 2px 4px 2px 8px; border-radius: 8px; }
+  .row.is-on { background: var(--accent-soft); color: var(--accent); }
+  .row b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 550; }
+  .trash { width: 26px; height: 26px; display: grid; place-items: center; flex-shrink: 0; border-radius: 7px; color: var(--muted); }
+  .trash .ph { width: 14px; height: 14px; }
+  .trash.is-confirm { width: auto; height: 24px; padding: 0 8px; border: 1px solid var(--danger); border-radius: 7px; background: var(--white); color: var(--danger); font-size: 11px; font-weight: 650; }
+
+  .foot { padding: 8px 12px 14px; }
+  .compose { display: flex; flex-direction: column; gap: 6px; min-height: 92px; padding: 10px 10px 8px 12px; border: 1px solid var(--line); border-radius: 17px; background: var(--white); box-shadow: 0 8px 24px #17192313; }
+  .placeholder { min-height: 37px; padding: 2px 0 4px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+  .meta { display: flex; align-items: center; justify-content: space-between; }
+  .model { display: inline-flex; align-items: center; gap: 4px; height: 29px; max-width: 148px; padding: 0 8px; border: 1px solid var(--line); border-radius: 9px; background: #f7f1ea; color: var(--ink); font-size: 10px; }
+  .model span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .model .ph { width: 10px; height: 10px; color: var(--muted); }
+  .send { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+  .send .ph { width: 15px; height: 15px; }
+
+  .ask { margin: 22px 0 0; padding: 0; list-style: none; max-width: 640px; }
+  .ask li { position: relative; padding: 8px 0 8px 22px; border-top: 1px solid #ddd4ca; font-size: 13px; line-height: 1.65; }
+  .ask li::before { content: ""; position: absolute; left: 2px; top: 16px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-spark" viewBox="0 0 256 256"><path fill="currentColor" d="M208,144a15.78,15.78,0,0,1-10.42,14.94L146,178l-19,51.62a15.92,15.92,0,0,1-29.88,0L78,178l-51.62-19a15.92,15.92,0,0,1,0-29.88L78,110l19-51.62a15.92,15.92,0,0,1,29.88,0L146,110l51.62,19A15.78,15.78,0,0,1,208,144ZM152,48h16V64a8,8,0,0,0,16,0V48h16a8,8,0,0,0,0-16H184V16a8,8,0,0,0-16,0V32H152a8,8,0,0,0,0,16Zm88,32h-8V72a8,8,0,0,0-16,0v8h-8a8,8,0,0,0,0,16h8v8a8,8,0,0,0,16,0V96h8a8,8,0,0,0,0-16Z"/></symbol>
+  <symbol id="i-caret" viewBox="0 0 256 256"><path fill="currentColor" d="M216.49,104.49l-80,80a12,12,0,0,1-17,0l-80-80a12,12,0,0,1,17-17L128,159l71.51-71.52a12,12,0,0,1,17,17Z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 256 256"><path fill="currentColor" d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 256 256"><path fill="currentColor" d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/></symbol>
+  <symbol id="i-plane" viewBox="0 0 256 256"><path fill="currentColor" d="M231.4,44.34s0,.1,0,.15l-58.2,191.94a15.88,15.88,0,0,1-14,11.51q-.69.06-1.38.06a15.86,15.86,0,0,1-14.42-9.15L107,164.15a4,4,0,0,1,.77-4.58l57.92-57.92a8,8,0,0,0-11.31-11.31L96.43,148.26a4,4,0,0,1-4.58.77L17.08,112.64a16,16,0,0,1,2.49-29.8l191.94-58.2.15,0A16,16,0,0,1,231.4,44.34Z"/></symbol>
+</svg>
+<div class="sheet">
+  <h1>AI 助手的顶栏和输入框</h1>
+  <p class="lead">历史对话收到标题这一行，和「新对话」并排。「保存在本机」去掉。输入框空着时，用现在底部那句「Enter 发送 · Shift + Enter 换行」当占位，不再写「你想让我记录什么？」。历史菜单里每则对话可以删。窗口仍是 380×560 这一档，代码还没动。</p>
+  <div class="stage">
+    <figure>
+      <figcaption>提案<small>菜单打开。第二则已经点过一次垃圾桶，变成带红框的「确认」。</small></figcaption>
+      <div class="win">
+        <header class="titlebar">
+          <span class="avatar"><svg class="ph"><use href="#i-spark"/></svg><i class="dot"></i></span>
+          <span class="who"><b>AI 助手</b><small>可用</small></span>
+          <span class="session"><span>我明天下班前要把问数模板库的功能做完</span><svg class="ph"><use href="#i-caret"/></svg></span>
+          <span class="new-chat">新对话</span>
+          <span class="x"><svg class="ph"><use href="#i-x"/></svg></span>
+        </header>
+        <div class="body">
+          <div class="user">我明天下班前要把问数模板库的功能做完</div>
+          <div class="menu" role="listbox" aria-label="历史对话">
+            <div class="row is-on"><b>我明天下班前要把问数模板库的功能做完</b><span class="trash" aria-label="删除"><svg class="ph"><use href="#i-trash"/></svg></span></div>
+            <div class="row"><b>周会纪要整理</b><span class="trash is-confirm">确认</span></div>
+            <div class="row"><b>补齐验收记录</b><span class="trash" aria-label="删除"><svg class="ph"><use href="#i-trash"/></svg></span></div>
+          </div>
+        </div>
+        <footer class="foot">
+          <div class="compose">
+            <div class="placeholder">Enter 发送 · Shift + Enter 换行</div>
+            <div class="meta">
+              <span class="model"><span>deepseek-v4-flash</span><svg class="ph"><use href="#i-caret"/></svg></span>
+              <span class="send" aria-label="发送给 AI"><svg class="ph"><use href="#i-plane"/></svg></span>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </figure>
+  </div>
+  <ol class="ask">
+    <li>删对话沿用事项的两步：先点垃圾桶，变成「确认」，再点才删。正在生成回复时不能删。</li>
+    <li>删掉当前这则，就打开列表里的下一则；已经是最后一则，就留下一则空对话。</li>
+    <li>有待确认建议时，输入框仍写「继续追问，或告诉我如何调整建议…」。Enter 那句只替换空闲时的「你想让我记录什么？」。</li>
+  </ol>
+</div>
+</body>
+</html>

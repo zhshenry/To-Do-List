@@ -444,7 +444,7 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
       </div>
 
       {notice ? <p role="status" className="field-help">{notice}</p> : null}{error ? <p role="alert" className="error">{error}</p> : null}
-      <div className="actions sticky-actions"><button className="primary" type="submit" disabled={busy || pending > 0}>{busy || pending > 0 ? '保存中…' : '保存'}</button></div>
+      <div className="actions sticky-actions"><button className="primary" type="submit" disabled={busy || pending > 0}>{busy || pending > 0 ? '保存中…' : '完成'}</button></div>
     </form>
   </Modal>{confirmDiscard ? <Modal className="confirm" title="放弃新建草稿？" close={() => setConfirmDiscard(false)}><p>新供应商或模型尚未添加。已有设置的修改已经保存。</p><div className="actions"><button type="button" onClick={() => setConfirmDiscard(false)}>继续填写</button><button type="button" className="danger" onClick={close}>放弃草稿并关闭</button></div></Modal> : null}</>;
 }

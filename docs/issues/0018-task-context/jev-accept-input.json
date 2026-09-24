@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "issue": 18,
+    "type": "功能",
+    "ui": true,
+    "impact": "行为",
+    "archive": "0018-task-context",
+    "title": "AI 对话支持关联已有事项（＋// 选择，单选聚焦上下文）"
+  },
+  "deterministic": {
+    "ui": true,
+    "build": "pass",
+    "smoke": "pass"
+  },
+  "evidence": {
+    "summary": "关联已有事项（b55c792…0d13f0e 系列）：①数据链路——chatAsk/ChatEntry.taskId、chat:ask 校验（已删/不存在拒绝）、focusedTask 透传 requestPlan、用户消息持久化 taskId、历史轮注入关联指针；②ai.ts 系统提示词「用户本轮关联事项」全字段块（note 不裁剪），list_tasks/top-120 不变；③选择器 UI——＋根菜单+二级面板（搜索+日期分组+单选）、/ 快捷（键盘流）、关联 chip、mini 向下弹菜单（窗口扩展 320）+placeholder 跟随、气泡引用 chip、footer 分隔线；④tests 53/53（含聚焦注入全量 note 断言）；⑤真机六图（capture-picker.mjs 入库，taskId 持久化 + FOCUSED SYSTEM 命中断言）。CHANGELOG [未发布] 一条。"
+  }
+}

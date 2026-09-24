@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Issue #8 · 收起卡事项名称字号 · 提案</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #171923; --muted: #726d67; --accent: #b54f2b; --accent-soft: #f6e2d9;
+    --line: #e4ded6; --success: #3e7d44; --success-soft: #e2efe2; --danger: #a3312d;
+    --white: #ffffff;
+    --font-body: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), #fbfaf7;
+    font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: var(--ink);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--mesh); padding: 34px 44px 44px; }
+  .sheet-head h1 { margin: 0 0 6px; font-size: 19px; font-weight: 650; }
+  .sheet-head p { margin: 5px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; max-width: 900px; }
+  h2.clip { margin: 26px 0 10px; font-size: 13px; font-weight: 650; }
+  h2.clip small { font-weight: 400; color: var(--muted); font-size: 11.5px; margin-left: 8px; }
+  .duo { display: grid; grid-template-columns: 380px 380px; gap: 26px; align-items: start; width: fit-content; }
+  .caption { font-size: 11px; color: var(--muted); line-height: 1.7; margin-top: 8px; }
+  .caption b { color: var(--accent); }
+  .caption em { font-style: normal; color: var(--ink); font-weight: 600; }
+
+  .mini-window { position: relative; width: 380px; height: 176px; border: 1px solid var(--line); border-radius: 18px; background: var(--mesh); overflow: hidden; box-shadow: 0 12px 30px #4c40310d; }
+  .mini-titlebar { height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 16px; }
+  .mini-logo { width: 40px; height: 40px; display: grid; place-items: center; }
+  .mini-logo i { width: 26px; height: 26px; border: 3.5px solid #221f1c; border-radius: 50%; position: relative; display: block; }
+  .mini-logo i::after { content: ''; position: absolute; top: -2px; right: -2px; width: 9px; height: 9px; border-radius: 50%; background: #c66a42; }
+  .mini-app-title { flex: 1; font-size: 16px; font-weight: 600; }
+  .mini-content { position: relative; height: 124px; padding: 9px 12px 11px; }
+  .mini-home-main { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 8px; height: 104px; }
+  .mini-task-stack { position: relative; min-width: 0; height: 104px; }
+  .mini-stack-sheet { position: absolute; left: 4px; right: 4px; top: 8px; height: 90px; border: 1px solid var(--line); border-radius: 14px; background: #f8f5f1; }
+  .mini-stack-sheet.back { left: 8px; right: 8px; top: 14px; z-index: 0; background: #f3efea; box-shadow: 0 3px 8px #453a2e0b; }
+  .mini-task-front { position: absolute; z-index: 2; inset: 0 0 auto; height: 92px; display: flex; flex-direction: column; padding: 26px 10px 8px; border: 1px solid #e1dad1; border-radius: 14px; background: white; box-shadow: 0 5px 14px #4c40310b; }
+  .front-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 9px; align-items: center; }
+  .corner-badges { position: absolute; top: 8px; left: 10px; display: flex; gap: 4px; z-index: 1; }
+  .mini-pill { font-size: 9.5px; font-weight: 650; line-height: 1; padding: 3px 8px; border-radius: 999px; }
+  .pill-todo { background: var(--success-soft); color: var(--success); }
+  .corner-time { position: absolute; top: 10px; right: 10px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .corner-time .time-label { margin-right: 3px; font-weight: 600; }
+  .mini-task-check { width: 20px; height: 20px; border: 1.5px solid #b7b0a6; border-radius: 50%; display: grid; place-items: center; background: transparent; }
+  .mini-task-open { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .front-meta { display: flex; align-items: flex-end; justify-content: space-between; }
+  .meta-cat { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--muted); }
+  .meta-cat i { width: 6px; height: 6px; border-radius: 50%; background: #c45c26; }
+  .mini-deck-pager { display: flex; align-items: center; gap: 1px; color: var(--muted); font-size: 10px; }
+  .mini-deck-pager > span { font-variant-numeric: tabular-nums; }
+  .mini-deck-pager svg { width: 9px; height: 9px; }
+  .quick { display: grid; grid-template-rows: 1fr 1fr; gap: 8px; }
+  .quick button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px solid #e1dad1; border-radius: 14px; background: white; font-size: 11.5px; color: var(--ink); }
+  /* 标题字号：现状 14px / 提案 12.5px */
+  .v1 .mini-task-open > b { font-size: 14px; line-height: 1.25; }
+  .v2 .mini-task-open > b { font-size: 12.5px; line-height: 1.3; }
+  .mini-task-open > b { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="sheet-head">
+    <h1>Issue #8 · 收起卡事项名称字号</h1>
+    <p>现状 14px 偏大（两行标题在收起卡里占比过重）。提案：<strong>14px → 12.5px</strong>，行高 1.25 → 1.3 补偿可读性；紧凑变体（带 AI 建议条时）12px 不变。<strong>标题可容纳内容随之增加</strong>，长标题截断更少。</p>
+  </div>
+
+  <h2 class="clip">A / B 对比<small>同一长标题 1:1 渲染</small></h2>
+  <div class="duo">
+    <div class="mini-window v1">
+      <div class="mini-titlebar"><span class="mini-logo"><i></i></span><span class="mini-app-title">To Do List</span></div>
+      <div class="mini-content"><div class="mini-home-main">
+        <div class="mini-task-stack">
+          <span class="mini-stack-sheet back"></span>
+          <div class="mini-task-front">
+            <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+            <span class="corner-time"><span class="time-label">完成时间</span>9/30 23:59</span>
+            <div class="front-main">
+              <span class="mini-task-check"></span>
+              <span class="mini-task-open"><b>创建一个本项目的自动化问题单处理机制并持续优化</b></span>
+            </div>
+            <div class="front-meta"><span class="meta-cat"><i></i>个人开发</span><span class="mini-deck-pager"><span>1 / 2</span><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></span></div>
+          </div>
+        </div>
+        <div class="quick"><button>＋ 新增事项</button><button>✨ AI 助手</button></div>
+      </div></div>
+    </div>
+    <div class="caption"><em>现状 14px</em>：两行已满，「…并持续优化」被截断丢失</div>
+    <div class="mini-window v2">
+      <div class="mini-titlebar"><span class="mini-logo"><i></i></span><span class="mini-app-title">To Do List</span></div>
+      <div class="mini-content"><div class="mini-home-main">
+        <div class="mini-task-stack">
+          <span class="mini-stack-sheet back"></span>
+          <div class="mini-task-front">
+            <span class="corner-badges"><span class="mini-pill pill-todo">待办</span></span>
+            <span class="corner-time"><span class="time-label">完成时间</span>9/30 23:59</span>
+            <div class="front-main">
+              <span class="mini-task-check"></span>
+              <span class="mini-task-open"><b>创建一个本项目的自动化问题单处理机制并持续优化</b></span>
+            </div>
+            <div class="front-meta"><span class="meta-cat"><i></i>个人开发</span><span class="mini-deck-pager"><span>1 / 2</span><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5 L5 6.5 L8 3.5"/></svg></span></div>
+          </div>
+        </div>
+        <div class="quick"><button>＋ 新增事项</button><button>✨ AI 助手</button></div>
+      </div></div>
+    </div>
+    <div class="caption"><em>提案 12.5px</em>：同位置多容纳约 4 个字，截断减少；<b>字号仍为卡内最大元素，层级不倒挂</b></div>
+  </div>
+</body>
+</html>

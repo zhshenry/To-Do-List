@@ -1,0 +1,979 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>AI 助手 0.6.0 高保真 — 事项选择 / 澄清提问 / Markdown</title>
+<style>
+/* ===== 复刻 tokens（src/styles.css）===== */
+:root {
+  color-scheme: light;
+  --paper:#faf8f5; --titlebar:#f2eee8; --ink:#171923; --muted:#726d67;
+  --accent:#b54f2b; --accent-hover:#963e20; --accent-soft:#f6e2d9; --line:#e4ded6; --subtle:#efebe6;
+  --danger:#a3312d; --success:#3e7d44; --success-soft:#e2efe2; --white:#ffffff; --completed:#6d675f;
+  --font-body:"Segoe UI Variable","Segoe UI","Microsoft YaHei UI","Microsoft YaHei",sans-serif;
+  --radius:18px;
+  --mesh:radial-gradient(ellipse 90% 50% at 100% 0%,#f8efe9 0%,transparent 62%),radial-gradient(ellipse 80% 45% at 0% 100%,#eef2f6 0%,transparent 58%),#fbfaf7;
+  font-family:var(--font-body); font-size:14px; line-height:1.5; color:var(--ink);
+}
+*{box-sizing:border-box}
+h1,h2,h3,p,ul,ol{margin:0}
+ul,ol{padding-left:18px}
+button{font:inherit;cursor:pointer;color:inherit;border:1px solid var(--line);background:var(--white);border-radius:10px;padding:9px 13px}
+button:hover{background:var(--subtle)}
+svg{flex-shrink:0}
+.ic{width:1em;height:1em}
+
+/* ===== 画板 ===== */
+.board{display:flex;flex-wrap:wrap;gap:44px;padding:44px;background:#e9e3d9;align-items:flex-start}
+.shot{display:flex;flex-direction:column;gap:10px}
+.caption{max-width:420px;font-size:12px;color:#5c554d;line-height:1.6}
+.caption b{display:block;font-size:13px;color:#3c362f;margin-bottom:2px}
+.frame{position:relative;overflow:hidden;flex-shrink:0}
+
+/* ===== 气泡窗（复刻 styles.css / assistant-updates.css）===== */
+.assistant-widget{
+  --assistant-raised:color-mix(in srgb,var(--white) 92%,var(--paper));
+  --assistant-tint:color-mix(in srgb,var(--titlebar) 72%,var(--paper));
+  --assistant-soft-line:color-mix(in srgb,var(--muted) 17%,var(--line));
+  --assistant-active-line:color-mix(in srgb,var(--accent) 52%,var(--line));
+  height:100%;display:flex;flex-direction:column;background:var(--mesh);
+  border:1px solid var(--line);border-radius:22px;overflow:hidden;position:relative;
+  box-shadow:0 12px 32px #17192324;
+}
+.assistant-titlebar{height:66px;min-height:66px;display:flex;align-items:center;gap:8px;padding:0 9px 0 15px;
+  background:color-mix(in srgb,var(--white) 94%,var(--paper));border-bottom:1px solid var(--line);user-select:none}
+.assistant-identity{flex:1 1 120px;min-width:96px;display:flex;align-items:center;gap:10px}
+.assistant-header-avatar{width:38px;height:38px;position:relative;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 28%,var(--line))}
+.assistant-online{position:absolute;right:0;bottom:0;width:10px;height:10px;border:2px solid var(--white);border-radius:50%;background:#3d9a62}
+.assistant-identity-text{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.assistant-identity-text b{font-size:15px;letter-spacing:-.2px;font-weight:650}
+.assistant-identity-text small{margin-top:1px;max-width:110px;color:var(--muted);font-size:10.5px}
+.assistant-session{flex:1;min-width:0}
+.select-trigger{min-height:32px;padding:0 6px;border-color:transparent;background:transparent;font-size:12px;font-weight:600;
+  display:inline-flex;align-items:center;gap:4px;justify-content:space-between;width:100%}
+.assistant-session .select-trigger:hover{border-color:var(--line);background:var(--white)}
+.assistant-session .select-trigger>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.assistant-new-chat{min-height:32px;padding:5px 9px;border:1px solid var(--line);border-radius:8px;
+  background:color-mix(in srgb,var(--white) 88%,var(--paper));font-size:12px;font-weight:600;white-space:nowrap}
+.icon-button{border:0;padding:6px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border-radius:7px}
+
+/* 对话区 */
+.ai-conversation{flex:1;min-height:0;display:flex;flex-direction:column}
+.chat-scroll{flex:1;min-height:0;overflow-y:auto;padding:18px 15px 22px}
+.chat-messages{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:18px}
+.chat-message{width:100%;display:flex;flex-direction:column;align-items:flex-start;overflow-wrap:anywhere}
+.chat-message.user{align-items:flex-end}
+.chat-message-row{max-width:93%;display:flex;align-items:flex-start;gap:8px}
+.chat-message.user .chat-message-row{max-width:84%}
+.assistant-avatar{width:28px;height:28px;flex-basis:28px;margin-top:14px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:50%;background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 24%,var(--line))}
+.chat-message-column{min-width:0;display:flex;flex-direction:column;gap:5px}
+.chat-message.user .chat-message-column{align-items:flex-end}
+.chat-speaker{padding-left:3px;color:var(--ink);font-size:11px;font-weight:650}
+.chat-bubble{min-width:0;padding:11px 13px;border:1px solid var(--assistant-soft-line);border-radius:15px 15px 15px 5px;
+  background:color-mix(in srgb,var(--white) 90%,transparent);box-shadow:0 4px 16px #1719230b}
+.chat-message.user .chat-bubble{border-color:transparent;border-radius:15px 15px 5px 15px;
+  background:color-mix(in srgb,var(--titlebar) 74%,var(--white));box-shadow:none}
+.chat-bubble p{white-space:pre-wrap;font-size:13px;line-height:1.72}
+
+/* 操作披露（assistant-activity）*/
+.assistant-activity{min-width:0;margin-top:10px;border:1px solid var(--line);border-radius:12px;
+  background:color-mix(in srgb,var(--titlebar) 58%,var(--white));overflow:hidden}
+.assistant-activity>summary{min-height:42px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 11px;list-style:none;cursor:pointer}
+.assistant-activity>summary::-webkit-details-marker{display:none}
+.assistant-activity>summary>span{display:inline-flex;align-items:center;gap:7px}
+.assistant-activity>summary b{font-size:11.5px;font-weight:650}
+.assistant-activity>summary svg{color:var(--muted)}
+.assistant-activity>summary span:last-child>svg:first-child{color:#3d9a62}
+
+/* 输入卡 */
+.assistant-footer{padding:9px 12px 12px;border-top:1px solid #eae3da;background:color-mix(in srgb,var(--paper) 55%,transparent)}
+.assistant-compose{min-height:92px;display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:10px 10px 8px 12px;
+  border:1px solid var(--assistant-soft-line);border-radius:17px;background:var(--white);box-shadow:0 8px 24px #17192313}
+.assistant-compose:focus-within{border-color:var(--assistant-active-line);box-shadow:0 8px 26px #17192318}
+.assistant-compose-copy{width:100%;min-width:0;display:flex;flex:1}
+.assistant-compose-input{width:100%;min-height:37px;max-height:92px;padding:2px 0 4px;border:0;outline:0;background:transparent;
+  caret-color:var(--accent);font:13px/1.6 var(--font-body);resize:none;color:var(--ink)}
+.assistant-compose-input::placeholder{color:var(--muted)}
+.assistant-compose-meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.assistant-compose-options{min-width:0;display:flex;align-items:center;gap:8px}
+.assistant-compose .select.assistant-model{flex:0 1 116px;width:116px}
+.assistant-compose .select.assistant-model .select-trigger{min-height:29px;height:29px;padding-inline:8px 6px;border:1px solid var(--line);
+  border-radius:9px;background:var(--assistant-tint);font-size:10px}
+.send-button{width:34px;height:34px;margin:0;padding:0;border:0;border-radius:50%;background:var(--accent);color:var(--white);
+  display:inline-flex;align-items:center;justify-content:center}
+
+/* ===== 主窗 + overlay（复刻）===== */
+.widget{height:100%;display:flex;flex-direction:column;position:relative;background:transparent;border:1px solid var(--line);
+  border-radius:var(--radius);overflow:hidden;box-shadow:0 12px 32px #1719231f;background:var(--mesh)}
+.titlebar{height:52px;min-height:52px;display:flex;align-items:center;padding:0 12px 0 16px;gap:10px}
+.app-title{font-size:16px;font-weight:600;flex:1}
+.date-heading{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:8px 0 0 24px}
+.date-heading h1{font-size:28px;letter-spacing:-1px;font-weight:700}
+.date-heading>span{color:var(--muted);font-size:13px}
+.assistant-overlay{position:absolute;z-index:6;left:10px;right:10px;bottom:10px;height:520px;display:flex;flex-direction:column;
+  border-radius:16px;background:#fbfaf7;border:1px solid #e0d4cb;box-shadow:0 -8px 24px #17192314;overflow:hidden}
+.assistant-overlay .assistant-footer{flex-shrink:0;padding:8px 10px 12px}
+.assistant-overlay-head{display:flex;align-items:center;gap:6px;min-height:44px;padding:8px 8px 8px 12px;border-bottom:1px solid #cfc6bc}
+.assistant-overlay-head .assistant-session{flex:1}
+
+/* ===== 小卡片（复刻 mini-card.css）===== */
+.mini-window{position:relative;width:100%;border:1px solid var(--line);border-radius:var(--radius);background:var(--mesh);
+  overflow:hidden;box-shadow:0 10px 26px #1719231f}
+.mini-titlebar{height:52px;display:flex;align-items:center;gap:10px;padding:0 12px 0 16px;user-select:none}
+.mini-brand-logo{position:absolute;z-index:5;left:15px;top:5px;width:40px;height:40px;display:inline-flex}
+.mini-logo-slot{width:40px;height:40px;flex:0 0 auto}
+.mini-app-title{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;font-weight:600}
+.mini-window-actions{display:flex;gap:1px;flex:0 0 auto}
+.mini-window-actions .icon-button{width:30px;height:30px;padding:6px;color:var(--ink)}
+.mini-window-actions .icon-button:hover{background:var(--subtle)}
+.mini-content{position:relative;height:124px;padding:9px 12px 11px;overflow:hidden}
+.mini-ai-surface{position:relative;isolation:isolate;height:104px;display:grid;grid-template-rows:22px 34px 20px;gap:5px;padding:7px 8px;
+  border:1px solid transparent;border-radius:14px;
+  background:linear-gradient(#fff,#fff) padding-box,linear-gradient(110deg,#e4ded6,#e4ded6) border-box;overflow:hidden}
+.mini-ai-context{min-width:0;height:22px;display:flex;align-items:center;gap:5px}
+.mini-ai-mark{width:16px;height:16px;display:grid;place-items:center;flex:0 0 auto;border-radius:5px;background:var(--accent-soft);color:var(--accent)}
+.mini-ai-context>span:nth-child(2){min-width:0;flex:1;display:flex;align-items:baseline;gap:5px;overflow:hidden;white-space:nowrap}
+.mini-ai-context b{min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:10px}
+.mini-ai-context .icon-button{width:20px;height:20px;padding:3px;color:var(--muted)}
+.mini-ai-back{height:20px;display:flex;align-items:center;gap:2px;padding:0 2px;border:0;background:transparent;color:var(--muted);font-size:9px}
+.mini-ai-compose{height:34px;display:flex;align-items:center;gap:6px;padding:3px 4px 3px 6px;border:1px solid #cec4ba;border-radius:9px;background:#fbfaf8}
+.mini-ai-compose:focus-within{border-color:#9b7d6e;background:#fff}
+.mini-ai-compose textarea{min-width:0;height:24px;min-height:24px;max-height:24px;flex:1;resize:none;padding:3px 0;border:0;outline:0;
+  background:transparent;font-size:11px;line-height:18px;font-family:var(--font-body);color:var(--ink)}
+.mini-ai-compose textarea::placeholder{color:var(--muted)}
+.mini-ai-compose button{width:26px;height:26px;display:grid;place-items:center;padding:0;border:0;border-radius:7px;background:var(--accent);color:#fff}
+.mini-ai-quick{min-width:0;height:20px;display:flex;align-items:center;gap:4px}
+.mini-ai-model-toggle{height:20px;max-width:76px;min-width:58px;display:flex;align-items:center;gap:3px;padding:0 6px;border:1px solid #ddd5cc;
+  border-radius:6px;background:#f8f5f1;color:#5f5952;font-size:9px}
+.mini-ai-quick>.mini-ai-model-toggle{margin-left:auto}
+.mini-ai-model-toggle>span{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-ai-model-toggle svg{transform:rotate(-90deg)}
+.mini-ai-answer{min-width:0;overflow:hidden;padding:4px 6px;border-radius:9px;background:#f8f4ef}
+.mini-ai-answer p{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;font-size:10px;line-height:1.4}
+.mini-ai-answer p>span{margin-right:5px;color:var(--accent);font-size:8px;font-weight:700}
+.mini-ai-result-footer{min-width:0;height:20px;display:flex;align-items:center;gap:4px}
+.mini-ai-result-footer>button{height:20px;padding:0 5px;border:0;border-radius:5px;background:transparent;color:var(--muted);font-size:8px;white-space:nowrap}
+.mini-ai-result-footer>button:hover{background:var(--accent-soft);color:var(--accent)}
+.mini-ai-result-footer>button.primary{background:var(--accent);color:#fff}
+.mini-ai-result-footer .mini-ai-model-toggle{margin-left:auto}
+.mini-ai-full{height:16px;margin-top:3px;padding:0 3px;border:0;background:transparent;color:var(--accent);font-size:8px;font-weight:600;float:right}
+.mini-ctx-add{width:22px;height:22px;flex:0 0 auto;display:grid;place-items:center;padding:0;border:1px solid #ddd5cc;border-radius:7px;background:#f8f5f1;color:#5f5952}
+.mini-ctx-add:hover{background:#efe9e2;color:var(--ink)}
+/* 折叠态精简选择面板 */
+.mp-list{flex:1;min-height:0;overflow:auto;padding:2px 6px 6px;border:1px solid #e4ded6;border-radius:11px;background:#fffdfa}
+.mp-row{width:100%;height:28px;display:flex;align-items:center;gap:6px;padding:0 6px;border:0;border-radius:8px;background:transparent;text-align:left}
+.mp-row:hover{background:var(--subtle)}
+.mp-row.is-on{background:var(--accent-soft)}
+.mp-row .tp-kind{padding:2px 6px;font-size:8.5px}
+.mp-row b{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:600}
+.mp-row .tp-tag{font-size:8px}
+.mp-row .tp-tag span{white-space:nowrap}
+.mp-row .tp-tag{flex-shrink:0}
+.mp-row svg{width:11px;height:11px;color:var(--accent);flex-shrink:0}
+
+/* ==================================================================
+   NEW · 功能一：上下文 chips / 事项选择面板
+   ================================================================== */
+.assistant-context-row{display:flex;flex-wrap:wrap;gap:5px}
+.ctx-chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 6px 0 8px;border:1px solid var(--assistant-soft-line);
+  border-radius:8px;background:var(--assistant-tint);font-size:10.5px;color:var(--ink)}
+.ctx-chip:hover{border-color:var(--assistant-active-line)}
+.k{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.k.task{background:var(--success)}
+.k.meeting{background:#3f6b8f}
+.ctx-chip small{color:var(--muted);font-size:9.5px}
+.ctx-chip .cx{color:#a49c93;width:9px;height:9px}
+.ctx-chip:hover .cx{color:var(--ink)}
+.ctx-toggle{display:inline-flex;align-items:center;gap:5px;height:29px;padding:0 9px;border:1px solid var(--line);border-radius:9px;
+  background:var(--assistant-tint);font-size:10px;font-weight:600;color:var(--ink)}
+.ctx-toggle:hover{border-color:var(--assistant-active-line);background:var(--white)}
+.ctx-toggle svg{width:10px;height:10px;color:var(--accent)}
+/* NEW：左下角 ＋ 图标按钮（展开态输入卡） */
+.compose-plus{width:34px;height:34px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:10px;background:var(--assistant-tint);color:var(--ink)}
+.compose-plus:hover{border-color:var(--assistant-active-line);background:var(--white)}
+.compose-plus svg{width:14px;height:14px;color:var(--accent)}
+/* ＋ 的根菜单（向上弹）与「选择事项」二级面板 */
+.plus-menu{position:absolute;z-index:30;left:12px;bottom:124px;width:148px;border:1px solid #d7cfc6;border-radius:11px;background:#fffdfa;box-shadow:0 14px 32px #3f352926;padding:4px}
+.plus-menu>button{width:100%;display:flex;align-items:center;gap:7px;min-height:32px;padding:0 8px;border:0;border-radius:8px;background:transparent;font-size:12px;font-weight:550;text-align:left}
+.plus-menu>button:hover,.plus-menu>button.is-open{background:var(--subtle)}
+.plus-menu>button svg:first-child{color:var(--accent)}
+.plus-menu>button svg:last-child{margin-left:auto;color:var(--muted)}
+.plus-submenu{position:absolute;z-index:31;left:168px;bottom:124px;width:274px;border:1px solid #d7cfc6;border-radius:12px;background:#fffdfa;box-shadow:0 18px 38px #3f352929;overflow:hidden}
+/* “/” 快捷选择菜单（锚在输入框上方） */
+.slash-menu{position:absolute;z-index:30;left:12px;bottom:124px;width:300px;border:1px solid #d7cfc6;border-radius:12px;background:#fffdfa;box-shadow:0 18px 38px #3f352929;overflow:hidden}
+.slash-menu .slash-rows{padding:0 5px 5px}
+.slash-tip{display:flex;align-items:center;gap:6px;padding:6px 10px 5px;color:var(--muted);font-size:9.5px}
+.slash-tip b{color:var(--accent);font-weight:650}
+/* 折叠态底部工具行的 ＋ */
+.mini-plus{width:18px;height:18px;flex:0 0 auto;display:grid;place-items:center;padding:0;border:1px solid #ddd5cc;border-radius:6px;background:#f8f5f1;color:#5f5952}
+.mini-plus:hover{background:#efe9e2;color:var(--ink)}
+.mini-plus svg{width:10px;height:10px}
+/* 折叠态回答区悬浮预览（保持 Markdown 格式） */
+.hover-pop{position:absolute;left:12px;right:12px;top:14px;border:1px solid #d7cfc6;border-radius:12px;background:#fffdfa;box-shadow:0 16px 34px #3f352929;overflow:hidden}
+.hover-pop-body{max-height:158px;overflow:auto;padding:10px 12px;font-size:11px;line-height:1.6}
+.hover-pop-body p{margin:0 0 5px}
+.hover-pop-body ul{margin:0;display:flex;flex-direction:column;gap:2px;padding-left:16px}
+.hover-pop-body li{font-size:10.5px;line-height:1.55}
+.hover-pop-body li::marker{color:var(--accent)}
+.hover-pop-body strong{font-weight:650}
+.hover-pop-body code{font:10px/1.4 ui-monospace,monospace;background:#f1ece4;border-radius:4px;padding:1px 4px;color:#4a443d}
+.hover-pop-tip{padding:5px 11px 7px;border-top:1px solid #ebe5de;color:var(--muted);font-size:8.5px}
+.mini-ai-answer.is-hover{border:1px solid #d9b6a4;background:#fdf6f0}
+
+/* 用户气泡里的引用 mini-chips（发送后） */
+.bubble-ctx{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.b-chip{display:inline-flex;align-items:center;gap:4px;max-width:150px;height:20px;padding:0 7px;border:1px solid color-mix(in srgb,var(--muted) 22%,var(--line));border-radius:6px;
+  background:color-mix(in srgb,var(--white) 70%,transparent);font-size:10px;color:var(--ink)}
+.b-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.b-chip.more{background:transparent;color:var(--muted);padding:0 2px}
+
+/* 选择面板（展开态，向上弹出） */
+.task-picker{position:absolute;z-index:30;right:12px;bottom:148px;width:318px;border:1px solid #d7cfc6;border-radius:12px;
+  background:#fffdfa;box-shadow:0 18px 38px #3f352929,0 4px 10px #17192310;overflow:hidden}
+.task-picker-head{padding:8px 8px 5px}
+.task-picker-search{display:flex;align-items:center;gap:7px;height:32px;padding:0 9px;border:1px solid var(--line);border-radius:9px;
+  background:var(--white);color:var(--muted)}
+.task-picker-search input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:12px;font-family:var(--font-body);color:var(--ink)}
+.task-picker-search input::placeholder{color:var(--muted)}
+.task-picker-list{max-height:268px;overflow:auto;padding:0 6px 4px}
+.tp-group{padding:7px 6px 3px;color:var(--muted);font-size:9.5px;font-weight:650}
+.tp-row{width:100%;display:grid;grid-template-columns:minmax(0,1fr) 16px;gap:8px;align-items:center;text-align:left;padding:5px 6px;
+  border:0;border-radius:9px;background:transparent}
+.tp-row:hover{background:var(--subtle)}
+.tp-row.is-on{background:var(--accent-soft)}
+.tp-row.is-on:hover{background:var(--accent-soft)}
+.tp-title-row{display:flex;align-items:center;gap:6px}
+.tp-kind{flex-shrink:0;font-size:9px;font-weight:650;line-height:1;padding:2.5px 7px;border-radius:999px}
+.tp-kind.task{background:var(--success-soft);color:var(--success)}
+.tp-kind.meeting{background:#e3ecf3;color:#3f6b8f}
+.tp-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600}
+.tp-meta{display:flex;gap:8px;margin-top:2px;color:var(--muted);font-size:9.5px}
+.tp-tag{display:inline-flex;align-items:center;gap:4px;min-width:0}
+.tp-tag i{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.tp-tag span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tp-check{width:14px;height:14px;color:var(--accent);opacity:0;justify-self:end;align-self:center}
+.tp-row.is-on .tp-check{opacity:1}
+.task-picker-foot{display:flex;align-items:center;gap:8px;padding:7px 11px;border-top:1px solid #ebe5de;color:var(--muted);font-size:9.5px}
+
+/* ==================================================================
+   NEW · 功能二：ask_user 提问卡片
+   ================================================================== */
+.ask-card{min-width:0;margin-top:2px;border:1px solid var(--assistant-active-line);border-radius:12px;background:var(--white);
+  box-shadow:0 5px 16px #1719230d;overflow:hidden}
+.ask-head{display:flex;align-items:center;gap:7px;padding:8px 11px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fdf6f1,#fff)}
+.ask-icon{width:22px;height:22px;display:grid;place-items:center;border-radius:7px;background:var(--accent-soft);color:var(--accent)}
+.ask-head b{flex:1;font-size:11.5px;font-weight:650}
+.ask-pulse{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent-soft) 80%,transparent)}
+.ask-question{padding:10px 12px 4px;font-size:13px;font-weight:600;line-height:1.5}
+.ask-options{display:flex;flex-direction:column;gap:6px;padding:5px 9px 6px}
+.ask-option{display:grid;grid-template-columns:15px minmax(0,1fr);gap:8px;align-items:start;text-align:left;padding:8px 9px;
+  border:1px solid var(--line);border-radius:10px;background:var(--white)}
+.ask-option:hover{border-color:var(--assistant-active-line);background:#fdfaf7}
+.ask-radio{width:15px;height:15px;margin-top:1px;border:1.5px solid #b7b0a6;border-radius:50%;position:relative}
+.ask-option.is-on{border-color:var(--accent);background:#fdf8f4}
+.ask-option.is-on .ask-radio{border-color:var(--accent);background:var(--accent)}
+.ask-option.is-on .ask-radio::after{content:'';position:absolute;inset:3.5px;border-radius:50%;background:var(--white)}
+.ask-option b{font-size:12.5px;font-weight:650}
+.ask-option small{display:block;margin-top:1px;color:var(--muted);font-size:10.5px;line-height:1.45;font-weight:400}
+.ask-foot{display:flex;align-items:center;gap:6px;padding:5px 11px 9px;color:var(--muted);font-size:9.5px}
+.ask-foot .skip{margin-left:auto;height:24px;padding:0 8px;border-radius:7px;font-size:10px;color:var(--muted)}
+.ask-foot .skip:hover{background:var(--subtle);color:var(--ink)}
+/* 已回答收敛态 */
+.ask-card.is-resolved{border-color:var(--line);box-shadow:none}
+.ask-resolved{display:flex;align-items:center;gap:7px;padding:8px 11px;font-size:11px;color:var(--muted)}
+.ask-resolved svg{width:14px;height:14px;color:#367f53}
+.ask-resolved q{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;quotes:"「" "」"}
+.ask-resolved .answer{flex-shrink:0;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:650;font-size:10.5px}
+
+/* 折叠态提问视图（窗口扩展后） */
+.mini-ask{position:absolute;top:52px;bottom:0;left:0;right:0;display:flex;flex-direction:column;gap:7px;padding:8px 10px 9px}
+.mini-ask-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:7px;padding:8px 9px 9px;border:1px solid #e0d4cb;border-radius:12px;
+  background:#fff;box-shadow:0 4px 14px #1719230d}
+.mini-ask-label{display:flex;align-items:center;gap:6px;color:var(--accent);font-size:8px;font-weight:650}
+.mini-ask-label .ask-icon{width:16px;height:16px;border-radius:5px}
+.mini-ask-q{font-size:11px;font-weight:650;line-height:1.45}
+.mini-ask-q small{display:block;margin-top:1px;color:var(--muted);font-size:8.5px;font-weight:400}
+.mini-ask-options{display:flex;flex-direction:column;gap:5px}
+.mini-ask-option{display:flex;align-items:center;gap:7px;min-height:28px;padding:0 8px;border:1px solid var(--line);border-radius:8px;
+  background:var(--white);text-align:left;font-size:10px}
+.mini-ask-option:hover{border-color:var(--assistant-active-line,#cf9a82)}
+.mini-ask-option .ask-radio{width:11px;height:11px;margin:0}
+.mini-ask-option.is-on{border-color:var(--accent);background:#fdf8f4}
+.mini-ask-option.is-on .ask-radio{border-color:var(--accent);background:var(--accent)}
+.mini-ask-option.is-on .ask-radio::after{inset:2.5px}
+.mini-ask-option small{margin-left:auto;color:var(--muted);font-size:8px;font-weight:400;white-space:nowrap}
+.mini-ask-foot{display:flex;align-items:center;gap:2px;margin-top:auto;color:var(--muted);font-size:8px}
+.mini-ask-foot button{height:18px;padding:0 6px;border:0;border-radius:5px;background:transparent;color:var(--muted);font-size:8px}
+.mini-ask-foot button:hover{background:var(--accent-soft);color:var(--accent)}
+
+/* ==================================================================
+   NEW · 功能三：助手气泡 Markdown 渲染
+   ================================================================== */
+.chat-bubble.md p{margin:0 0 6px;white-space:normal}
+.chat-bubble.md>*:last-child{margin-bottom:0}
+.md strong{font-weight:650}
+.md h3{font-size:12.5px;font-weight:650;letter-spacing:-.1px;margin:10px 0 4px}
+.md ul,.md ol{margin:2px 0 6px;display:flex;flex-direction:column;gap:2px;padding-left:17px}
+.md li{font-size:12.5px;line-height:1.62}
+.md li::marker{color:var(--accent)}
+.md code{font:11px/1.4 ui-monospace,"Cascadia Mono","Segoe UI Mono",monospace;background:#f1ece4;border-radius:5px;padding:1px 5px;color:#4a443d}
+.md pre{margin:6px 0;padding:9px 11px;background:#f7f4ee;border:1px solid var(--line);border-radius:9px;overflow:auto}
+.md pre code{background:none;padding:0;font-size:10.5px;line-height:1.55}
+.md blockquote{margin:6px 0 0;padding:2px 0 2px 10px;border-left:2px solid var(--accent-soft);color:var(--muted);font-size:12px;line-height:1.6}
+.chat-divider{display:flex;align-items:center;gap:8px;width:100%;color:#a49c93;font-size:9.5px;font-weight:650}
+.chat-divider::before,.chat-divider::after{content:'';flex:1;height:1px;background:var(--line)}
+</style>
+</head>
+<body>
+
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-brand" viewBox="0 0 40 40"><circle cx="20" cy="20" r="14.5" fill="none" stroke="#b54f2b" stroke-width="3.4"/><circle cx="31" cy="9" r="4.6" fill="#b54f2b"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 256 256"><path d="M197.58,129.06,146,110l-19-51.62a15.92,15.92,0,0,0-29.88,0L78,110l-51.62,19a15.92,15.92,0,0,0,0,29.88L78,178l19,51.62a15.92,15.92,0,0,0,29.88,0L146,178l51.62-19a15.92,15.92,0,0,0,0-29.88Z"/></symbol>
+  <symbol id="i-plane" viewBox="0 0 256 256"><path d="M227.32,28.68a16,16,0,0,0-15.66-4.08l-.15,0L19.57,82.84a16,16,0,0,0-2.49,29.8L102,154l41.3,84.87A15.86,15.86,0,0,0,157.74,248q.69,0,1.38-.06a15.88,15.88,0,0,0,14-11.51l58.2-191.94c0-.05,0-.1,0-.15A16,16,0,0,0,227.32,28.68ZM157.83,231.85l-.05.14,0-.07-40.06-82.3,48-48a8,8,0,0,0-11.31-11.31l-48,48L24.08,98.25l-.07,0,.14,0L216,40Z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+  <symbol id="i-caret-down" viewBox="0 0 256 256"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></symbol>
+  <symbol id="i-caret-left" viewBox="0 0 256 256"><path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"/></symbol>
+  <symbol id="i-caret-right" viewBox="0 0 256 256"><path d="M90.34,53.66a8,8,0,0,1,11.32-11.32l80,80a8,8,0,0,1,0,11.32l-80,80a8,8,0,0,1-11.32-11.32L164.69,128Z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 256 256"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 256 256"><path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 256 256"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 256 256"><path d="M216,48V96a8,8,0,0,1-16,0V67.31l-50.34,50.35a8,8,0,0,1-11.32-11.32L188.69,56H160a8,8,0,0,1,0-16h48A8,8,0,0,1,216,48ZM106.34,138.34,56,188.69V160a8,8,0,0,0-16,0v48a8,8,0,0,0,8,8H96a8,8,0,0,0,0-16H67.31l50.35-50.34a8,8,0,0,0-11.32-11.32Z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 256 256"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 256 256"><path d="M168,112a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,112Zm-8,24H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Zm72-8A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Zm-16,0A88,88,0,1,0,51.81,172.06a8,8,0,0,0,.66,6.54L40,216,77.4,203.53a7.85,7.85,0,0,1,2.53-.42,8,8,0,0,1,4,1.08A88,88,0,0,0,216,128Z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 256 256"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm109.94-52.79a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A112.1,112.1,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.62a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.91,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21Z"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128Z"/></symbol>
+  <symbol id="i-arrows-v" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM101.66,53.66,120,35.31V96a8,8,0,0,0,16,0V35.31l18.34,18.35a8,8,0,0,0,11.32-11.32l-32-32a8,8,0,0,0-11.32,0l-32,32a8,8,0,0,0,11.32,11.32Zm52.68,148.68L136,220.69V160a8,8,0,0,0-16,0v60.69l-18.34-18.35a8,8,0,0,0-11.32,11.32l32,32a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32Z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 256 256"><path d="M235.32,81.37,174.63,20.69a16,16,0,0,0-22.63,0L98.37,74.49c-10.66-3.34-35-7.37-60.4,13.14a16,16,0,0,0-1.29,23.78L85,159.71,42.34,202.34a8,8,0,0,0,11.32,11.32L96.29,171l48.29,48.29A16,16,0,0,0,155.9,224c.38,0,.75,0,1.13,0a15.93,15.93,0,0,0,11.64-6.33c19.64-26.1,17.75-47.32,13.19-60L235.33,104A16,16,0,0,0,235.32,81.37Z"/></symbol>
+</svg>
+
+<main class="board">
+
+  <!-- ═══════════ 1 · 展开态：选择面板 + chips ═══════════ -->
+  <section class="shot" id="s-expanded-picker">
+    <div class="caption"><b>1 · 展开态（悬浮气泡窗 380×620）</b>功能一（单选）：入口 = 输入卡左下角「＋」图标 → 菜单「选择事项」→ 悬停展开二级面板（搜索 + 分组列表）；点选即关联并关闭；chips 与用户气泡引用带外框。</div>
+    <div class="frame" style="width:380px;height:620px">
+      <div class="assistant-widget">
+        <header class="assistant-titlebar">
+          <span class="assistant-identity">
+            <span class="assistant-header-avatar"><svg class="ic" style="width:20px;height:20px"><use href="#i-sparkle"/></svg><i class="assistant-online"></i></span>
+            <span class="assistant-identity-text"><b>AI 助手</b><small>可用</small></span>
+          </span>
+          <span class="assistant-session"><button class="select-trigger"><span>本周安排</span><svg class="ic" style="width:12px"><use href="#i-caret-down"/></svg></button></span>
+          <button class="assistant-new-chat">新对话</button>
+          <button class="icon-button"><svg class="ic" style="width:18px"><use href="#i-x"/></svg></button>
+        </header>
+        <div class="ai-conversation">
+          <div class="chat-scroll">
+            <ol class="chat-messages">
+              <li class="chat-message user">
+                <div class="chat-message-row"><div class="chat-message-column">
+                  <div class="chat-bubble">
+                    <div class="bubble-ctx">
+                      <span class="b-chip"><i class="k task"></i><span>准备周会材料</span></span>
+                    </div>
+                    <p>这件事帮我看看怎么安排更合理</p>
+                  </div>
+                </div></div>
+              </li>
+              <li class="chat-message assistant">
+                <div class="chat-message-row">
+                  <span class="assistant-avatar"><svg class="ic" style="width:14px"><use href="#i-sparkle"/></svg></span>
+                  <div class="chat-message-column">
+                    <span class="chat-speaker">AI 助手</span>
+                    <div class="chat-bubble md"><p><strong>好的，围绕这两件事来看。</strong>我读到周会材料还没有排时间，牙医在周五 15:30——先确认几个信息再给建议：</p></div>
+                  </div>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- NEW ＋ 根菜单 + 「选择事项」二级面板 -->
+        <div class="plus-menu">
+          <button class="is-open" type="button"><svg class="ic" style="width:13px"><use href="#i-check"/></svg>选择事项<svg class="ic" style="width:11px"><use href="#i-caret-right"/></svg></button>
+        </div>
+        <div class="plus-submenu">
+          <div class="task-picker-head">
+            <div class="task-picker-search"><svg class="ic" style="width:13px"><use href="#i-search"/></svg><input placeholder="搜索事项或标签" aria-label="搜索事项"></div>
+          </div>
+          <div class="task-picker-list" style="max-height:222px">
+            <div class="tp-group">明天 · 9月23日 周三</div>
+            <button class="tp-row is-on">
+              <span><span class="tp-title-row"><span class="tp-kind task">待办</span><span class="tp-title">准备周会材料</span></span>
+              <span class="tp-meta"><span class="tp-tag"><i style="background:#8a5fb0"></i><span>工作</span></span><span>高优先级</span></span></span>
+              <svg class="tp-check"><use href="#i-check"/></svg>
+            </button>
+            <button class="tp-row">
+              <span><span class="tp-title-row"><span class="tp-kind meeting">日程</span><span class="tp-title">和设计师对齐 UI 走查</span></span>
+              <span class="tp-meta"><span class="tp-tag"><i style="background:#8a5fb0"></i><span>工作</span></span><span>10:00 – 11:00</span></span></span>
+              <svg class="tp-check"><use href="#i-check"/></svg>
+            </button>
+            <div class="tp-group">周五 · 9月25日</div>
+            <button class="tp-row">
+              <span><span class="tp-title-row"><span class="tp-kind meeting">日程</span><span class="tp-title">牙医预约</span></span>
+              <span class="tp-meta"><span class="tp-tag"><i style="background:#4a7ba6"></i><span>生活</span></span><span>15:30</span></span></span>
+              <svg class="tp-check"><use href="#i-check"/></svg>
+            </button>
+            <button class="tp-row">
+              <span><span class="tp-title-row"><span class="tp-kind task">待办</span><span class="tp-title">整理演示稿大纲</span></span>
+              <span class="tp-meta"><span class="tp-tag"><i style="background:#8a5fb0"></i><span>工作</span></span></span></span>
+              <svg class="tp-check"><use href="#i-check"/></svg>
+            </button>
+            <div class="tp-group">无日期</div>
+            <button class="tp-row">
+              <span><span class="tp-title-row"><span class="tp-kind task">待办</span><span class="tp-title">提交报销单</span></span>
+              <span class="tp-meta"><span class="tp-tag"><i style="background:#8a5fb0"></i><span>工作</span></span><span>低优先级</span></span></span>
+              <svg class="tp-check"><use href="#i-check"/></svg>
+            </button>
+          </div>
+          <div class="task-picker-foot">单选 · 点选即关联并关闭</div>
+        </div>
+
+        <footer class="assistant-footer">
+          <form class="assistant-compose">
+            <div class="assistant-context-row">
+              <span class="ctx-chip"><i class="k task"></i>准备周会材料<small>工作</small><svg class="cx"><use href="#i-x"/></svg></span>
+            </div>
+            <span class="assistant-compose-copy"><textarea class="assistant-compose-input" rows="2">帮我把材料准备挪到周四晚上，避开周五的牙医</textarea></span>
+            <span class="assistant-compose-meta">
+              <span class="assistant-compose-options">
+                <button class="compose-plus" type="button" aria-label="选择事项"><svg><use href="#i-plus"/></svg></button>
+                <span class="select assistant-model"><button class="select-trigger" type="button"><span>GPT-5 mini</span><svg class="ic" style="width:10px"><use href="#i-caret-down"/></svg></button></span>
+              </span>
+              <button class="send-button" type="button"><svg class="ic" style="width:15px"><use href="#i-plane"/></svg></button>
+            </span>
+          </form>
+        </footer>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 1b · 展开态：/ 快捷选择事项 ═══════════ -->
+  <section class="shot" id="s-expanded-slash">
+    <div class="caption"><b>1b · 展开态（悬浮气泡窗 380×620）</b>功能一：在输入框输入 <b>/</b> 直接唤出事项菜单（继续输入即筛选，↑↓ 选择、Enter 关联、Esc 关闭）；关联结果与 ＋ 入口一致，落到顶部 chip。</div>
+    <div class="frame" style="width:380px;height:620px">
+      <div class="assistant-widget">
+        <header class="assistant-titlebar">
+          <span class="assistant-identity">
+            <span class="assistant-header-avatar"><svg class="ic" style="width:20px;height:20px"><use href="#i-sparkle"/></svg><i class="assistant-online"></i></span>
+            <span class="assistant-identity-text"><b>AI 助手</b><small>可用</small></span>
+          </span>
+          <span class="assistant-session"><button class="select-trigger"><span>本周安排</span><svg class="ic" style="width:12px"><use href="#i-caret-down"/></svg></button></span>
+          <button class="assistant-new-chat">新对话</button>
+          <button class="icon-button"><svg class="ic" style="width:18px"><use href="#i-x"/></svg></button>
+        </header>
+        <div class="ai-conversation">
+          <div class="chat-scroll">
+            <ol class="chat-messages">
+              <li class="chat-message user">
+                <div class="chat-message-row"><div class="chat-message-column"><div class="chat-bubble"><p>周会材料什么时候准备比较好？</p></div></div></div>
+              </li>
+              <li class="chat-message assistant">
+                <div class="chat-message-row">
+                  <span class="assistant-avatar"><svg class="ic" style="width:14px"><use href="#i-sparkle"/></svg></span>
+                  <div class="chat-message-column">
+                    <span class="chat-speaker">AI 助手</span>
+                    <div class="chat-bubble md"><p>可以先把要讨论的事项关联进来，我按它的截止时间和你的日程一起看。</p></div>
+                  </div>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- NEW “/” 快捷菜单（锚在输入框上方） -->
+        <div class="slash-menu">
+          <div class="slash-tip"><b>/</b>选择事项 · ↑↓ 移动 · <b>Enter</b> 关联 · Esc 关闭</div>
+          <div class="slash-rows">
+            <button class="mp-row is-on" type="button" style="height:30px"><span class="tp-kind task">待办</span><b>准备周会材料</b><span class="tp-tag"><i style="background:#8a5fb0"></i><span>工作</span></span><svg><use href="#i-check"/></svg></button>
+            <button class="mp-row" type="button" style="height:30px"><span class="tp-kind meeting">日程</span><b>和设计师对齐 UI 走查</b><span class="tp-tag"><i style="background:#8a5fb0"></i><span>工作</span></span></button>
+            <button class="mp-row" type="button" style="height:30px"><span class="tp-kind meeting">日程</span><b>牙医预约</b><span class="tp-tag"><i style="background:#4a7ba6"></i><span>生活</span></span></button>
+            <button class="mp-row" type="button" style="height:30px"><span class="tp-kind task">待办</span><b>整理演示稿大纲</b><span class="tp-tag"><i style="background:#8a5fb0"></i><span>工作</span></span></button>
+            <button class="mp-row" type="button" style="height:30px"><span class="tp-kind task">待办</span><b>提交报销单</b><span class="tp-tag"><i style="background:#8a5fb0"></i><span>工作</span></span></button>
+          </div>
+        </div>
+
+        <footer class="assistant-footer">
+          <form class="assistant-compose">
+            <span class="assistant-compose-copy"><textarea class="assistant-compose-input" rows="2">材料准备挪到/</textarea></span>
+            <span class="assistant-compose-meta">
+              <span class="assistant-compose-options">
+                <button class="compose-plus" type="button" aria-label="选择事项"><svg><use href="#i-plus"/></svg></button>
+                <span class="select assistant-model"><button class="select-trigger" type="button"><span>GPT-5 mini</span><svg class="ic" style="width:10px"><use href="#i-caret-down"/></svg></button></span>
+              </span>
+              <button class="send-button" type="button"><svg class="ic" style="width:15px"><use href="#i-plane"/></svg></button>
+            </span>
+          </form>
+        </footer>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 2 · 展开态：ask_user 卡片 + md 气泡 ═══════════ -->
+  <section class="shot" id="s-expanded-ask">
+    <div class="caption"><b>2 · 展开态（悬浮气泡窗 380×620）</b>功能二 + 三：ask_user 活动卡片（选项按钮 + 「也可直接输入回答」）、已回答收敛态；助手气泡 Markdown 渲染（加粗 / 列表 / 行内代码）。输入框在提问挂起时变为「输入回答…」。</div>
+    <div class="frame" style="width:380px;height:620px">
+      <div class="assistant-widget">
+        <header class="assistant-titlebar">
+          <span class="assistant-identity">
+            <span class="assistant-header-avatar"><svg class="ic" style="width:20px;height:20px"><use href="#i-sparkle"/></svg><i class="assistant-online"></i></span>
+            <span class="assistant-identity-text"><b>AI 助手</b><small>等待回答</small></span>
+          </span>
+          <span class="assistant-session"><button class="select-trigger"><span>本周安排</span><svg class="ic" style="width:12px"><use href="#i-caret-down"/></svg></button></span>
+          <button class="assistant-new-chat">新对话</button>
+          <button class="icon-button"><svg class="ic" style="width:18px"><use href="#i-x"/></svg></button>
+        </header>
+        <div class="ai-conversation">
+          <div class="chat-scroll">
+            <ol class="chat-messages">
+              <li class="chat-message user">
+                <div class="chat-message-row"><div class="chat-message-column"><div class="chat-bubble"><p>帮我把周会挪到周五下午</p></div></div></div>
+              </li>
+              <li class="chat-message assistant">
+                <div class="chat-message-row">
+                  <span class="assistant-avatar"><svg class="ic" style="width:14px"><use href="#i-sparkle"/></svg></span>
+                  <div class="chat-message-column">
+                    <span class="chat-speaker">AI 助手</span>
+                    <div class="chat-bubble md">
+                      <p>先确认一个时间点，避免和 <strong>牙医（周五 15:30）</strong>冲突：</p>
+                    </div>
+                    <!-- NEW ask_user 活动卡片 -->
+                    <div class="ask-card">
+                      <div class="ask-head"><span class="ask-icon"><svg class="ic" style="width:13px"><use href="#i-chat"/></svg></span><b>AI 想确认</b><i class="ask-pulse"></i></div>
+                      <div class="ask-question">周会希望安排在周五哪个时间段？</div>
+                      <div class="ask-options">
+                        <button class="ask-option" type="button"><span class="ask-radio"></span><span><b>13:00 – 14:00</b><small>牙医前留足缓冲</small></span></button>
+                        <button class="ask-option is-on" type="button"><span class="ask-radio"></span><span><b>14:00 – 15:00</b><small>紧邻牙医前，同一路线顺路</small></span></button>
+                        <button class="ask-option" type="button"><span class="ask-radio"></span><span><b>16:30 – 17:30</b><small>牙医结束后，收尾时段</small></span></button>
+                      </div>
+                      <div class="ask-foot"><svg class="ic" style="width:11px"><use href="#i-chat"/></svg>也可直接在下方输入回答<button class="skip" type="button">跳过</button></div>
+                    </div>
+                    <!-- NEW 已回答收敛态（历史中的提问） -->
+                    <div class="ask-card is-resolved" style="margin-top:5px">
+                      <div class="ask-resolved"><svg><use href="#i-check-circle"/></svg><q>要先发会议邀请吗？</q><span class="answer">需要，提前一天发</span></div>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </div>
+        <footer class="assistant-footer">
+          <form class="assistant-compose">
+            <span class="assistant-compose-copy"><textarea class="assistant-compose-input" rows="2" placeholder="输入回答，或点击上方选项…"></textarea></span>
+            <span class="assistant-compose-meta">
+              <span class="assistant-compose-options">
+                <button class="compose-plus" type="button" aria-label="选择事项"><svg><use href="#i-plus"/></svg></button>
+                <span class="select assistant-model"><button class="select-trigger" type="button"><span>GPT-5 mini</span><svg class="ic" style="width:10px"><use href="#i-caret-down"/></svg></button></span>
+              </span>
+              <button class="send-button" type="button"><svg class="ic" style="width:15px"><use href="#i-plane"/></svg></button>
+            </span>
+          </form>
+        </footer>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 3 · 展开态：Markdown 前后对比 ═══════════ -->
+  <section class="shot" id="s-expanded-md">
+    <div class="caption"><b>3 · 展开态（悬浮气泡窗 380×620）</b>功能三：同一段回复——现状纯文本（星号 / 反引号裸露）vs 渲染后（加粗、列表 accent 标记、行内代码底色、引用块）。</div>
+    <div class="frame" style="width:380px;height:620px">
+      <div class="assistant-widget">
+        <header class="assistant-titlebar">
+          <span class="assistant-identity">
+            <span class="assistant-header-avatar"><svg class="ic" style="width:20px;height:20px"><use href="#i-sparkle"/></svg><i class="assistant-online"></i></span>
+            <span class="assistant-identity-text"><b>AI 助手</b><small>可用</small></span>
+          </span>
+          <span class="assistant-session"><button class="select-trigger"><span>本周安排</span><svg class="ic" style="width:12px"><use href="#i-caret-down"/></svg></button></span>
+          <button class="assistant-new-chat">新对话</button>
+          <button class="icon-button"><svg class="ic" style="width:18px"><use href="#i-x"/></svg></button>
+        </header>
+        <div class="ai-conversation">
+          <div class="chat-scroll">
+            <ol class="chat-messages" style="gap:12px">
+              <span class="chat-divider">现状 · 纯文本</span>
+              <li class="chat-message assistant">
+                <div class="chat-message-row">
+                  <span class="assistant-avatar"><svg class="ic" style="width:14px"><use href="#i-sparkle"/></svg></span>
+                  <div class="chat-message-column">
+                    <span class="chat-speaker">AI 助手</span>
+                    <div class="chat-bubble"><p>**结论先说**：这两件事不冲突：
+- 周会材料提前到 **周四晚上** 准备
+- 周五 `14:00–15:00` 预留终审和缓冲
+
+&gt; 周会要演示的话，先建「整理演示稿」待办</p></div>
+                  </div>
+                </div>
+              </li>
+              <span class="chat-divider">优化后 · Markdown 渲染</span>
+              <li class="chat-message assistant">
+                <div class="chat-message-row">
+                  <span class="assistant-avatar"><svg class="ic" style="width:14px"><use href="#i-sparkle"/></svg></span>
+                  <div class="chat-message-column">
+                    <span class="chat-speaker">AI 助手</span>
+                    <div class="chat-bubble md">
+                      <p><strong>结论先说</strong>：这两件事不冲突：</p>
+                      <ul>
+                        <li>周会材料提前到 <strong>周四晚上</strong> 准备</li>
+                        <li>周五 <code>14:00–15:00</code> 预留终审和缓冲</li>
+                      </ul>
+                      <blockquote>周会要演示的话，先建「整理演示稿」待办</blockquote>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </div>
+        <footer class="assistant-footer">
+          <form class="assistant-compose">
+            <span class="assistant-compose-copy"><textarea class="assistant-compose-input" rows="2" placeholder="Enter 发送 · Shift + Enter 换行"></textarea></span>
+            <span class="assistant-compose-meta">
+              <span class="assistant-compose-options">
+                <button class="ctx-toggle" type="button"><svg><use href="#i-plus"/></svg>关联事项</button>
+                <span class="select assistant-model"><button class="select-trigger" type="button"><span>GPT-5 mini</span><svg class="ic" style="width:10px"><use href="#i-caret-down"/></svg></button></span>
+              </span>
+              <button class="send-button" type="button" style="background:var(--accent-soft);color:var(--accent)"><svg class="ic" style="width:15px"><use href="#i-plane"/></svg></button>
+            </span>
+          </form>
+        </footer>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 4 · 主窗展开态 overlay ═══════════ -->
+  <section class="shot" id="s-overlay-context">
+    <div class="caption"><b>4 · 主窗展开态 overlay（440×700）</b>三功能在 overlay 中的同构呈现（入口同为左下角「＋」图标，chip 显示已关联事项）；对话区与输入栏之间加了分隔线，引用 chip 带外框。</div>
+    <div class="frame" style="width:440px;height:700px">
+      <div class="widget">
+        <header class="titlebar">
+          <span class="mini-logo-slot"><svg style="width:40px;height:40px"><use href="#i-brand"/></svg></span>
+          <span class="app-title">To Do List</span>
+          <div class="mini-window-actions">
+            <button class="icon-button"><svg class="ic" style="width:20px"><use href="#i-minus"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:18px"><use href="#i-x"/></svg></button>
+          </div>
+        </header>
+        <div class="date-heading">
+          <h1>9月22日</h1>
+          <span>周二 · 3 项待办 · 2 场日程</span>
+        </div>
+        <section class="assistant-overlay">
+          <header class="assistant-overlay-head">
+            <span class="assistant-session"><button class="select-trigger"><span>本周安排</span><svg class="ic" style="width:12px"><use href="#i-caret-down"/></svg></button></span>
+            <button class="assistant-new-chat">新对话</button>
+            <button class="icon-button"><svg class="ic" style="width:18px"><use href="#i-x"/></svg></button>
+          </header>
+          <div class="ai-conversation">
+            <div class="chat-scroll">
+              <ol class="chat-messages">
+                <li class="chat-message user">
+                  <div class="chat-message-row"><div class="chat-message-column">
+                    <div class="chat-bubble">
+                      <div class="bubble-ctx">
+                        <span class="b-chip"><i class="k task"></i><span>准备周会材料</span></span>
+                      </div>
+                      <p>这件事帮我排一下周五的节奏</p>
+                    </div>
+                  </div></div>
+                </li>
+                <li class="chat-message assistant">
+                  <div class="chat-message-row">
+                    <span class="assistant-avatar"><svg class="ic" style="width:14px"><use href="#i-sparkle"/></svg></span>
+                    <div class="chat-message-column">
+                      <span class="chat-speaker">AI 助手</span>
+                      <div class="chat-bubble md">
+                        <p>周五已有 <strong>3 个时间承诺</strong>，先确认一点：</p>
+                      </div>
+                      <div class="ask-card">
+                        <div class="ask-head"><span class="ask-icon"><svg class="ic" style="width:13px"><use href="#i-chat"/></svg></span><b>AI 想确认</b><i class="ask-pulse"></i></div>
+                        <div class="ask-question">「整理演示稿大纲」需要排在周会前完成吗？</div>
+                        <div class="ask-options">
+                          <button class="ask-option is-on" type="button"><span class="ask-radio"></span><span><b>需要，周三前完成</b><small>周会材料会直接引用演示稿大纲</small></span></button>
+                          <button class="ask-option" type="button"><span class="ask-radio"></span><span><b>不用，周五现场再定</b></span></button>
+                        </div>
+                        <div class="ask-foot"><svg class="ic" style="width:11px"><use href="#i-chat"/></svg>也可直接在下方输入回答<button class="skip" type="button">跳过</button></div>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          </div>
+          <footer class="assistant-footer">
+            <form class="assistant-compose">
+              <div class="assistant-context-row">
+                <span class="ctx-chip"><i class="k task"></i>准备周会材料<svg class="cx"><use href="#i-x"/></svg></span>
+              </div>
+              <span class="assistant-compose-copy"><textarea class="assistant-compose-input" rows="2" placeholder="输入回答，或点击上方选项…"></textarea></span>
+              <span class="assistant-compose-meta">
+                <span class="assistant-compose-options">
+                  <button class="compose-plus" type="button" aria-label="选择事项"><svg><use href="#i-plus"/></svg></button>
+                  <span class="select assistant-model"><button class="select-trigger" type="button"><span>GPT-5 mini</span><svg class="ic" style="width:10px"><use href="#i-caret-down"/></svg></button></span>
+                </span>
+                <button class="send-button" type="button"><svg class="ic" style="width:15px"><use href="#i-plane"/></svg></button>
+              </span>
+            </form>
+          </footer>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 5 · 折叠态：默认 + 上下文 chip ═══════════ -->
+  <section class="shot" id="s-mini-default">
+    <div class="caption"><b>5a · 折叠态（小卡片 340×176）</b>功能一未关联态：「＋」在左下角工具行（与展开态同逻辑），点击向下弹出事项菜单，不切换页面；输入行保持完整。</div>
+    <div class="frame" style="width:340px;height:176px">
+      <div class="mini-window">
+        <span class="mini-brand-logo"><svg style="width:40px;height:40px"><use href="#i-brand"/></svg></span>
+        <header class="mini-titlebar"><span class="mini-logo-slot"></span><span class="mini-app-title">To Do List</span>
+          <div class="mini-window-actions">
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-pin"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-gear"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-arrows-v"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:20px"><use href="#i-minus"/></svg></button>
+          </div>
+        </header>
+        <div class="mini-content">
+          <section class="mini-ai-surface">
+            <div class="mini-ai-context">
+              <span class="mini-ai-mark"><svg class="ic" style="width:11px"><use href="#i-sparkle"/></svg></span>
+              <span><b>AI 助手</b></span>
+              <button class="icon-button"><svg class="ic" style="width:12px"><use href="#i-expand"/></svg></button>
+              <button class="mini-ai-back"><svg class="ic" style="width:10px"><use href="#i-caret-left"/></svg>返回</button>
+            </div>
+            <form class="mini-ai-compose">
+              <textarea aria-label="AI 对话输入" placeholder="一句话告诉 AI 你想怎么处理" style="font-size:10px">周四晚上可以吗</textarea>
+              <button type="submit"><svg class="ic" style="width:13px"><use href="#i-plane"/></svg></button>
+            </form>
+            <div class="mini-ai-quick">
+              <!-- NEW 关联事项入口：左下角 ＋（与展开态同逻辑，点击向下弹出菜单） -->
+              <button type="button" class="mini-plus" aria-label="选择事项"><svg><use href="#i-plus"/></svg></button>
+              <button class="mini-ai-model-toggle" type="button"><span>GPT-5 mini</span><svg class="ic" style="width:9px"><use href="#i-caret-left"/></svg></button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 5b · 折叠态：已关联 chip ═══════════ -->
+  <section class="shot" id="s-mini-default-linked">
+    <div class="caption"><b>5b · 折叠态（小卡片 340×176）</b>功能一已关联态：「＋」旁显示 chip（色点 + 标题 + ✕，点 chip = 更换、✕ = 取消），placeholder 跟随变为「针对「准备周会材料」提问…」。</div>
+    <div class="frame" style="width:340px;height:176px">
+      <div class="mini-window">
+        <span class="mini-brand-logo"><svg style="width:40px;height:40px"><use href="#i-brand"/></svg></span>
+        <header class="mini-titlebar"><span class="mini-logo-slot"></span><span class="mini-app-title">To Do List</span>
+          <div class="mini-window-actions">
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-pin"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-gear"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-arrows-v"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:20px"><use href="#i-minus"/></svg></button>
+          </div>
+        </header>
+        <div class="mini-content">
+          <section class="mini-ai-surface">
+            <div class="mini-ai-context">
+              <span class="mini-ai-mark"><svg class="ic" style="width:11px"><use href="#i-sparkle"/></svg></span>
+              <span><b>AI 助手</b></span>
+              <button class="icon-button"><svg class="ic" style="width:12px"><use href="#i-expand"/></svg></button>
+              <button class="mini-ai-back"><svg class="ic" style="width:10px"><use href="#i-caret-left"/></svg>返回</button>
+            </div>
+            <form class="mini-ai-compose">
+              <textarea aria-label="AI 对话输入" placeholder="针对「准备周会材料」提问…" style="font-size:10px">周四晚上可以</textarea>
+              <button type="submit"><svg class="ic" style="width:13px"><use href="#i-plane"/></svg></button>
+            </form>
+            <div class="mini-ai-quick">
+              <!-- NEW 已关联：＋ 旁显示 chip（点 chip = 更换，✕ = 取消关联） -->
+              <button type="button" class="mini-plus" aria-label="选择事项"><svg><use href="#i-plus"/></svg></button>
+              <span class="ctx-chip" style="height:18px;padding:0 4px 0 6px;font-size:9px;gap:4px"><i class="k task"></i><span style="max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">准备周会材料</span><svg class="cx" style="width:8px;height:8px"><use href="#i-x"/></svg></span>
+              <button class="mini-ai-model-toggle" type="button"><span>GPT-5 mini</span><svg class="ic" style="width:9px"><use href="#i-caret-left"/></svg></button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 6 · 折叠态：选择面板（窗口扩展） ═══════════ -->
+  <section class="shot" id="s-mini-picker">
+    <div class="caption"><b>6 · 折叠态（窗口临时扩展，卡片不变）</b>功能一：点「＋」后<b>向下弹出</b>事项菜单（卡片本身不切换页面）；单行条目，无搜索、无确认按钮，单选点选即关联并关闭，窗口弹回 176px。</div>
+    <div class="frame" style="width:340px;height:376px">
+      <div class="mini-window" style="height:376px">
+        <span class="mini-brand-logo"><svg style="width:40px;height:40px"><use href="#i-brand"/></svg></span>
+        <header class="mini-titlebar"><span class="mini-logo-slot"></span><span class="mini-app-title">To Do List</span>
+          <div class="mini-window-actions">
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-pin"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-gear"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-arrows-v"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:20px"><use href="#i-minus"/></svg></button>
+          </div>
+        </header>
+        <!-- 卡片本体保持不变 -->
+        <div class="mini-content">
+          <section class="mini-ai-surface">
+            <div class="mini-ai-context">
+              <span class="mini-ai-mark"><svg class="ic" style="width:11px"><use href="#i-sparkle"/></svg></span>
+              <span><b>AI 助手</b></span>
+              <button class="icon-button"><svg class="ic" style="width:12px"><use href="#i-expand"/></svg></button>
+              <button class="mini-ai-back"><svg class="ic" style="width:10px"><use href="#i-caret-left"/></svg>返回</button>
+            </div>
+            <form class="mini-ai-compose">
+              <textarea aria-label="AI 对话输入" placeholder="一句话告诉 AI 你想怎么处理" style="font-size:10px"></textarea>
+              <button type="submit"><svg class="ic" style="width:13px"><use href="#i-plane"/></svg></button>
+            </form>
+            <div class="mini-ai-quick">
+              <button type="button" class="mini-plus is-open" aria-label="选择事项" aria-expanded="true" style="background:var(--accent-soft);border-color:#d9b6a4;color:var(--accent)"><svg><use href="#i-plus"/></svg></button>
+              <button class="mini-ai-model-toggle" type="button"><span>GPT-5 mini</span><svg class="ic" style="width:9px"><use href="#i-caret-left"/></svg></button>
+            </div>
+          </section>
+        </div>
+        <!-- NEW ＋ 下方弹出的菜单（覆盖在扩展出的窗口区域上，不换页） -->
+        <div style="position:absolute;left:12px;top:170px;width:252px;border:1px solid #d7cfc6;border-radius:11px;background:#fffdfa;box-shadow:0 16px 34px #3f352929;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:6px;padding:6px 9px 4px;color:var(--muted);font-size:8.5px;font-weight:650">选择事项<span style="margin-left:auto;font-weight:400">单选 · 点选即关联</span></div>
+          <div style="padding:0 4px 5px">
+            <button class="mp-row is-on" type="button" style="height:26px"><span class="tp-kind task">待办</span><b>准备周会材料</b><span class="tp-tag"><i style="background:#8a5fb0"></i><span>工作</span></span><svg><use href="#i-check"/></svg></button>
+            <button class="mp-row" type="button" style="height:26px"><span class="tp-kind meeting">日程</span><b>和设计师对齐 UI 走查</b><span class="tp-tag"><i style="background:#8a5fb0"></i><span>工作</span></span></button>
+            <button class="mp-row" type="button" style="height:26px"><span class="tp-kind meeting">日程</span><b>牙医预约</b><span class="tp-tag"><i style="background:#4a7ba6"></i><span>生活</span></span></button>
+            <button class="mp-row" type="button" style="height:26px"><span class="tp-kind task">待办</span><b>整理演示稿大纲</b><span class="tp-tag"><i style="background:#8a5fb0"></i><span>工作</span></span></button>
+            <button class="mp-row" type="button" style="height:26px"><span class="tp-kind task">待办</span><b>提交报销单</b><span class="tp-tag"><i style="background:#8a5fb0"></i><span>工作</span></span></button>
+            <button class="mp-row" type="button" style="height:26px"><span class="tp-kind task">待办</span><b>取体检报告</b><span class="tp-tag"><i style="background:#3e7d44"></i><span>健康</span></span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 7 · 折叠态：ask_user 提问视图 ═══════════ -->
+  <section class="shot" id="s-mini-ask">
+    <div class="caption"><b>7 · 折叠态（窗口临时扩展至 ~262px）</b>功能二：ask_user 到来时的精简提问视图——问题 + 单行选项 + 跳过/取消（底部留白已修复）；头部「展开」可看完整上下文与描述。</div>
+    <div class="frame" style="width:340px;height:262px">
+      <div class="mini-window" style="height:262px">
+        <span class="mini-brand-logo"><svg style="width:40px;height:40px"><use href="#i-brand"/></svg></span>
+        <header class="mini-titlebar"><span class="mini-logo-slot"></span><span class="mini-app-title">To Do List</span>
+          <div class="mini-window-actions">
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-pin"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-gear"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-arrows-v"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:20px"><use href="#i-minus"/></svg></button>
+          </div>
+        </header>
+        <div class="mini-ask" style="gap:6px;padding:8px 10px 9px">
+          <div class="mini-ai-context">
+            <span class="mini-ai-mark"><svg class="ic" style="width:11px"><use href="#i-sparkle"/></svg></span>
+            <span><b>AI 助手</b></span>
+            <button class="icon-button"><svg class="ic" style="width:12px"><use href="#i-expand"/></svg></button>
+            <button class="mini-ai-back"><svg class="ic" style="width:10px"><use href="#i-caret-left"/></svg>返回</button>
+          </div>
+          <div class="mini-ask-body" style="gap:6px;padding:8px 9px 9px">
+            <div class="mini-ask-label"><span class="ask-icon"><svg class="ic" style="width:9px"><use href="#i-chat"/></svg></span>AI 想确认<i class="ask-pulse" style="width:5px;height:5px;box-shadow:0 0 0 2.5px color-mix(in srgb,var(--accent-soft) 80%,transparent)"></i></div>
+            <div class="mini-ask-q" style="font-size:10px">周会安排在周五哪个时间段？<small style="font-size:8px">牙医 15:30，需避免冲突</small></div>
+            <div class="mini-ask-options" style="gap:4px">
+              <button class="mini-ask-option" type="button" style="min-height:24px;font-size:9.5px"><span class="ask-radio"></span>13:00 – 14:00<small>牙医前</small></button>
+              <button class="mini-ask-option is-on" type="button" style="min-height:24px;font-size:9.5px"><span class="ask-radio"></span>14:00 – 15:00<small>顺路</small></button>
+              <button class="mini-ask-option" type="button" style="min-height:24px;font-size:9.5px"><span class="ask-radio"></span>16:30 – 17:30<small>牙医后</small></button>
+            </div>
+            <div class="mini-ask-foot" style="margin-top:auto;gap:5px;padding-top:3px">已暂停 · 等待回答<button type="button">跳过</button><button type="button" style="color:var(--danger)">取消</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 8 · 折叠态：回答（md 降级纯文本） ═══════════ -->
+  <section class="shot" id="s-mini-answer">
+    <div class="caption"><b>8 · 折叠态（小卡片 340×176）</b>功能三降级：回答区纯文本两行截断；长回复看不全时点「展开全文」——直接展开主窗 overlay 查看完整 Markdown 渲染（折叠态只做速览，不做滚动长文）。</div>
+    <div class="frame" style="width:340px;height:176px">
+      <div class="mini-window">
+        <span class="mini-brand-logo"><svg style="width:40px;height:40px"><use href="#i-brand"/></svg></span>
+        <header class="mini-titlebar"><span class="mini-logo-slot"></span><span class="mini-app-title">To Do List</span>
+          <div class="mini-window-actions">
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-pin"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-gear"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-arrows-v"/></svg></button>
+            <button class="icon-button"><svg class="ic" style="width:20px"><use href="#i-minus"/></svg></button>
+          </div>
+        </header>
+        <div class="mini-content">
+          <section class="mini-ai-surface is-result" style="grid-template-rows:22px minmax(0,1fr) 20px">
+            <div class="mini-ai-context">
+              <span class="mini-ai-mark"><svg class="ic" style="width:11px"><use href="#i-sparkle"/></svg></span>
+              <span><b>AI 助手</b></span>
+              <button class="icon-button"><svg class="ic" style="width:12px"><use href="#i-expand"/></svg></button>
+              <button class="mini-ai-back"><svg class="ic" style="width:10px"><use href="#i-caret-left"/></svg>返回</button>
+            </div>
+            <div class="mini-ai-answer">
+              <p><span>AI 回复</span>结论：两件事不冲突。周会材料提前到周四晚上准备，避开周五上午；周五 14:00–15:00 开周会，结束后直接去牙医（15:30）。</p>
+              <button type="button" class="mini-ai-full">展开全文 ›</button>
+            </div>
+            <footer class="mini-ai-result-footer">
+              <button type="button">处理记录 · 2</button>
+              <button type="button" class="primary">继续提问</button>
+              <button class="mini-ai-model-toggle" type="button"><span>GPT-5 mini</span><svg class="ic" style="width:9px"><use href="#i-caret-left"/></svg></button>
+            </footer>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 8b · 折叠态：回答区悬浮预览（保持格式） ═══════════ -->
+  <section class="shot" id="s-mini-answer-hover">
+    <div class="caption"><b>8b · 折叠态：回答区悬浮预览</b>功能三：鼠标悬停回答区 → 上方浮层显示<b>完整回复且保持 Markdown 格式</b>（加粗/列表/行内代码，超出滚动），移开即收；「展开全文 ›」仍可进入展开态常驻查看。</div>
+    <div class="frame" style="width:340px;height:392px">
+      <div style="position:relative;display:flex;flex-direction:column;justify-content:flex-end;height:100%">
+        <!-- NEW 悬浮预览浮层 -->
+        <div class="hover-pop" style="overflow:visible">
+          <div class="hover-pop-body">
+            <p><strong>结论：</strong>两件事不冲突，建议这样排——</p>
+            <ul>
+              <li>周会材料提前到 <strong>周四晚上</strong>准备，避开周五上午的牙医</li>
+              <li>周五 <code>14:00–15:00</code> 开周会，结束后顺路去牙医（15:30）</li>
+              <li>演示稿若需要，周三先出大纲，周五会前 30 分钟过一遍</li>
+            </ul>
+          </div>
+          <span style="position:absolute;left:58px;bottom:-6px;width:12px;height:12px;background:#fffdfa;border-right:1px solid #d7cfc6;border-bottom:1px solid #d7cfc6;transform:rotate(45deg)"></span>
+          <div class="hover-pop-tip">悬停预览 · 保持 Markdown 格式 · 移开自动收起</div>
+        </div>
+        <!-- 卡片本体（回答区处于 hover 态） -->
+        <div class="mini-window">
+          <span class="mini-brand-logo"><svg style="width:40px;height:40px"><use href="#i-brand"/></svg></span>
+          <header class="mini-titlebar"><span class="mini-logo-slot"></span><span class="mini-app-title">To Do List</span>
+            <div class="mini-window-actions">
+              <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-pin"/></svg></button>
+              <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-gear"/></svg></button>
+              <button class="icon-button"><svg class="ic" style="width:19px"><use href="#i-arrows-v"/></svg></button>
+              <button class="icon-button"><svg class="ic" style="width:20px"><use href="#i-minus"/></svg></button>
+            </div>
+          </header>
+          <div class="mini-content">
+            <section class="mini-ai-surface is-result" style="grid-template-rows:22px minmax(0,1fr) 20px">
+              <div class="mini-ai-context">
+                <span class="mini-ai-mark"><svg class="ic" style="width:11px"><use href="#i-sparkle"/></svg></span>
+                <span><b>AI 助手</b></span>
+                <button class="icon-button"><svg class="ic" style="width:12px"><use href="#i-expand"/></svg></button>
+                <button class="mini-ai-back"><svg class="ic" style="width:10px"><use href="#i-caret-left"/></svg>返回</button>
+              </div>
+              <div class="mini-ai-answer is-hover">
+                <p><span>AI 回复</span>结论：两件事不冲突。周会材料提前到周四晚上准备，避开周五上午；周五 14:00–15:00 开周会，结束后直接去牙医（15:30）。</p>
+                <button type="button" class="mini-ai-full">展开全文 ›</button>
+              </div>
+              <footer class="mini-ai-result-footer">
+                <button type="button">处理记录 · 2</button>
+                <button type="button" class="primary">继续提问</button>
+                <button class="mini-ai-model-toggle" type="button"><span>GPT-5 mini</span><svg class="ic" style="width:9px"><use href="#i-caret-left"/></svg></button>
+              </footer>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

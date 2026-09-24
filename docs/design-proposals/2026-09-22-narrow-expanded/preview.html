@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>窄版展开 · 待办重排</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #faf8f5; --ink: #171923; --muted: #726d67;
+    --accent: #b54f2b; --accent-soft: #f6e2d9; --line: #e4ded6; --subtle: #efebe6;
+    --danger: #a3312d; --white: #ffffff; --completed: #6d675f;
+    --font: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    --mesh: radial-gradient(ellipse 90% 50% at 100% 0%, #f8efe9 0%, transparent 62%), radial-gradient(ellipse 80% 45% at 0% 100%, #eef2f6 0%, transparent 58%), #fbfaf7;
+    --current: #fbf4f0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e8e2da; color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+  .sheet { padding: 36px 40px 48px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -0.03em; }
+  .lead { max-width: 760px; margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .lead b { color: var(--ink); font-weight: 650; }
+  .duo { display: grid; grid-template-columns: 340px 340px; gap: 36px; width: fit-content; margin-top: 26px; align-items: start; }
+  figure { margin: 0; }
+  figcaption { margin: 0 0 8px; font-size: 13px; font-weight: 650; }
+  figcaption small { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: var(--muted); line-height: 1.55; }
+  .note { margin: 8px 0 0; font-size: 12px; color: var(--muted); line-height: 1.65; max-width: 340px; }
+  .note b { color: var(--ink); font-weight: 650; }
+
+  .win { position: relative; width: 340px; height: 700px; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 18px; background: var(--mesh); overflow: hidden; box-shadow: 0 18px 40px #4c403014; }
+  .titlebar { height: 52px; min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 11px; }
+  .logo { width: 40px; height: 40px; display: grid; place-items: center; flex-shrink: 0; }
+  .logo i { width: 26px; height: 26px; border: 3.2px solid #221f1c; border-radius: 50%; position: relative; display: block; }
+  .logo i::after { content: ""; position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%; background: #c45a32; }
+  .app-title { flex: 1; font-size: 14px; font-weight: 600; }
+  .actions { display: flex; gap: 1px; }
+  .ib { width: 30px; height: 30px; display: grid; place-items: center; color: var(--ink); }
+  .ph { display: block; }
+  .ib .ph { width: 19px; height: 19px; }
+  .text-btn .ph, .tool .ph { width: 16px; height: 16px; }
+  .more .ph { width: 20px; height: 20px; }
+  .caret { width: 12px; height: 12px; color: var(--muted); }
+  .ai .ph { width: 24px; height: 24px; }
+
+  .dash { padding: 0 17px; }
+  .before .date-heading { padding: 8px 0 10px; }
+  .before h1.day, .after h1.day { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -1px; line-height: 1.15; }
+  .before .date-actions { display: flex; justify-content: flex-end; gap: 6px; padding: 0 0 10px; }
+  .before .toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 2px; padding: 0 0 8px; }
+  .after .dash { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 17px 12px; }
+  .text-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 6px 9px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--muted); font-size: 12px; }
+  .text-btn.solid { background: var(--white); border-color: var(--line); color: var(--ink); }
+  .tool { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 5px 6px; border: 0; background: transparent; color: var(--muted); font-size: 12px; }
+  .more { width: 32px; height: 32px; display: grid; place-items: center; color: var(--muted); }
+
+  .board { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 17px 8px; }
+  .card { background: var(--white); border: 1px solid var(--line); border-radius: 14px; }
+  .before .todo { flex: 1; min-height: 96px; display: flex; flex-direction: column; padding: 8px; }
+  .after .todo { flex: 0 0 auto; padding: 12px 12px 8px; }
+  .after .check, .snippet .check { width: 22px; height: 22px; }
+  .after .slip, .snippet .slip { grid-template-columns: 22px minmax(0, 1fr); }
+  .sched { flex-shrink: 0; padding: 10px 12px 4px; margin-top: 10px; }
+  .card-head { display: flex; align-items: center; gap: 7px; margin: 0 0 6px; }
+  .card-head h2 { margin: 0; font-size: 13px; font-weight: 650; }
+  .card-head .spacer { margin-left: auto; display: flex; align-items: center; }
+  .card-head .tool { min-height: 28px; padding: 2px 4px; }
+
+  .old-list { list-style: none; margin: 0; padding: 0; }
+  .old-row { display: flex; align-items: center; gap: 8px; min-height: 44px; border-radius: 10px; }
+  .old-row.is-current { background: var(--current); }
+  .check { width: 28px; height: 28px; border: 1.5px solid #b7b0a6; border-radius: 50%; flex-shrink: 0; background: transparent; }
+  .old-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 6px 4px; }
+  .copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .copy b, .slip b { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cat { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 11px; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot.dev { background: #c45c26; }
+  .dot.study { background: #3d6fbf; }
+  .bar { flex: 0 0 28px; height: 3px; border-radius: 2px; background: var(--subtle); }
+  .pct { flex-shrink: 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pill { flex-shrink: 0; font-size: 10px; color: var(--accent); border: 1px solid var(--accent-soft); background: var(--white); border-radius: 999px; padding: 1px 6px; }
+  .due { flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--danger); font-variant-numeric: tabular-nums; }
+
+  .slips { display: flex; flex-direction: column; gap: 2px; }
+  .slip { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; row-gap: 3px; padding: 8px 6px 8px 4px; border-radius: 10px; }
+  .slip.is-current { background: var(--current); }
+  .slip .check { grid-column: 1; grid-row: 1; align-self: start; margin-top: 1px; }
+  .slip b { grid-column: 2; grid-row: 1; white-space: normal; text-overflow: unset; line-height: 1.4; overflow-wrap: break-word; }
+  .meta { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+  .meta .cat { flex: 1; }
+  .overdue-pill { flex-shrink: 0; font-size: 9.5px; font-weight: 650; line-height: 1; padding: 3px 8px; border-radius: 999px; background: #f9e9e7; color: var(--danger); }
+  .stamp { flex-shrink: 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .stamp .lbl { font-weight: 600; margin-right: 3px; }
+  .stamp.is-overdue { color: var(--danger); font-weight: 600; }
+
+  .empty { color: var(--muted); font-size: 12px; padding: 4px 2px 8px; }
+  .folder { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 2px; border-top: 1px solid var(--line); }
+  .folder h3 { margin: 0; flex: 1; font-size: 13px; font-weight: 600; }
+  .folder h3 small { margin-left: 8px; color: var(--muted); font-size: 11px; font-weight: 400; }
+  .count { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .caret { width: 12px; height: 12px; color: var(--muted); }
+
+  .foot { position: relative; min-height: 67px; flex-shrink: 0; }
+  .ai { position: absolute; right: 12px; bottom: 12px; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--accent-soft); border-radius: 12px; background: var(--accent-soft); color: var(--accent); }
+
+  .aside { margin-top: 28px; max-width: 716px; }
+  .aside h2 { margin: 0 0 10px; font-size: 13px; font-weight: 650; }
+  .snippet { width: 340px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 8px; }
+  .ask { margin: 18px 0 0; padding: 0; list-style: none; max-width: 716px; }
+  .ask li { position: relative; padding: 8px 0 8px 22px; border-top: 1px solid #ddd4ca; font-size: 13px; line-height: 1.6; }
+  .ask li::before { content: ""; position: absolute; left: 2px; top: 16px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+<symbol id="i-pin" viewBox="0 0 256 256"><path d="M235.33,104l-53.47,53.65c4.56,12.67,6.45,33.89-13.19,60A15.93,15.93,0,0,1,157,224c-.38,0-.75,0-1.13,0a16,16,0,0,1-11.32-4.69L96.29,171,53.66,213.66a8,8,0,0,1-11.32-11.32L85,159.71l-48.3-48.3A16,16,0,0,1,38,87.63c25.42-20.51,49.75-16.48,60.4-13.14L152,20.7a16,16,0,0,1,22.63,0l60.69,60.68A16,16,0,0,1,235.33,104Z"/></symbol>
+<symbol id="i-gear" viewBox="0 0 256 256"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm109.94-52.79a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A112.1,112.1,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.62a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.91,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21Zm-15,34.91-28.57,16.25a8,8,0,0,0-3,3c-.58,1-1.19,2.06-1.81,3.06a7.94,7.94,0,0,0-1.22,4.21l-.15,32.25a95.89,95.89,0,0,1-25.37,14.3L134,199.13a8,8,0,0,0-3.91-1h-.19c-1.21,0-2.43,0-3.64,0a8.08,8.08,0,0,0-4.1,1l-28.84,16.1A96,96,0,0,1,67.88,201l-.11-32.2a8,8,0,0,0-1.22-4.22c-.62-1-1.23-2-1.8-3.06a8.09,8.09,0,0,0-3-3.06l-28.6-16.29a90.49,90.49,0,0,1,0-28.26L61.67,97.63a8,8,0,0,0,3-3c.58-1,1.19-2.06,1.81-3.06a7.94,7.94,0,0,0,1.22-4.21l.15-32.25a95.89,95.89,0,0,1,25.37-14.3L122,56.87a8,8,0,0,0,4.1,1c1.21,0,2.43,0,3.64,0a8.08,8.08,0,0,0,4.1-1l28.84-16.1A96,96,0,0,1,188.12,55l.11,32.2a8,8,0,0,0,1.22,4.22c.62,1,1.23,2,1.8,3.06a8.09,8.09,0,0,0,3,3.06l28.6,16.29A90.49,90.49,0,0,1,222.9,142.12Z"/></symbol>
+<symbol id="i-collapse" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM122.34,101.66a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32L136,76.69V16a8,8,0,0,0-16,0V76.69L101.66,58.34A8,8,0,0,0,90.34,69.66Zm11.32,52.68a8,8,0,0,0-11.32,0l-32,32a8,8,0,0,0,11.32,11.32L120,179.31V240a8,8,0,0,0,16,0V179.31l18.34,18.35a8,8,0,0,0,11.32-11.32Z"/></symbol>
+<symbol id="i-minus" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128Z"/></symbol>
+<symbol id="i-archive" viewBox="0 0 256 256"><path d="M224,48H32A16,16,0,0,0,16,64V88a16,16,0,0,0,16,16v88a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V104a16,16,0,0,0,16-16V64A16,16,0,0,0,224,48ZM208,192H48V104H208ZM224,88H32V64H224V88ZM96,136a8,8,0,0,1,8-8h48a8,8,0,0,1,0,16H104A8,8,0,0,1,96,136Z"/></symbol>
+<symbol id="i-plus" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></symbol>
+<symbol id="i-squares" viewBox="0 0 256 256"><path d="M104,40H56A16,16,0,0,0,40,56v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V56A16,16,0,0,0,104,40Zm0,64H56V56h48v48Zm96-64H152a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V56A16,16,0,0,0,200,40Zm0,64H152V56h48v48Zm-96,32H56a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V152A16,16,0,0,0,104,136Zm0,64H56V152h48v48Zm96-64H152a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V152A16,16,0,0,0,200,136Zm0,64H152V152h48v48Z"/></symbol>
+<symbol id="i-dots" viewBox="0 0 256 256"><path d="M144,128a16,16,0,1,1-16-16A16,16,0,0,1,144,128ZM60,112a16,16,0,1,0,16,16A16,16,0,0,0,60,112Zm136,0a16,16,0,1,0,16,16A16,16,0,0,0,196,112Z"/></symbol>
+<symbol id="i-caret" viewBox="0 0 256 256"><path d="M216.49,104.49l-80,80a12,12,0,0,1-17,0l-80-80a12,12,0,0,1,17-17L128,159l71.51-71.52a12,12,0,0,1,17,17Z"/></symbol>
+<symbol id="i-spark" viewBox="0 0 256 256"><path d="M208,144a15.78,15.78,0,0,1-10.42,14.94L146,178l-19,51.62a15.92,15.92,0,0,1-29.88,0L78,178l-51.62-19a15.92,15.92,0,0,1,0-29.88L78,110l19-51.62a15.92,15.92,0,0,1,29.88,0L146,110l51.62,19A15.78,15.78,0,0,1,208,144ZM152,48h16V64a8,8,0,0,0,16,0V48h16a8,8,0,0,0,0-16H184V16a8,8,0,0,0-16,0V32H152a8,8,0,0,0,0,16Zm88,32h-8V72a8,8,0,0,0-16,0v8h-8a8,8,0,0,0,0,16h8v8a8,8,0,0,0,16,0V96h8a8,8,0,0,0,0-16Z"/></symbol>
+</svg>
+  <div class="sheet">
+    <h1>窄版展开的待办</h1>
+    <p class="lead">收起卡把标题留给人读，时间退到角上，写成「完成时间」。窄版展开正好相反：一行里同时放圆框、标题、进度条、0%、「待处理」和日期，340px 下标题只剩「在自动…」。下面右侧按收起卡的信息顺序重排，仍是清单，不是把每条再做成一张小卡。窗口 340×700，和现在的窄版一致。代码还没动。</p>
+
+    <div class="duo">
+      <figure>
+        <figcaption>现在<small>标题被截断，待办卡被拉成一块白。</small></figcaption>
+        <div class="win before">
+          <header class="titlebar">
+            <span class="logo"><i></i></span>
+            <span class="app-title">To Do List</span>
+            <span class="actions">
+              <span class="ib" aria-hidden="true"><svg class="ph"><use href="#i-pin"/></svg></span>
+              <span class="ib"><svg class="ph"><use href="#i-gear"/></svg></span>
+              <span class="ib"><svg class="ph"><use href="#i-collapse"/></svg></span>
+              <span class="ib"><svg class="ph"><use href="#i-minus"/></svg></span>
+            </span>
+          </header>
+          <div class="dash">
+            <div class="date-heading"><h1 class="day">9月22日</h1></div>
+            <div class="date-actions">
+              <span class="text-btn"><svg class="ph"><use href="#i-archive"/></svg>事项库</span>
+              <span class="text-btn solid"><svg class="ph"><use href="#i-plus"/></svg>新增</span>
+            </div>
+            <div class="toolbar">
+              <span class="tool"><svg class="ph"><use href="#i-squares"/></svg>方块视图</span>
+              <span class="more"><svg class="ph"><use href="#i-dots"/></svg></span>
+            </div>
+          </div>
+          <div class="board">
+            <section class="card todo" aria-label="待办">
+              <header class="card-head"><h2>待办</h2></header>
+              <ul class="old-list">
+                <li class="old-row is-current">
+                  <span class="check"></span>
+                  <span class="old-main">
+                    <span class="copy"><b>在自动化处理问题单流程中新增 JEV 审核尝试</b><span class="cat"><i class="dot dev"></i>个人开发 · 2026-09-21</span></span>
+                    <span class="bar"></span><span class="pct">0%</span><span class="pill">待处理</span><time class="due">9/22 23:59</time>
+                  </span>
+                </li>
+                <li class="old-row">
+                  <span class="check"></span>
+                  <span class="old-main">
+                    <span class="copy"><b>完成 DAMA BOOK 学习</b><span class="cat"><i class="dot study"></i>学习 · 2026-09-20</span></span>
+                    <span class="bar"></span><span class="pct">0%</span><time class="due">9/30 23:59</time>
+                  </span>
+                </li>
+              </ul>
+            </section>
+            <section class="card sched" aria-label="日程">
+              <header class="card-head"><h2>日程</h2></header>
+              <div class="empty">今天没有日程。</div>
+              <div class="folder"><h3>明天<small>9/23</small></h3><span class="count">0</span><svg class="ph caret"><use href="#i-caret"/></svg></div>
+              <div class="folder"><h3>近期<small>9/24 – 9/29</small></h3><span class="count">0</span><svg class="ph caret"><use href="#i-caret"/></svg></div>
+              <div class="folder"><h3>更晚<small>9/30 起</small></h3><span class="count">0</span><svg class="ph caret"><use href="#i-caret"/></svg></div>
+            </section>
+          </div>
+          <div class="foot"><span class="ai"><svg class="ph"><use href="#i-spark"/></svg></span></div>
+        </div>
+        <p class="note">「待处理」和红色日期在说同一件事。0% 的横条占的是标题的位置。分类行里的 <b>2026-09-20</b> 和右边的完成期限是两个日期，格式还不一样。</p>
+      </figure>
+
+      <figure>
+        <figcaption>提案<small>标题换行。时间退到第二行，写成完成时间。</small></figcaption>
+        <div class="win after">
+          <header class="titlebar">
+            <span class="logo"><i></i></span>
+            <span class="app-title">To Do List</span>
+            <span class="actions">
+              <span class="ib"><svg class="ph"><use href="#i-pin"/></svg></span>
+              <span class="ib"><svg class="ph"><use href="#i-gear"/></svg></span>
+              <span class="ib"><svg class="ph"><use href="#i-collapse"/></svg></span>
+              <span class="ib"><svg class="ph"><use href="#i-minus"/></svg></span>
+            </span>
+          </header>
+          <div class="dash">
+            <h1 class="day">9月22日</h1>
+            <div class="date-actions" style="display:flex;gap:6px">
+              <span class="text-btn"><svg class="ph"><use href="#i-archive"/></svg>事项库</span>
+              <span class="text-btn solid"><svg class="ph"><use href="#i-plus"/></svg>新增</span>
+            </div>
+          </div>
+          <div class="board">
+            <section class="card todo" aria-label="待办">
+              <header class="card-head">
+                <h2>待办</h2>
+                <span class="spacer">
+                  <span class="tool"><svg class="ph"><use href="#i-squares"/></svg>方块视图</span>
+                  <span class="more"><svg class="ph"><use href="#i-dots"/></svg></span>
+                </span>
+              </header>
+              <div class="slips">
+                <article class="slip is-current">
+                  <span class="check"></span>
+                  <b>在自动化处理问题单流程中新增 JEV 审核尝试</b>
+                  <span class="meta"><span class="cat"><span class="overdue-pill">已超期</span><i class="dot dev"></i>个人开发</span><time class="stamp is-overdue"><span class="lbl">完成时间</span>9/22 23:59</time></span>
+                </article>
+                <article class="slip">
+                  <span class="check"></span>
+                  <b>完成 DAMA BOOK 学习</b>
+                  <span class="meta"><span class="cat"><span class="overdue-pill">已超期</span><i class="dot study"></i>学习</span><time class="stamp is-overdue"><span class="lbl">完成时间</span>9/30 23:59</time></span>
+                </article>
+              </div>
+            </section>
+            <section class="card sched" aria-label="日程">
+              <header class="card-head"><h2>日程</h2></header>
+              <div class="empty">今天没有日程。</div>
+              <div class="folder"><h3>明天<small>9/23</small></h3><span class="count">0</span><svg class="ph caret"><use href="#i-caret"/></svg></div>
+              <div class="folder"><h3>近期<small>9/24 – 9/29</small></h3><span class="count">0</span><svg class="ph caret"><use href="#i-caret"/></svg></div>
+              <div class="folder"><h3>更晚<small>9/30 起</small></h3><span class="count">0</span><svg class="ph caret"><use href="#i-caret"/></svg></div>
+            </section>
+          </div>
+          <div class="foot"><span class="ai"><svg class="ph"><use href="#i-spark"/></svg></span></div>
+        </div>
+        <p class="note">逾期跟收起卡一样：分类前一枚「已超期」，完成时间整段变红加粗。分类行只留标签，不再写计划日。</p>
+      </figure>
+    </div>
+
+    <div class="aside">
+      <h2>进度不是 0 的时候</h2>
+      <div class="snippet">
+        <article class="slip">
+          <span class="check"></span>
+          <b>补齐自动化流水线的验收记录</b>
+          <span class="meta"><span class="cat"><i class="dot dev"></i>个人开发</span><span class="pct">35%</span><time class="stamp"><span class="lbl">完成时间</span>9/26 18:00</time></span>
+        </article>
+      </div>
+      <p class="note">有进度才写出数字，放在分类和时间之间。不画横条。点圆框之后，仍用现在的「确认完成 / 取消」换掉右侧时间，这张图不另画。</p>
+    </div>
+
+    <ol class="ask">
+      <li>行就按右边这样：标题最多两行，完成时间退到分类那一行。不把每条再做成收起卡那种叠层。</li>
+      <li>待办少的时候，卡片随内容变矮，不再撑出白框。日程紧接在待办下面，多出来的高度是窗口底色。</li>
+    </ol>
+  </div>
+</body>
+</html>

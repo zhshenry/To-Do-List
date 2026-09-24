@@ -200,7 +200,7 @@ export function activeToday(tasks: Task[], today = localDay()): Task[] {
 export function openToday(tasks: Task[], today = localDay()): Task[] {
   return activeToday(tasks, today).filter(t => t.status !== 'done');
 }
-export interface InsightSuggestion { title: string; context: string; prompt: string; source?: 'local' | 'ai'; generatedAt?: string; taskId?: string; dueAt?: string | null; }
+export interface InsightSuggestion { title: string; context: string; prompt: string; source?: 'local' | 'ai'; generatedAt?: string; taskId?: string; dueAt?: string | null; cacheKey?: string; }
 export function renderInsightContext(context: string, minutes: number | null): string {
   if (!context.includes('{min}')) return context;
   return context.replace('{min}', minutes === null ? '' : String(Math.max(0, minutes)));
@@ -208,7 +208,7 @@ export function renderInsightContext(context: string, minutes: number | null): s
 export function insightTarget(tasks: Task[], now = new Date()): InsightSuggestion | null {
   const due = (t: Task) => (t.dueAt ? Date.parse(t.dueAt) : NaN);
   const soonest = (list: Task[]) => list.filter(t => Number.isFinite(due(t))).sort((a, b) => due(a) - due(b))[0];
-  const meeting = soonest(tasks.filter(t => t.kind === 'meeting'));
+  const meeting = soonest(tasks.filter(t => t.kind === 'meeting' && due(t) >= now.getTime()));
   if (meeting) {
     const minutes = Math.round((due(meeting) - now.getTime()) / 60000);
     if (minutes >= 0 && minutes <= 60) return {
