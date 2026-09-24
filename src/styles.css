@@ -571,7 +571,7 @@ input[type="range"].progress-range::-webkit-slider-thumb { appearance: none; wid
 .picker-dot { width: 6px; height: 6px; border-radius: 999px; flex: 0 0 auto; }
 .picker-empty { padding: 10px; color: var(--muted); font-size: var(--fs-compact); }
 .picker-foot { padding: 7px 11px; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--fs-compact); }
-.linked-chip-row { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
+.linked-chip-row { display: flex; align-items: center; justify-content: flex-start; gap: 6px; margin: 0 0 6px; padding-left: 14px; }
 .linked-chip { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 320px; padding: 3px 8px; border: 1px solid var(--line); border-radius: var(--r-control-sm); background: var(--white); font-size: var(--fs-compact); }
 .linked-chip .linked-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 550; }
 .linked-chip .linked-tag { color: var(--muted); flex: 0 0 auto; }
