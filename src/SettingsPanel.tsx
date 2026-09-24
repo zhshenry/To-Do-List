@@ -247,7 +247,7 @@ function ProviderCard({ surface = 'llm', provider, models, activeModelId, api, c
     </button>
     {modelsOpen ? <div className="model-box" id={saved ? `models-${saved.id}` : 'models-new'}>
       {models.length ? <ul className="model-list" aria-label={`${saved?.name || draft.name || '新供应商'} 的模型`}>{models.map(model => <li key={model.id}>
-        {editingModel === model.id ? <input aria-label={`编辑模型 ${model.name}`} value={modelDraft} maxLength={200} autoFocus onChange={e => { modelEditRef.current.name = e.target.value; setModelDraft(e.target.value); onPending(e.target.value !== model.name); }} onBlur={() => void renameModel(model).catch(e => fail(errorText(e)))} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void renameModel(model).catch(cause => fail(errorText(cause))); } }} /> : <span className="category-name">{model.name}</span>}
+        {editingModel === model.id ? <input aria-label={`编辑模型 ${model.name}`} value={modelDraft} maxLength={200} autoFocus onChange={e => { modelEditRef.current.name = e.target.value; setModelDraft(e.target.value); onPending(e.target.value !== model.name); }} onBlur={() => void renameModel(model).catch(e => fail(errorText(e)))} onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void renameModel(model).catch(cause => fail(errorText(cause))); } }} /> : <span className="category-name" title={model.name}>{model.name}</span>}
         <ModelTestButton label={`测试连接 ${model.name}`} status={testFor(model.id)} detail={testFor(model.id) === 'idle' ? '' : testMessage} disabled={busy || !(saved || draft.endpoint.trim())} onClick={() => void probe(model.name, model.id)} />
         {editingModel === model.id ? <IconButton label={`保存 ${model.name}`} onMouseDown={e => e.preventDefault()} onClick={() => void renameModel(model).catch(cause => fail(errorText(cause)))}><Check size={15} /></IconButton> : <IconButton label={`重命名 ${model.name}`} onClick={() => { modelEditRef.current = { id: model.id, name: model.name }; setEditingModel(model.id); setModelDraft(model.name); }}><PencilSimple size={15} /></IconButton>}
         {!rlcd ? <IconButton className={`vision-toggle${model.vision ? ' is-active' : ''}`} aria-pressed={model.vision} label={`视觉（多模态） ${model.name}${model.vision ? '，已开启' : '，未开启'}`} title={model.vision ? '该模型已标记支持视觉，点击关闭' : '标记该模型是否支持视觉（多模态）'} onClick={() => void run(async () => { changed(await api.setModelVision({ modelId: model.id, vision: !model.vision })); })}><Eye size={15} weight={model.vision ? 'fill' : 'regular'} /></IconButton> : null}
@@ -277,12 +277,15 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
   const [drafts, setDrafts] = useState<Record<string, boolean>>({});
   const [, setUncommitted] = useState<Record<string, boolean>>({});
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const finishButtonRef = useRef<HTMLButtonElement>(null);
   const [tab, setTab] = useState<SettingsTab>(initialTab);
   const [paneDir, setPaneDir] = useState<'next' | 'prev' | ''>('');
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
   const [updater, setUpdater] = useState<UpdaterStatus | null>(null);
   const [creating, setCreating] = useState(false);
   const [creatingRlcd, setCreatingRlcd] = useState(false);
+  const [llmModelsOpen, setLlmModelsOpen] = useState(true);
+  const [rlcdModelsOpen, setRlcdModelsOpen] = useState(true);
   const api = useMemo<DesktopAPI>(() => {
     function track<T>(action: () => Promise<T>): Promise<T> {
       setPending(count => count + 1); setError('');
@@ -296,7 +299,7 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
       settings: input => track(() => rawApi.settings(input)),
       dockIcon: (action, preset) => track(() => rawApi.dockIcon(action, preset)),
       dockEnabled: enabled => track(() => rawApi.dockEnabled(enabled)),
-      windowWidth: (width, animate) => track(() => rawApi.windowWidth(width, animate)),
+      windowWidth: width => track(() => rawApi.windowWidth(width)),
       saveProvider: input => track(() => rawApi.saveProvider(input)),
       removeProvider: id => track(() => rawApi.removeProvider(id)),
       saveModel: input => track(() => rawApi.saveModel(input)),
@@ -360,6 +363,10 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
       else close();
     } catch (e) { setError(errorText(e)); } finally { setBusy(false); }
   }
+  function resumeDraft() {
+    setConfirmDiscard(false);
+    requestAnimationFrame(() => finishButtonRef.current?.focus());
+  }
   async function submit(event: FormEvent) {
     event.preventDefault(); await finish();
   }
@@ -378,14 +385,18 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
     {TABS.map(item => <button key={item.id} type="button" role="tab" id={`settings-tab-${item.id}`} aria-selected={tab === item.id} aria-controls={`settings-panel-${item.id}`} tabIndex={tab === item.id ? 0 : -1} onClick={() => selectTab(item.id)}>{item.label}</button>)}
   </div>;
   const paneClass = `settings-pane${paneDir ? ` is-${paneDir}` : ''}`;
-  return <><Modal className="settings-modal" title="设置" close={() => void finish()} subhead={tabs}>
-    <form noValidate onSubmit={submit} className="form-body">
+  return <Modal className={`settings-modal${confirmDiscard ? ' is-confirming-discard' : ''}`} title={confirmDiscard ? '放弃新建草稿？' : '设置'} close={() => confirmDiscard ? resumeDraft() : void finish()} subhead={confirmDiscard ? undefined : tabs}>
+    {confirmDiscard ? <section className="settings-discard-view">
+      <p>新供应商或模型尚未添加。已有设置的修改已经保存。</p>
+      <div className="actions"><button type="button" autoFocus onClick={resumeDraft}>继续填写</button><button type="button" className="danger" onClick={close}>放弃草稿并关闭</button></div>
+    </section> : null}
+    <form hidden={confirmDiscard} noValidate onSubmit={submit} className="form-body">
       <div hidden={tab !== 'general'} className={paneClass} role="tabpanel" id="settings-panel-general" aria-labelledby="settings-tab-general">
         <section className="sheet-card">
           <h3>桌面</h3>
           <div className="window-width-setting">
             <div className="label-with-help"><span>窗口宽度</span><HelpTip label="窗口宽度说明">标准 440 px；窄版 340 px。展开与收起保持同一宽度。</HelpTip></div>
-            <Segmented aria-label="窗口宽度" value={settings.mainWindowWidth} onChange={value => void api.windowWidth(value as MainWindowWidth, !(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)).then(changed).catch(cause => setError(errorText(cause)))} options={[{ value: 'standard', label: '标准' }, { value: 'narrow', label: '窄版' }]} />
+            <Segmented aria-label="窗口宽度" value={settings.mainWindowWidth} onChange={value => void api.windowWidth(value as MainWindowWidth).then(changed).catch(cause => setError(errorText(cause)))} options={[{ value: 'standard', label: '标准' }, { value: 'narrow', label: '窄版' }]} />
           </div>
           <label className="check-label"><input type="checkbox" checked={draft.autoStart} onChange={e => updateSettings({ ...settingsRef.current, autoStart: e.target.checked })} />登录 Windows 后自动启动</label>
           <p className="field-help">隐藏主界面后，AI 对话和提醒继续保留。Ctrl + Shift + Space 显示 / 隐藏主界面。可从托盘菜单移回主屏幕。</p>
@@ -428,23 +439,27 @@ export function SettingsPanel({ settings, api: rawApi, changed, close, initialTa
           </div>
         </section>
         <section className="sheet-card">
-          <h3 className="ai-surface-head">LLM 模型 <span className="surface-badge is-chat">对话用</span></h3>
-          {!settings.providers.length && !creating ? <p className="field-help">还没有供应商。</p> : null}
-          {settings.providers.map(provider => <ProviderCard key={provider.id} provider={provider} models={settings.models.filter(model => model.providerId === provider.id)} activeModelId={settings.activeModelId} api={api} changed={changed} fail={setError} registerFlush={registerFlush} onDirty={dirty => setDrafts(current => ({ ...current, [provider.id]: dirty }))} onPending={dirty => setUncommitted(current => ({ ...current, [provider.id]: dirty }))} />)}
-          {creating ? <ProviderCard provider={null} models={[]} activeModelId={settings.activeModelId} api={api} changed={changed} fail={setError} onDirty={dirty => setDrafts(current => ({ ...current, new: dirty }))} onPending={() => undefined} canCancel onClose={() => { setCreating(false); setDrafts(current => ({ ...current, new: false })); }} registerFlush={registerFlush} /> : null}
-          {settings.providers.length < 8 && !creating ? <button type="button" className="provider-add-button" onClick={() => setCreating(true)}><Plus size={14} weight="bold" /> 添加供应商</button> : null}
+          <h3 className="ai-surface-head"><button type="button" className="ai-surface-toggle" aria-expanded={llmModelsOpen} aria-controls="settings-llm-models-content" onClick={() => setLlmModelsOpen(open => !open)}><span>LLM 模型</span><span className="surface-badge is-chat">对话用</span><CaretDown size={14} weight="bold" /></button></h3>
+          <div id="settings-llm-models-content" className="ai-surface-content" hidden={!llmModelsOpen}>
+            {!settings.providers.length && !creating ? <p className="field-help">还没有供应商。</p> : null}
+            {settings.providers.map(provider => <ProviderCard key={provider.id} provider={provider} models={settings.models.filter(model => model.providerId === provider.id)} activeModelId={settings.activeModelId} api={api} changed={changed} fail={setError} registerFlush={registerFlush} onDirty={dirty => setDrafts(current => ({ ...current, [provider.id]: dirty }))} onPending={dirty => setUncommitted(current => ({ ...current, [provider.id]: dirty }))} />)}
+            {creating ? <ProviderCard provider={null} models={[]} activeModelId={settings.activeModelId} api={api} changed={changed} fail={setError} onDirty={dirty => setDrafts(current => ({ ...current, new: dirty }))} onPending={() => undefined} canCancel onClose={() => { setCreating(false); setDrafts(current => ({ ...current, new: false })); }} registerFlush={registerFlush} /> : null}
+            {settings.providers.length < 8 && !creating ? <button type="button" className="provider-add-button" onClick={() => setCreating(true)}><Plus size={14} weight="bold" /> 添加供应商</button> : null}
+          </div>
         </section>
         <section className="sheet-card">
-          <h3 className="ai-surface-head">RLCD 模型 <span className="surface-badge is-experiment">决策用 · 实验</span><HelpTip label="RLCD 模型说明">独立于对话 LLM 的决策模型配置，供应商与模型数据完全分开保存。当前版本仅保存配置，不参与任何功能；为后续能力预留。</HelpTip></h3>
-          {!settings.rlcdProviders.length && !creatingRlcd ? <p className="field-help">还没有 RLCD 供应商。这里的配置与对话模型完全独立，本期保存后不会产生任何行为。</p> : null}
-          {settings.rlcdProviders.map(provider => <ProviderCard key={provider.id} surface="rlcd" provider={provider} models={settings.rlcdModels.filter(model => model.providerId === provider.id)} activeModelId={settings.activeRlcdModelId} api={api} changed={changed} fail={setError} registerFlush={registerFlush} onDirty={dirty => setDrafts(current => ({ ...current, [`rlcd-${provider.id}`]: dirty }))} onPending={dirty => setUncommitted(current => ({ ...current, [`rlcd-${provider.id}`]: dirty }))} />)}
-          {creatingRlcd ? <ProviderCard surface="rlcd" provider={null} models={[]} activeModelId={settings.activeRlcdModelId} api={api} changed={changed} fail={setError} onDirty={dirty => setDrafts(current => ({ ...current, 'rlcd-new': dirty }))} onPending={() => undefined} canCancel onClose={() => { setCreatingRlcd(false); setDrafts(current => ({ ...current, 'rlcd-new': false })); }} registerFlush={registerFlush} /> : null}
-          {settings.rlcdProviders.length < 8 && !creatingRlcd ? <button type="button" className="provider-add-button" onClick={() => setCreatingRlcd(true)}><Plus size={14} weight="bold" /> 添加 RLCD 供应商（TypeSafe / OpenRouter / 自定义）</button> : null}
+          <h3 className="ai-surface-head"><button type="button" className="ai-surface-toggle" aria-expanded={rlcdModelsOpen} aria-controls="settings-rlcd-models-content" onClick={() => setRlcdModelsOpen(open => !open)}><span>RLCD 模型</span><span className="surface-badge is-experiment">决策用 · 实验</span><CaretDown size={14} weight="bold" /></button><HelpTip label="RLCD 模型说明">独立于对话 LLM 的决策模型配置，供应商与模型数据完全分开保存。当前版本仅保存配置，不参与任何功能；为后续能力预留。</HelpTip></h3>
+          <div id="settings-rlcd-models-content" className="ai-surface-content" hidden={!rlcdModelsOpen}>
+            {!settings.rlcdProviders.length && !creatingRlcd ? <p className="field-help">还没有 RLCD 供应商。这里的配置与对话模型完全独立，本期保存后不会产生任何行为。</p> : null}
+            {settings.rlcdProviders.map(provider => <ProviderCard key={provider.id} surface="rlcd" provider={provider} models={settings.rlcdModels.filter(model => model.providerId === provider.id)} activeModelId={settings.activeRlcdModelId} api={api} changed={changed} fail={setError} registerFlush={registerFlush} onDirty={dirty => setDrafts(current => ({ ...current, [`rlcd-${provider.id}`]: dirty }))} onPending={dirty => setUncommitted(current => ({ ...current, [`rlcd-${provider.id}`]: dirty }))} />)}
+            {creatingRlcd ? <ProviderCard surface="rlcd" provider={null} models={[]} activeModelId={settings.activeRlcdModelId} api={api} changed={changed} fail={setError} onDirty={dirty => setDrafts(current => ({ ...current, 'rlcd-new': dirty }))} onPending={() => undefined} canCancel onClose={() => { setCreatingRlcd(false); setDrafts(current => ({ ...current, 'rlcd-new': false })); }} registerFlush={registerFlush} /> : null}
+            {settings.rlcdProviders.length < 8 && !creatingRlcd ? <button type="button" className="provider-add-button" onClick={() => setCreatingRlcd(true)}><Plus size={14} weight="bold" /> 添加 RLCD 供应商（TypeSafe / OpenRouter / 自定义）</button> : null}
+          </div>
         </section>
       </div>
 
       {notice ? <p role="status" className="field-help">{notice}</p> : null}{error ? <p role="alert" className="error">{error}</p> : null}
-      <div className="actions sticky-actions"><button className="primary" type="submit" disabled={busy || pending > 0}>{busy || pending > 0 ? '保存中…' : '完成'}</button></div>
+      <div className="actions sticky-actions"><button ref={finishButtonRef} className="primary" type="submit" disabled={busy || pending > 0}>{busy || pending > 0 ? '保存中…' : '完成'}</button></div>
     </form>
-  </Modal>{confirmDiscard ? <Modal className="confirm" title="放弃新建草稿？" close={() => setConfirmDiscard(false)}><p>新供应商或模型尚未添加。已有设置的修改已经保存。</p><div className="actions"><button type="button" onClick={() => setConfirmDiscard(false)}>继续填写</button><button type="button" className="danger" onClick={close}>放弃草稿并关闭</button></div></Modal> : null}</>;
+  </Modal>;
 }

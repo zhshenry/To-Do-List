@@ -613,8 +613,8 @@ function fitWindow(): Promise<void> {
   followAssistant('main');
   return Promise.resolve();
 }
-function setMainWindowWidth(preset: MainWindowWidth, animate = true): Promise<void> {
-  if (win.isDestroyed()) return Promise.resolve();
+function setMainWindowWidth(preset: MainWindowWidth): void {
+  if (win.isDestroyed()) return;
   cancelMainMotion();
   const current = win.getBounds();
   const area = screen.getDisplayMatching(current).workArea;
@@ -626,46 +626,10 @@ function setMainWindowWidth(preset: MainWindowWidth, animate = true): Promise<vo
   const expanded = store.setting('mainExpandedSize', { width: 440, height: 700 });
   store.setSetting('mainWindowWidth', preset);
   store.setSetting('mainExpandedSize', { ...expanded, width: MAIN_WINDOW_WIDTHS[preset] });
-  const settle = () => {
-    if (win.isDestroyed()) return;
-    win.setBounds(target);
-    const { x, y } = win.getBounds();
-    store.setSetting('position', { x, y });
-    followAssistant('main');
-  };
-  if (!animate || current.width === target.width) {
-    settle();
-    return Promise.resolve();
-  }
-  return new Promise(resolve => {
-    const started = Date.now();
-    const animationTimer = setInterval(() => {
-      if (win.isDestroyed()) {
-        clearInterval(animationTimer);
-        if (mainMotionTimer === animationTimer) mainMotionTimer = null;
-        if (mainMotionResolve === resolve) mainMotionResolve = null;
-        resolve();
-        return;
-      }
-      const progress = Math.min(1, (Date.now() - started) / 180);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      win.setBounds({
-        x: Math.round(current.x + (target.x - current.x) * eased),
-        y: Math.round(current.y + (target.y - current.y) * eased),
-        width: Math.round(current.width + (target.width - current.width) * eased),
-        height: Math.round(current.height + (target.height - current.height) * eased),
-      });
-      followAssistant('main');
-      if (progress < 1) return;
-      clearInterval(animationTimer);
-      if (mainMotionTimer === animationTimer) mainMotionTimer = null;
-      if (mainMotionResolve === resolve) mainMotionResolve = null;
-      settle();
-      resolve();
-    }, 16);
-    mainMotionTimer = animationTimer;
-    mainMotionResolve = resolve;
-  });
+  if (current.x !== target.x || current.y !== target.y || current.width !== target.width || current.height !== target.height) win.setBounds(target);
+  const { x, y } = win.getBounds();
+  store.setSetting('position', { x, y });
+  followAssistant('main');
 }
 function cancelMainMotion(): void {
   if (mainMotionTimer !== null) clearInterval(mainMotionTimer);
@@ -897,8 +861,8 @@ function registerHandlers(): void {
     }
     return changed();
   });
-  handle('window:width', async (width, animate) => {
-    await setMainWindowWidth(mainWindowWidthSchema.parse(width), z.boolean().optional().parse(animate) ?? true);
+  handle('window:width', width => {
+    setMainWindowWidth(mainWindowWidthSchema.parse(width));
     return changed();
   });
   handle('compact:height', height => {

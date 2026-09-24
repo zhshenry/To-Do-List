@@ -36,7 +36,7 @@ try {
   assert.equal('apiKey' in snapshot.settings, false);
   await page.screenshot({ path: 'test-results/packaged-profile.png' });
   const assistantWindow = app.waitForEvent('window');
-  await page.getByRole('button', { name: '打开 AI 助手', exact: true }).click();
+  await page.evaluate(() => window.desktop.assistant({ action: 'show', source: 'tray', animate: false }));
   const assistantPage = await assistantWindow;
   assistantPage.on('pageerror', e => errors.push(e.message));
   await assistantPage.locator('.assistant-widget').waitFor();

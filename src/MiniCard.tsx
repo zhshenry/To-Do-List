@@ -244,7 +244,7 @@ function SettingsQuickPanel({ data, api, mutating, mutate, close, modelOpen, set
     <header className="mini-selector-head"><span><GearSix size={14} /></span><b>快捷设置</b><IconButton label="关闭快捷设置" onClick={close}><X size={13} /></IconButton></header>
     <div className="mini-settings-row"><span>启用 AI</span><button type="button" className="toggle" role="switch" aria-checked={data.settings.aiEnabled} aria-label="启用 AI" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: !data.settings.aiEnabled, autoStart: data.settings.autoStart }))} /></div>
     <div className="mini-settings-row"><span>登录 Windows 后自动启动</span><button type="button" className="toggle" role="switch" aria-checked={data.settings.autoStart} aria-label="登录 Windows 后自动启动" disabled={mutating} onClick={() => void mutate(() => api.settings({ aiEnabled: data.settings.aiEnabled, autoStart: !data.settings.autoStart }))} /></div>
-    <div className="mini-settings-row"><span>窗口宽度</span><Segmented aria-label="窗口宽度" value={data.settings.mainWindowWidth} onChange={value => void api.windowWidth(value as MainWindowWidth, animate)} options={[{ value: 'standard', label: '标准' }, { value: 'narrow', label: '窄版' }]} /></div>
+    <div className="mini-settings-row"><span>窗口宽度</span><Segmented aria-label="窗口宽度" value={data.settings.mainWindowWidth} onChange={value => void api.windowWidth(value as MainWindowWidth)} options={[{ value: 'standard', label: '标准' }, { value: 'narrow', label: '窄版' }]} /></div>
     <div className="mini-settings-row">
       <span>当前模型</span>
       {data.settings.models.length

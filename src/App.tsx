@@ -148,7 +148,7 @@ export function App() {
       <div className="dashboard-top">
         <div className="date-heading"><h1>{clock.getMonth() + 1}月{clock.getDate()}日</h1><span>{['周日', '周一', '周二', '周三', '周四', '周五', '周六'][clock.getDay()]} · 专注当下</span></div>
         <div className="date-actions">
-          <button type="button" className="library-entry" title="事项库 · Ctrl+F" aria-pressed={libraryOpen} onClick={() => setLibraryOpen(open => !open)}><Archive size={17} />事项库</button>
+          <button type="button" className="library-entry" title="历史事项 · Ctrl+F" aria-pressed={libraryOpen} onClick={() => setLibraryOpen(open => !open)}><Archive size={17} />历史事项</button>
           <button type="button" className="add-task-entry" aria-label="添加待办" title="新增 · Ctrl+N" onClick={() => setEditor('new')}><Plus size={17} />新增</button>
         </div>
       </div>

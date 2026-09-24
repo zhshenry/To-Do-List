@@ -79,9 +79,7 @@ await page.evaluate(async () => {
 // ── 展开态：＋ → 根菜单 → 二级面板 → 点选关联 → chip ──
 await page.getByRole('button', { name: '打开 AI 助手', exact: true }).click();
 await page.locator('.assistant-overlay textarea').last().waitFor();
-await page.getByRole('button', { name: '关联已有事项' }).click();
-await page.locator('.plus-root').waitFor();
-await page.getByRole('menuitem', { name: /选择事项/ }).click();
+await page.getByRole('button', { name: '选择事项', exact: true }).click();
 await page.locator('.plus-sub').waitFor();
 await page.locator('.picker-row', { hasText: '写周报' }).first().waitFor();
 await page.waitForTimeout(250);

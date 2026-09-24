@@ -5,13 +5,35 @@
 .settings-modal .provider-card .icon-button { min-width: 32px; min-height: 32px; }
 .settings-modal .model-list li .icon-button { min-width: var(--ctl-sm); min-height: var(--ctl-sm); }
 .settings-modal .model-list li .vision-toggle.is-active { color: var(--accent); }
+.settings-modal .model-box .model-test-button { height: var(--ctl-sm); }
+@media (max-width: 360px) {
+  .settings-modal .model-box { padding: 4px; }
+  .settings-modal .model-list li { column-gap: 2px; padding-inline: 2px; }
+  .settings-modal .model-list li .category-name,
+  .settings-modal .model-list li > input { flex: 1 0 100%; min-width: 0; }
+  .settings-modal .model-list li .category-name { padding-left: 6px; }
+  .settings-modal .model-list li .model-test-button { margin-left: auto; }
+}
 .ai-surface-head { display: flex; align-items: center; gap: 8px; margin: 0; }
+.ai-surface-head > .ai-surface-toggle { flex: 1; min-width: 0; }
+.ai-surface-toggle { display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--ctl-md); margin: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: inherit; text-align: left; }
+.ai-surface-toggle:hover, .ai-surface-toggle:active { background: transparent; color: var(--ink); }
+.ai-surface-toggle > span:first-child { min-width: 0; }
+.ai-surface-toggle > svg { flex: 0 0 auto; margin-left: auto; color: var(--muted); transition: transform 180ms cubic-bezier(.2, .7, .2, 1); }
+.ai-surface-toggle[aria-expanded="true"] > svg { transform: rotate(180deg); }
+.ai-surface-content { display: flex; flex-direction: column; gap: 8px; }
+.ai-surface-content[hidden] { display: none; }
 .surface-badge { flex-shrink: 0; font-size: var(--fs-compact-sm); font-weight: 650; border-radius: 999px; padding: 1px 6px; }
 .surface-badge.is-chat { color: var(--success); background: var(--success-soft); }
 .surface-badge.is-experiment { color: var(--accent); background: var(--accent-soft); }
 .settings-modal .model-create { grid-template-columns: 1fr auto; margin-top: 8px; }
 .settings-modal .model-create > input { grid-column: 1 / -1; }
 .modal.settings-modal .settings-pane[hidden] { display: none; }
+.modal.settings-modal .form-body[hidden] { display: none; }
+.settings-discard-view { display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px; }
+.settings-discard-view > p { margin: 0; font-size: var(--fs-body); line-height: 1.6; }
+.settings-discard-view .actions { justify-content: flex-end; gap: 8px; }
+.settings-discard-view .actions > button { min-height: var(--ctl-lg); padding: 0 10px; }
 .window-width-setting { display: grid; gap: 7px; margin-top: 10px; }
 .window-width-setting > .label-with-help { font-weight: 600; }
 .window-width-setting .segmented { width: 100%; }

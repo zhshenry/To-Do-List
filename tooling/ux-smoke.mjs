@@ -60,9 +60,38 @@ async function checkLauncherInsets() {
   assert.ok(Math.abs(right - bottom) < 1 && right >= 12 && right <= 14, 'AI launcher keeps equal right and bottom insets');
 }
 async function openAssistant() {
-  if (await page.locator('.assistant-overlay').count() === 0) await page.getByRole('button', { name: '打开 AI 助手', exact: true }).click();
+  const opening = await page.locator('.assistant-overlay').count() === 0;
+  const before = opening ? await page.locator('.widget-surface').evaluate(element => ({ scrollTop: element.scrollTop, titleTop: element.querySelector('.titlebar')?.getBoundingClientRect().top })) : null;
+  if (opening) {
+    await page.evaluate(() => {
+      window.__assistantMotionSamples = [];
+      document.querySelector('.ai-launcher').addEventListener('click', () => {
+        const surface = document.querySelector('.widget-surface');
+        const title = surface.querySelector('.titlebar');
+        const start = performance.now();
+        const sample = () => {
+          window.__assistantMotionSamples.push({ scrollTop: surface.scrollTop, titleTop: title.getBoundingClientRect().top });
+          if (performance.now() - start < 450) requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      }, { once: true });
+    });
+    await page.getByRole('button', { name: '打开 AI 助手', exact: true }).click();
+  }
   assistant = page;
   await page.locator('.assistant-overlay').getByLabel('AI 对话输入', { exact: true }).waitFor();
+  if (before) {
+    await wait(500);
+    const after = await page.locator('.widget-surface').evaluate(element => ({ scrollTop: element.scrollTop, titleTop: element.querySelector('.titlebar')?.getBoundingClientRect().top }));
+    const motion = await page.evaluate(() => ({
+      frames: window.__assistantMotionSamples.length,
+      maxScroll: Math.max(...window.__assistantMotionSamples.map(sample => Math.abs(sample.scrollTop - window.__assistantMotionSamples[0].scrollTop))),
+      maxTitleShift: Math.max(...window.__assistantMotionSamples.map(sample => Math.abs(sample.titleTop - window.__assistantMotionSamples[0].titleTop))),
+    }));
+    assert.ok(motion.frames > 0 && motion.maxScroll < 1 && motion.maxTitleShift < 1, `opening animation never scrolls the main surface: ${JSON.stringify({ before, after, motion })}`);
+    assert.equal(after.scrollTop, before.scrollTop, `opening the embedded assistant keeps the main surface scroll position: ${JSON.stringify({ before, after })}`);
+    assert.ok(Math.abs(after.titleTop - before.titleTop) < 1, `opening the embedded assistant keeps the titlebar in place: ${JSON.stringify({ before, after })}`);
+  }
 }
 function event(res, delta, finish_reason = null) {
   res.write(`data: ${JSON.stringify({ id: 'chatcmpl-ux', object: 'chat.completion.chunk', choices: [{ index: 0, delta, finish_reason }] })}\n\n`);
@@ -128,6 +157,7 @@ try {
   await openAssistant();
   await assistant.getByText('请先配置 AI 大模型', { exact: true }).waitFor();
   const assistantInput = assistant.getByLabel('AI 对话输入', { exact: true });
+  assert.equal(await assistantInput.evaluate(element => element === document.activeElement), true, 'assistant input receives focus without scrolling the main surface');
   assert.equal(await assistantInput.getAttribute('placeholder'), 'Enter 发送 · Shift + Enter 换行');
   assert.equal(await assistantInput.evaluate(element => getComputedStyle(element).textAlign), 'left');
   const [assistantComposeBox, assistantInputBox] = await Promise.all([
@@ -231,7 +261,7 @@ try {
   await page.getByRole('button', { name: '切换到列表视图', exact: true }).click();
   checks.push('visible category names in row and tile views');
 
-  await page.getByRole('button', { name: '事项库', exact: true }).click();
+  await page.getByRole('button', { name: '历史事项', exact: true }).click();
   assert.equal(await page.getByLabel('搜索事项', { exact: true }).evaluate(element => getComputedStyle(element).outlineStyle), 'none', 'library search input does not draw a second accent focus frame');
   await screenshot('library-focus');
   await page.getByLabel('搜索事项', { exact: true }).fill('季度目标');
@@ -396,9 +426,9 @@ try {
   await page.getByLabel('供应商名称', { exact: true }).fill('本地测试');
   await page.getByLabel('服务地址', { exact: true }).fill(`http://127.0.0.1:${server.address().port}/v1`);
   await choose('服务协议', 'OpenAI Chat Completions');
-  await page.getByLabel('模型名称 / ID', { exact: true }).fill('test-model');
+  await page.getByLabel('模型名称 / ID', { exact: true }).fill('deepseek-v4-flash');
   await page.getByRole('button', { name: '测试连接', exact: true }).click();
-  await page.getByRole('button', { name: '模型 test-model 连接成功', exact: true }).waitFor();
+  await page.getByRole('button', { name: '模型 deepseek-v4-flash 连接成功', exact: true }).waitFor();
   assert.equal((await page.evaluate(() => window.desktop.state())).settings.providers.length, 0, 'connection testing must not silently save a draft');
   await page.getByRole('button', { name: '添加并使用', exact: true }).click();
   await poll(async () => (await page.evaluate(() => window.desktop.state())).settings.models.length === 1, 'add provider and active model');
@@ -416,7 +446,94 @@ try {
   await page.getByRole('switch', { name: '启用 AI', exact: true }).click();
   await poll(async () => (await page.evaluate(() => window.desktop.state())).settings.aiEnabled, 'AI switch immediate save');
   await screenshot('settings-ai');
+  await resize(340, standardBounds.height);
+  const narrowModelFit = await page.locator('.model-list li').first().evaluate(row => {
+    const name = row.querySelector('.category-name');
+    const rowBox = row.getBoundingClientRect();
+    const nameBox = name.getBoundingClientRect();
+    const buttons = [...row.querySelectorAll('button')].map(button => button.getBoundingClientRect());
+    return { nameWidth: name.clientWidth, nameContentWidth: name.scrollWidth, nameBottom: nameBox.bottom, buttonsTop: Math.min(...buttons.map(box => box.top)), buttonsInside: buttons.every(box => box.left >= rowBox.left && box.right <= rowBox.right) };
+  });
+  assert.ok(narrowModelFit.nameContentWidth <= narrowModelFit.nameWidth && narrowModelFit.buttonsTop >= narrowModelFit.nameBottom && narrowModelFit.buttonsInside, `narrow model row shows its name above four compact actions: ${JSON.stringify(narrowModelFit)}`);
+  await screenshot('settings-ai-model-narrow');
+  await resize(440, standardBounds.height);
+  const llmModelsToggle = page.getByRole('button', { name: 'LLM 模型 对话用', exact: true });
+  const rlcdModelsToggle = page.getByRole('button', { name: 'RLCD 模型 决策用 · 实验', exact: true });
+  const llmModelsContent = page.locator('#settings-llm-models-content');
+  const rlcdModelsContent = page.locator('#settings-rlcd-models-content');
+  assert.equal(await llmModelsToggle.getAttribute('aria-expanded'), 'true', 'LLM models start expanded');
+  assert.equal(await rlcdModelsToggle.getAttribute('aria-expanded'), 'true', 'RLCD models start expanded');
+  await llmModelsToggle.click();
+  assert.equal(await llmModelsToggle.getAttribute('aria-expanded'), 'false', 'LLM models can collapse independently');
+  assert.equal(await llmModelsContent.isHidden(), true, 'collapsed LLM content is hidden');
+  await rlcdModelsToggle.click();
+  assert.equal(await rlcdModelsToggle.getAttribute('aria-expanded'), 'false', 'RLCD models can collapse independently');
+  assert.equal(await rlcdModelsContent.isHidden(), true, 'collapsed RLCD content is hidden');
+  await screenshot('settings-ai-model-sections-collapsed');
+  await llmModelsToggle.click();
+  assert.equal(await llmModelsContent.isVisible(), true, 'LLM models can reopen while RLCD remains collapsed');
+  assert.equal(await rlcdModelsContent.isHidden(), true, 'folding one model section does not open the other');
+  await rlcdModelsToggle.click();
+  await page.getByRole('button', { name: '添加供应商', exact: true }).click();
+  const draftProviderName = page.getByLabel('供应商名称', { exact: true }).last();
+  await draftProviderName.fill('未完成的供应商草稿');
+  await llmModelsToggle.click();
+  assert.equal(await draftProviderName.isHidden(), true, 'collapsing LLM models hides the draft without removing its component');
+  await llmModelsToggle.click();
+  assert.equal(await draftProviderName.inputValue(), '未完成的供应商草稿', 'expanding LLM models preserves the in-progress provider draft');
   await page.getByRole('button', { name: '完成', exact: true }).last().click();
+  const discardDialog = page.getByRole('dialog', { name: '放弃新建草稿？', exact: true });
+  await discardDialog.waitFor();
+  const discardMetrics = () => page.evaluate(() => {
+    const dialog = document.querySelector('.modal.settings-modal');
+    const title = dialog?.querySelector('.modal-heading h2')?.getBoundingClientRect();
+    const copy = dialog?.querySelector('.settings-discard-view > p')?.getBoundingClientRect();
+    const actions = dialog?.querySelector('.settings-discard-view .actions')?.getBoundingClientRect();
+    const continueButton = dialog?.querySelector('.settings-discard-view button');
+    const button = continueButton?.getBoundingClientRect();
+    return {
+      width: dialog?.getBoundingClientRect().width,
+      height: dialog?.getBoundingClientRect().height,
+      titleLeft: title?.left,
+      copyLeft: copy?.left,
+      actionsLeft: actions?.left,
+      actionsRight: actions?.right,
+      dialogRight: dialog?.getBoundingClientRect().right,
+      buttonHeight: button?.height,
+      continueFocused: continueButton === document.activeElement,
+      openDialogs: document.querySelectorAll('.modal[open]').length,
+    };
+  });
+  const standardDiscardMetrics = await discardMetrics();
+  assert.ok(standardDiscardMetrics.height <= 220, `draft confirmation shrinks to its content instead of retaining the full-height settings panel: ${JSON.stringify(standardDiscardMetrics)}`);
+  assert.ok(standardDiscardMetrics.width <= generalSettingsBox.width, `draft confirmation fits inside the settings width: ${JSON.stringify(standardDiscardMetrics)}`);
+  assert.ok(Math.abs(standardDiscardMetrics.titleLeft - standardDiscardMetrics.copyLeft) <= 1 && Math.abs(standardDiscardMetrics.copyLeft - standardDiscardMetrics.actionsLeft) <= 1, `confirmation title, copy and actions share one inset: ${JSON.stringify(standardDiscardMetrics)}`);
+  assert.ok(standardDiscardMetrics.buttonHeight >= 32 && standardDiscardMetrics.buttonHeight <= 36, `confirmation actions use the 32px control size: ${JSON.stringify(standardDiscardMetrics)}`);
+  assert.ok(standardDiscardMetrics.actionsRight <= standardDiscardMetrics.dialogRight - 15, `confirmation actions stay inside the modal content inset: ${JSON.stringify(standardDiscardMetrics)}`);
+  assert.equal(standardDiscardMetrics.continueFocused, true, 'the safer continue action receives initial focus');
+  assert.equal(standardDiscardMetrics.openDialogs, 1, 'draft confirmation reuses the settings dialog instead of stacking another dialog');
+  await screenshot('settings-discard-confirm');
+  await resize(340, standardBounds.height);
+  await poll(() => page.evaluate(() => innerWidth === 340), 'narrow settings confirmation viewport');
+  const narrowDiscardMetrics = await discardMetrics();
+  assert.ok(narrowDiscardMetrics.height <= 250, `narrow draft confirmation shrinks to its content: ${JSON.stringify(narrowDiscardMetrics)}`);
+  assert.ok(narrowDiscardMetrics.width <= 292, `draft confirmation fits the 340px settings window: ${JSON.stringify(narrowDiscardMetrics)}`);
+  assert.ok(Math.abs(narrowDiscardMetrics.titleLeft - narrowDiscardMetrics.copyLeft) <= 1 && Math.abs(narrowDiscardMetrics.copyLeft - narrowDiscardMetrics.actionsLeft) <= 1, `narrow confirmation keeps aligned content: ${JSON.stringify(narrowDiscardMetrics)}`);
+  assert.ok(narrowDiscardMetrics.actionsRight <= narrowDiscardMetrics.dialogRight - 15, `narrow confirmation actions remain inside the modal: ${JSON.stringify(narrowDiscardMetrics)}`);
+  await screenshot('settings-discard-confirm-narrow');
+  await resize(440, standardBounds.height);
+  await poll(() => page.evaluate(() => innerWidth === 440), 'restore standard settings confirmation viewport');
+  await page.keyboard.press('Escape');
+  await settingsDialog.waitFor();
+  await poll(async () => await page.getByRole('button', { name: '完成', exact: true }).last().evaluate(button => button === document.activeElement), 'draft confirmation restores focus to settings completion');
+  assert.equal(await page.getByLabel('供应商名称', { exact: true }).last().inputValue(), '未完成的供应商草稿', 'continuing preserves the in-progress provider draft');
+  await page.getByRole('button', { name: '完成', exact: true }).last().click();
+  await discardDialog.waitFor();
+  await page.getByRole('button', { name: '放弃草稿并关闭', exact: true }).click();
+  await settingsDialog.waitFor({ state: 'hidden' });
+  assert.equal((await page.evaluate(() => window.desktop.state())).settings.providers.length, 1, 'discarding a new provider draft leaves saved providers untouched');
+  checks.push('LLM and RLCD model sections fold independently, start expanded and preserve an in-progress provider draft');
+  checks.push('settings draft confirmation stays in one dialog, fits standard and narrow windows, preserves draft on Escape, restores focus and discards safely');
   checks.push('fixed-size two-tab settings, persisted standard/narrow width presets, immediate persistence, advanced disclosure, local connection test and missing-model validation');
 
   await page.evaluate(() => window.desktop.assistant({ action: 'show', source: 'tray', animate: false }));
@@ -528,7 +645,7 @@ try {
   await assistant.getByRole('button', { name: '发送给 AI', exact: true }).click();
   await assistant.getByRole('button', { name: '应用所选 1 项', exact: true }).waitFor();
   await app.close(); assistant = null;
-  await launch(); await openAssistant();
+  await launch(); await resize(340, 720); await openAssistant();
   await assistant.getByText(/建议已过期|建议已失效|需要重新生成/).first().waitFor();
   assert.equal(await assistant.getByRole('button', { name: '应用所选 1 项', exact: true }).count(), 0);
   assert.equal((await page.evaluate(() => window.desktop.state())).tasks.some(item => item.title === 'AI 未确认事项'), false);
@@ -557,6 +674,33 @@ try {
   assert.notEqual(overlayChrome.borderBottom, '0px', 'assistant title is separated from the conversation');
   assert.equal(overlayChrome.dateTransform, 'none', 'opening the assistant does not move the page behind it');
   assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some(item => item.webContents.getURL().includes('window=assistant'))), false, 'main assistant stays inside the todo window');
+  const pickerBefore = await page.evaluate(() => ({ overlayLeft: document.querySelector('.assistant-overlay')?.getBoundingClientRect().left, mainLeft: document.querySelector('.widget')?.getBoundingClientRect().left, width: innerWidth }));
+  await page.getByRole('button', { name: '选择事项', exact: true }).click();
+  await page.locator('.plus-sub').waitFor();
+  const narrowPickerFit = await page.evaluate(() => {
+    const overlay = document.querySelector('.assistant-overlay')?.getBoundingClientRect();
+    const footer = document.querySelector('.assistant-footer')?.getBoundingClientRect();
+    const trigger = document.querySelector('.assistant-plus')?.getBoundingClientRect();
+    const picker = document.querySelector('.plus-sub')?.getBoundingClientRect();
+    const search = document.querySelector('.picker-search')?.getBoundingClientRect();
+    const foot = document.querySelector('.picker-foot')?.getBoundingClientRect();
+    return { overlayTop: overlay?.top, overlayLeft: overlay?.left, overlayRight: overlay?.right, mainLeft: document.querySelector('.widget')?.getBoundingClientRect().left, footerTop: footer?.top, triggerLeft: trigger?.left, pickerTop: picker?.top, pickerLeft: picker?.left, pickerRight: picker?.right, pickerBottom: picker?.bottom, searchTop: search?.top, searchBottom: search?.bottom, footTop: foot?.top, footBottom: foot?.bottom, innerWidth: innerWidth, documentWidth: document.documentElement.scrollWidth, scrollX };
+  });
+  assert.ok(narrowPickerFit.pickerLeft >= narrowPickerFit.overlayLeft && narrowPickerFit.pickerRight <= narrowPickerFit.overlayRight, `task picker stays inside the narrow assistant and opens on the left: ${JSON.stringify(narrowPickerFit)}`);
+  assert.ok(narrowPickerFit.pickerLeft <= narrowPickerFit.triggerLeft && narrowPickerFit.pickerBottom <= narrowPickerFit.footerTop, `task picker sits above the lower-left composer control: ${JSON.stringify(narrowPickerFit)}`);
+  assert.ok(narrowPickerFit.pickerTop >= narrowPickerFit.overlayTop && narrowPickerFit.searchTop >= narrowPickerFit.pickerTop && narrowPickerFit.searchBottom <= narrowPickerFit.pickerBottom && narrowPickerFit.footTop >= narrowPickerFit.pickerTop && narrowPickerFit.footBottom <= narrowPickerFit.pickerBottom, `task picker keeps search and help text within the short assistant panel: ${JSON.stringify(narrowPickerFit)}`);
+  assert.equal(narrowPickerFit.documentWidth, narrowPickerFit.innerWidth, 'opening the picker does not create horizontal document overflow');
+  assert.equal(narrowPickerFit.scrollX, 0, 'opening the picker does not horizontally scroll the app');
+  assert.equal(narrowPickerFit.overlayLeft, pickerBefore.overlayLeft, 'opening the picker keeps the assistant panel horizontally fixed');
+  assert.equal(narrowPickerFit.mainLeft, pickerBefore.mainLeft, 'opening the picker does not shift the underlying app');
+  await screenshot('assistant-narrow-task-picker');
+  await page.locator('.date-heading h1').click();
+  await page.locator('.plus-sub').waitFor({ state: 'hidden' });
+  assert.equal(await page.getByRole('button', { name: '选择事项', exact: true }).getAttribute('aria-expanded'), 'false', 'clicking outside the task picker closes it');
+  await page.getByRole('button', { name: '选择事项', exact: true }).click();
+  await page.locator('.plus-sub').waitFor();
+  await page.keyboard.press('Escape');
+  await page.locator('.plus-sub').waitFor({ state: 'hidden' });
   await screenshot('assistant-narrow');
   await page.getByRole('button', { name: '关闭 AI 助手', exact: true }).click();
   await poll(async () => await page.locator('.assistant-overlay').count() === 0, 'assistant overlay closes');

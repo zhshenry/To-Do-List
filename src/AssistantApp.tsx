@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { ArrowClockwise, ArrowsOutSimple, Check, CaretRight, ListMagnifyingGlass, Plus, CaretDown, CaretLeft, PaperPlaneTilt, Sparkle, Stop, Trash, X } from '@phosphor-icons/react';
+import { ArrowClockwise, ArrowsOutSimple, Check, ListMagnifyingGlass, Plus, CaretDown, CaretLeft, PaperPlaneTilt, Sparkle, Stop, Trash, X } from '@phosphor-icons/react';
 import { createPortal } from 'react-dom';
 import type { AIAction, AIProposalSelection, AIAsk, AssistantAnchor, ChatSession, ChatSummary, State, Task } from '../shared/contracts';
 import { localDay, renderInsightContext } from '../shared/contracts';
@@ -111,7 +111,6 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   const [compactComposer, setCompactComposer] = useState(true);
   const [activeAsk, setActiveAsk] = useState<AIAsk | null>(null);
   const [linkedTask, setLinkedTask] = useState<Task | null>(null);
-  const [plusOpen, setPlusOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerQuery, setPickerQuery] = useState('');
   const [slashMode, setSlashMode] = useState(false);
@@ -121,10 +120,15 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   const answerRef = useRef<HTMLDivElement | null>(null);
   const answerHoverTimer = useRef<number | null>(null);
   const [answerPopPos, setAnswerPopPos] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
+  const assistantFooterRef = useRef<HTMLElement | null>(null);
+  const pickerTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const pickerRef = useRef<HTMLDivElement | null>(null);
+  const [pickerMaxHeight, setPickerMaxHeight] = useState<number>();
   const selectedId = useRef('');
   const sending = useRef(false);
   const changingChat = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const initiallyFocusedInput = useRef(false);
   const modelToggleRef = useRef<HTMLButtonElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const gateButtonRef = useRef<HTMLButtonElement>(null);
@@ -135,6 +139,39 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   const hasPendingAction = conversation.some(entry => entry.actionState === 'pending');
   const configured = !!data?.settings.endpoint.trim() && !!data?.settings.model.trim();
   const available = !!data?.settings.aiEnabled && configured;
+
+  useLayoutEffect(() => {
+    if (compact || !data || !chat || initiallyFocusedInput.current || !inputRef.current) return;
+    inputRef.current.focus({ preventScroll: true });
+    initiallyFocusedInput.current = true;
+  }, [compact, data, chat]);
+
+  useLayoutEffect(() => {
+    const footer = assistantFooterRef.current;
+    const surface = footer?.closest<HTMLElement>('.assistant-overlay, .assistant-widget');
+    if (!pickerOpen || !footer || !surface) { setPickerMaxHeight(undefined); return; }
+    const update = () => {
+      const maxHeight = Math.min(320, Math.max(0, Math.floor(footer.getBoundingClientRect().top - surface.getBoundingClientRect().top - 8)));
+      setPickerMaxHeight(current => current === maxHeight ? current : maxHeight);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(footer);
+    observer.observe(surface);
+    window.addEventListener('resize', update);
+    return () => { observer.disconnect(); window.removeEventListener('resize', update); };
+  }, [pickerOpen]);
+  useEffect(() => {
+    if (!pickerOpen) return;
+    function closeOutside(event: PointerEvent) {
+      const target = event.target as Node;
+      if (pickerRef.current?.contains(target) || pickerTriggerRef.current?.contains(target)) return;
+      setPickerOpen(false);
+      setPickerQuery('');
+    }
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, [pickerOpen]);
 
   function selectChat(next: ChatSession) {
     selectedId.current = next.id; setChat(next); setInput(next.draft); setBusy(next.entries.some(entry => entry.streaming)); setError(''); setActionError(''); setFailedText('');
@@ -180,7 +217,7 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
   }, [chat, activeAsk]);
   const pickTask = (task: Task) => {
     setLinkedTask(task);
-    setPlusOpen(false); setPickerOpen(false); setMiniPickerOpen(false);
+    setPickerOpen(false); setMiniPickerOpen(false);
     setInput(''); setSlashMode(false);
     inputRef.current?.focus();
   };
@@ -415,10 +452,10 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
     </section> : null}
     {!activeAsk && (() => { const latestAsk = [...conversation].reverse().flatMap(entry => entry.tools ?? []).find(tool => tool.name === 'ask_user' && tool.status === 'complete' && tool.question); return latestAsk ? <p className="ask-converged" role="status">✓「{latestAsk.question}」 → {latestAsk.answer ?? latestAsk.output}</p> : null; })()}
     {gate && conversation.length ? <div className="ai-gate" role="status"><span>{gate.label}</span><button type="button" ref={gateButtonRef} onClick={gate.onAction}>{gate.action}</button></div> : null}
-          {linkedTask && !slashMode ? <div className="linked-chip-row"><button type="button" className="linked-chip" aria-label={`已关联 ${linkedTask.title}，点击更换`} onClick={() => { setPlusOpen(true); setPickerOpen(true); }}><i className={`picker-pill ${linkedTask.kind === 'meeting' ? 'is-meeting' : 'is-task'}`} aria-hidden="true" /><span className="linked-title">{linkedTask.title}</span>{(() => { const tag = data.categories.find(category => category.id === linkedTask.categoryId); return tag ? <span className="linked-tag">{tag.name}</span> : null; })()}</button><button type="button" className="linked-clear" aria-label="取消关联" onClick={() => setLinkedTask(null)}><X size={12} /></button></div> : null}
-    <footer className="assistant-footer"><form className="assistant-compose" noValidate onSubmit={send}>
+          {linkedTask && !slashMode ? <div className="linked-chip-row"><button type="button" className="linked-chip" aria-label={`已关联 ${linkedTask.title}，点击更换`} onClick={() => setPickerOpen(true)}><i className={`picker-pill ${linkedTask.kind === 'meeting' ? 'is-meeting' : 'is-task'}`} aria-hidden="true" /><span className="linked-title">{linkedTask.title}</span>{(() => { const tag = data.categories.find(category => category.id === linkedTask.categoryId); return tag ? <span className="linked-tag">{tag.name}</span> : null; })()}</button><button type="button" className="linked-clear" aria-label="取消关联" onClick={() => setLinkedTask(null)}><X size={12} /></button></div> : null}
+    <footer ref={assistantFooterRef} className="assistant-footer"><form className="assistant-compose" noValidate onSubmit={send}>
       <span className="assistant-compose-copy">
-        <textarea ref={inputRef} autoFocus rows={2} className="assistant-compose-input resize-none" aria-label="AI 对话输入" value={input} onChange={event => saveDraft(event.target.value)} onKeyDown={event => {
+        <textarea ref={inputRef} rows={2} className="assistant-compose-input resize-none" aria-label="AI 对话输入" value={input} onChange={event => saveDraft(event.target.value)} onKeyDown={event => {
             if (slashMode) {
               if (event.key === 'ArrowDown') { event.preventDefault(); setSlashIndex(index => (index + 1) % Math.max(1, slashCandidates.length)); return; }
               if (event.key === 'ArrowUp') { event.preventDefault(); setSlashIndex(index => (index - 1 + slashCandidates.length) % Math.max(1, slashCandidates.length)); return; }
@@ -430,15 +467,14 @@ export function AssistantApp({ compact = false, embedded = false, closing = fals
           }} placeholder={hasPendingAction ? '继续追问，或告诉我如何调整建议…' : 'Enter 发送 · Shift + Enter 换行'} maxLength={10000} />
       </span>
       <span className="assistant-compose-meta">
-          <button type="button" className="assistant-plus" aria-label="关联已有事项" aria-expanded={plusOpen} disabled={busy} onClick={() => { setPlusOpen(value => !value); setPickerOpen(false); setSlashMode(false); }}><Plus size={15} /></button>
+          <button ref={pickerTriggerRef} type="button" className="assistant-plus" aria-label="选择事项" aria-expanded={pickerOpen} disabled={busy} onClick={() => { setPickerOpen(value => !value); setSlashMode(false); }}><Plus size={15} /></button>
         <span className="assistant-compose-options">
           {data.settings.models.length ? <Select className="assistant-model" aria-label="当前模型" disabled={busy} value={data.settings.activeModelId || data.settings.models[0].id} onChange={id => { if (!busy && id !== data.settings.activeModelId) void api.activateProfile(id).then(setData).catch(cause => setError(errorText(cause))); }} options={data.settings.models.map(model => ({ value: model.id, label: model.name }))} /> : null}
         </span>
         {busy ? <button type="button" className="assistant-stop" aria-label="停止并取消 AI 请求" onClick={() => void api.cancelAI()}><Stop size={13} weight="fill" /><span>停止</span></button> : <button className="send-button" type="submit" aria-label="发送给 AI" disabled={!input.trim() || mutating}><PaperPlaneTilt size={16} weight="fill" /></button>}
       </span>
-          {plusOpen ? <div className="plus-root" role="menu"><button type="button" role="menuitem" className={pickerOpen ? 'is-open' : ''} onMouseEnter={() => setPickerOpen(true)} onClick={() => setPickerOpen(true)}><ListMagnifyingGlass size={13} />选择事项<CaretRight size={11} /></button></div> : null}
-          {plusOpen && pickerOpen ? <div className="plus-sub" role="listbox" aria-label="选择事项">
-            <div className="picker-search"><ListMagnifyingGlass size={13} /><input autoFocus value={pickerQuery} placeholder="搜索事项或标签" onChange={event => setPickerQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setPlusOpen(false); setPickerOpen(false); setPickerQuery(''); } }} /></div>
+          {pickerOpen ? <div ref={pickerRef} className="plus-sub" role="listbox" aria-label="选择事项" style={{ maxHeight: pickerMaxHeight }}>
+            <div className="picker-search"><ListMagnifyingGlass size={13} /><input autoFocus value={pickerQuery} placeholder="搜索事项或标签" onChange={event => setPickerQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setPickerOpen(false); setPickerQuery(''); } }} /></div>
             <div className="picker-list">
               {filterPickerTasks(data.tasks, pickerQuery).map(group => <div key={group.label}>
                 <div className="picker-group">{group.label}</div>

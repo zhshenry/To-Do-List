@@ -133,7 +133,7 @@ export interface DesktopAPI {
   updateCategory(id: string, category: CategoryInput, revision: string): Promise<State>;
   removeCategory(id: string, revision: string): Promise<State>;
   window(action: 'show' | 'hide' | 'pin' | 'dockPin' | 'collapse' | 'expand', animate?: boolean): Promise<State>;
-  windowWidth(width: MainWindowWidth, animate?: boolean): Promise<State>;
+  windowWidth(width: MainWindowWidth): Promise<State>;
   compactHeight(height: number | null): Promise<void>;
   dockEnabled(enabled: boolean): Promise<State>;
   dockHover(open: boolean): Promise<'left' | 'right'>;
