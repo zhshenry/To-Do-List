@@ -394,3 +394,10 @@
 .hover-pop .md-body th, .hover-pop .md-body td { border: 1px solid var(--line); padding: 3px 8px; text-align: left; }
 .hover-pop .md-body blockquote { margin: 0; padding: 2px 10px; border-left: 2px solid var(--accent); color: var(--muted); }
 .hover-pop .md-body a { color: var(--accent); }
+
+/* ── #23 确认态横排 meta（标签·时间合并单行）── */
+.mini-proposal-meta { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; color: var(--muted); font-size: var(--fs-compact); line-height: 1.4; min-height: 15px; }
+.mini-proposal-meta strong { color: var(--ink); font-weight: 550; }
+.mini-meta-item { display: inline-flex; align-items: center; gap: 3px; min-width: 0; }
+.mini-meta-item .mini-before { text-decoration: line-through; opacity: .7; }
+.mini-meta-item + .mini-meta-item::before { content: '·'; margin-right: 2px; color: #d8d0c6; }
