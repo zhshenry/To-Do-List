@@ -216,6 +216,6 @@ function MiniProposal({ action, tasks, categories, proposedNames }: { action: AI
   const view = miniProposalView(action, tasks, categories, proposedNames);
   return <section className={`proposal-action mini-proposal${view.danger ? ' is-danger' : ''}`}>
     <h3><span className="mini-proposal-verb">{view.verb}</span><span className="mini-proposal-title">{view.title}</span></h3>
-    {view.missing ? <p>对象已变化，请展开对话并重新生成。</p> : view.rows.map(row => <p key={row.label}>{row.label}：{row.from ? <><span className="mini-before">{row.from}</span> → </> : null}<strong>{row.to}</strong></p>)}
+    {view.missing ? <p>对象已变化，请展开对话并重新生成。</p> : <p className="mini-proposal-meta">{view.rows.map(row => <span key={row.label} className="mini-meta-item">{row.label}：{row.from ? <><span className="mini-before">{row.from}</span> → </> : null}<strong>{row.to}</strong></span>)}</p>}
   </section>;
 }

@@ -395,6 +395,12 @@
 .hover-pop .md-body blockquote { margin: 0; padding: 2px 10px; border-left: 2px solid var(--accent); color: var(--muted); }
 .hover-pop .md-body a { color: var(--accent); }
 
+/* ── #23 确认态横排 meta（标签·时间合并单行）── */
+.mini-proposal-meta { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; color: var(--muted); font-size: var(--fs-compact); line-height: 1.4; min-height: 15px; }
+.mini-proposal-meta strong { color: var(--ink); font-weight: 550; }
+.mini-meta-item { display: inline-flex; align-items: center; gap: 3px; min-width: 0; }
+.mini-meta-item .mini-before { text-decoration: line-through; opacity: .7; }
+.mini-meta-item + .mini-meta-item::before { content: '·'; margin-right: 2px; color: #d8d0c6; }
 /* ── #18 折叠态关联事项（＋ + chip + 向下弹菜单）── */
 .mini-compose-tools { display: flex; align-items: center; gap: 5px; margin: 6px 0 0; min-height: 22px; }
 .mini-plus { display: inline-flex; align-items: center; justify-content: center; width: var(--ctl-sm); height: var(--ctl-sm); border: 1px solid var(--line); border-radius: var(--r-control-sm); background: var(--white); color: var(--muted); }
